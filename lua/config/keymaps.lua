@@ -1,9 +1,9 @@
 -- ~/.config/nvim/lua/config/keymaps.lua
--- Centralized keymaps.
+-- Centralized keymaps configuration.
 
 local M = {}
 
--- Smart tab close function
+-- Smart tab close function with Dashboard support
 local function smart_tab_close()
     local total_tabs = vim.fn.tabpagenr("$")
     local current_buf = vim.api.nvim_get_current_buf()
@@ -40,11 +40,35 @@ local function force_close_tab()
     end
 end
 
+-- Setup conditional abbreviations for command line
+local function setup_conditional_abbreviations()
+    vim.api.nvim_create_autocmd(
+        {"BufEnter", "FileType"},
+        {
+            callback = function()
+                local filetype = vim.bo.filetype
+
+                if filetype == "dashboard" then
+                    -- In Dashboard - remove abbreviations, allow native :q behavior
+                    pcall(vim.cmd, "cunabbrev q")
+                    pcall(vim.cmd, "cunabbrev wq")
+                    pcall(vim.cmd, "cunabbrev WQ")
+                else
+                    -- In normal files - set up buffer-local abbreviations
+                    vim.cmd("cabbrev <buffer> q Q")
+                    vim.cmd("cabbrev <buffer> wq Wq")
+                    vim.cmd("cabbrev <buffer> WQ Wq")
+                end
+            end
+        }
+    )
+end
+
 function M.setup()
     local map = vim.keymap.set
     local opts = {noremap = true, silent = true}
 
-    -- Tabs navigation.
+    -- Tabs navigation
     map("n", "<A-Left>", ":tabprevious<CR>", {desc = "Previous tab"})
     map("n", "<A-Right>", ":tabnext<CR>", {desc = "Next tab"})
     map("n", "<A-1>", "1gt", {desc = "Go to tab 1"})
@@ -57,7 +81,7 @@ function M.setup()
     map("n", "<A-8>", "8gt", {desc = "Go to tab 8"})
     map("n", "<A-9>", "9gt", {desc = "Go to tab 9"})
 
-    -- Move current tab.
+    -- Move current tab
     map("n", "<A-h>", ":-tabmove<CR>", {desc = "Move tab left"})
     map("n", "<A-l>", ":+tabmove<CR>", {desc = "Move tab right"})
 
@@ -65,7 +89,7 @@ function M.setup()
     map("n", "<leader>tn", ":tabnew<CR>", {desc = "New tab"})
     map("n", "<C-t>", ":tabnew<CR>", {desc = "New tab"})
 
-    -- File tree modal with F9.
+    -- File tree modal with F9
     map(
         "n",
         "<F9>",
@@ -131,33 +155,33 @@ function M.setup()
         {desc = "Show tabs list", silent = true}
     )
 
-    -- Tab navigation with F keys.
+    -- Tab navigation with F keys
     map("n", "<F5>", ":tabprevious<CR>", {desc = "Previous tab"})
     map("n", "<F6>", ":tabnext<CR>", {desc = "Next tab"})
 
-    -- UPDATED: Smart quit commands with new logic
+    -- Smart quit commands with Dashboard-aware logic
     map("n", "<leader>qq", smart_tab_close, {desc = "Smart close current tab"})
     map("n", "<leader>qa", ":qa<CR>", {desc = "Close all tabs and exit"})
     map("n", "<leader>qQ", force_close_tab, {desc = "Force close current tab"})
     map("n", "<leader>qA", ":qa!<CR>", {desc = "Force close all tabs and exit"})
 
-    -- Better window navigation.
+    -- Better window navigation
     map("n", "<C-h>", "<C-w>h", {desc = "Go to left window"})
     map("n", "<C-j>", "<C-w>j", {desc = "Go to lower window"})
     map("n", "<C-k>", "<C-w>k", {desc = "Go to upper window"})
     map("n", "<C-l>", "<C-w>l", {desc = "Go to right window"})
 
-    -- Resize windows.
+    -- Resize windows
     map("n", "<C-Up>", ":resize +2<CR>", opts)
     map("n", "<C-Down>", ":resize -2<CR>", opts)
     map("n", "<C-Left>", ":vertical resize -2<CR>", opts)
     map("n", "<C-Right>", ":vertical resize +2<CR>", opts)
 
-    -- Stay in indent mode.
+    -- Stay in indent mode
     map("v", "<", "<gv", opts)
     map("v", ">", ">gv", opts)
 
-    -- Move text up and down.
+    -- Move text up and down
     map("v", "<A-j>", ":m .+1<CR>==", opts)
     map("v", "<A-k>", ":m .-2<CR>==", opts)
     map("x", "J", ":move '>+1<CR>gv-gv", opts)
@@ -165,7 +189,7 @@ function M.setup()
     map("x", "<A-j>", ":move '>+1<CR>gv-gv", opts)
     map("x", "<A-k>", ":move '<-2<CR>gv-gv", opts)
 
-    -- Better paste.
+    -- Better paste
     map("v", "p", '"_dP', opts)
 
     -- Yank entire buffer to clipboard
@@ -178,7 +202,7 @@ function M.setup()
     map("n", "<leader>yp", '"+p', {desc = "Paste from clipboard"})
     map("v", "<leader>yp", '"+p', {desc = "Paste from clipboard"})
 
-    -- Clear search highlighting.
+    -- Clear search highlighting
     map("n", "<leader>h", ":nohlsearch<CR>", {desc = "Clear highlights"})
 
     -- F2 for smart save and format
@@ -186,9 +210,9 @@ function M.setup()
         "n",
         "<F2>",
         function()
-            -- Save file.
+            -- Save file
             vim.cmd("write")
-            -- Format if formatting is available and enabled.
+            -- Format if formatting is available and enabled
             if vim.g.format_on_save ~= false then
                 vim.lsp.buf.format({async = false, timeout_ms = 2000})
             end
@@ -201,7 +225,7 @@ function M.setup()
         "i",
         "<F2>",
         function()
-            -- Exit insert mode, save and format, then return to insert mode.
+            -- Exit insert mode, save and format, then return to insert mode
             vim.cmd("stopinsert")
             vim.cmd("write")
             if vim.g.format_on_save ~= false then
@@ -213,7 +237,7 @@ function M.setup()
         {desc = "Save and format file"}
     )
 
-    -- Mason.
+    -- Mason
     map("n", "<leader>m", ":Mason<CR>", {desc = "Open Mason"})
 
     -- Diagnostics with improved quickfix window
@@ -231,25 +255,61 @@ function M.setup()
         {desc = "Open diagnostic quickfix list"}
     )
 
-    -- Override default Vim quit commands to use smart logic
-    -- Create user commands to replace :q, :wq, etc.
-    vim.api.nvim_create_user_command('Q', smart_tab_close, {bang = true})
-    vim.api.nvim_create_user_command('Wq', function()
-        vim.cmd('write')
-        smart_tab_close()
-    end, {bang = true})
-    vim.api.nvim_create_user_command('WQ', function()
-        vim.cmd('write')
-        smart_tab_close()
-    end, {bang = true})
+    -- Create user commands to replace :q, :wq, etc with smart logic
+    vim.api.nvim_create_user_command(
+        "Q",
+        function(opts)
+            local filetype = vim.bo.filetype
+            if filetype == "dashboard" then
+                -- In Dashboard - behave like normal :q
+                if opts.bang then
+                    vim.cmd("qa!")
+                else
+                    vim.cmd("qa")
+                end
+            else
+                -- In normal files - use smart logic
+                if opts.bang then
+                    force_close_tab()
+                else
+                    smart_tab_close()
+                end
+            end
+        end,
+        {bang = true, desc = "Smart quit command"}
+    )
 
-    -- Create command abbreviations to intercept common quit commands
-    vim.cmd('cabbrev q Q')
-    vim.cmd('cabbrev wq Wq')
-    vim.cmd('cabbrev WQ Wq')
+    vim.api.nvim_create_user_command(
+        "Wq",
+        function(opts)
+            vim.cmd("write")
+            if opts.bang then
+                force_close_tab()
+            else
+                smart_tab_close()
+            end
+        end,
+        {bang = true, desc = "Write and smart quit"}
+    )
+
+    vim.api.nvim_create_user_command(
+        "WQ",
+        function(opts)
+            vim.cmd("write")
+            if opts.bang then
+                force_close_tab()
+            else
+                smart_tab_close()
+            end
+        end,
+        {bang = true, desc = "Write and smart quit"}
+    )
+
+    -- Setup conditional command abbreviations
+    setup_conditional_abbreviations()
 
     -- Override :new to create new tab instead of split
-    vim.cmd('cabbrev new tabnew')
+    vim.cmd("cabbrev new tabnew")
 end
 
 return M
