@@ -166,14 +166,14 @@ return {
             local venv = vim.fn.getenv("VIRTUAL_ENV")
             if venv ~= vim.NIL and venv ~= "" then
                 local venv_name = vim.fn.fnamemodify(venv, ":t")
-                return "🐍 " .. venv_name
+                return " " .. venv_name
             end
 
             -- Check for local .venv
             if vim.fn.isdirectory(".venv") == 1 then
-                return "🐍 .venv"
+                return " .venv"
             elseif vim.fn.isdirectory("venv") == 1 then
-                return "🐍 venv"
+                return " venv"
             end
 
             return ""
