@@ -149,7 +149,21 @@ return {
                     -- UI / THEMES
                     {"<leader>u", group = " UI/Themes"},
                     {"<leader>ut", desc = "• Theme Switcher"},
-                    {"<leader>ub", desc = "• Toggle Background"}
+                    {"<leader>ub", desc = "• Toggle Background"},
+                    -- PLATFORMIO - Embedded development
+                    {"<leader>p", group = " PlatformIO"},
+                    {"<leader>pb", desc = "• Build Project"},
+                    {"<leader>pu", desc = "• Upload to Device"},
+                    {"<leader>pm", desc = "• Serial Monitor"},
+                    {"<leader>pc", desc = "• Clean Build"},
+                    {"<leader>pf", desc = "• Build & Upload"},
+                    {"<leader>pt", desc = "• Run Tests"},
+                    {"<leader>pl", desc = "• List Libraries"},
+                    {"<leader>pi", desc = "• Install Library"},
+                    {"<leader>ps", desc = "• List Devices"},
+                    {"<leader>pn", desc = "• New Project"},
+                    {"<leader>pg", desc = "• Generate Compile Commands"},
+                    {"<leader>po", desc = "• Open platformio.ini"},
                 }
             }
         )

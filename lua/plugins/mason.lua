@@ -33,11 +33,6 @@ return {
                         "html",
                         "cssls",
                         "emmet_ls",
-                        -- Go (use system gopls instead of Mason version)
-                        -- "gopls",        -- Commented out due to installation issues
-
-                        -- C/C++ (use system clangd instead of Mason version)
-                        -- "clangd",       -- Commented out due to installation issues
 
                         -- DevOps
                         "dockerls",
@@ -60,7 +55,9 @@ return {
             require("mason-null-ls").setup(
                 {
                     -- Disable automatic installation completely.
-                    ensure_installed = {},
+                    ensure_installed = {
+                        "clang-format",
+                    },
                     automatic_installation = false
                 }
             )

@@ -375,6 +375,57 @@ return {
                 },
                 root_markers = {"compile_commands.json", ".git"}
             },
+            -- PlatformIO C/C++ support
+            clangd_pio = {
+                cmd = {
+                    "clangd",
+                    "--background-index",
+                    "--clang-tidy",
+                    "--header-insertion=iwyu",
+                    "--completion-style=detailed",
+                    "--function-arg-placeholders",
+                    "--fallback-style=llvm",
+                    "--compile-commands-dir=.pio/build"
+                },
+                init_options = {
+                    usePlaceholders = true,
+                    completeUnimported = true,
+                    clangdFileStatus = true
+                },
+                root_markers = {
+                    "platformio.ini",
+                    ".pio",
+                    "compile_commands.json",
+                    ".git"
+                },
+                settings = {
+                    clangd = {
+                        semanticHighlighting = true,
+                        fallbackFlags = {
+                            "-std=c++17",
+                            "-Wall",
+                            "-Wextra"
+                        }
+                    }
+                },
+                -- Only activate for PlatformIO projects
+                on_new_config = function(config, root_dir)
+                    local platformio_ini = root_dir .. "/platformio.ini"
+                    if vim.fn.filereadable(platformio_ini) == 1 then
+                        -- Try to generate compile_commands.json if it doesn't exist
+                        local compile_commands = root_dir .. "/.pio/build/compile_commands.json"
+                        if vim.fn.filereadable(compile_commands) == 0 then
+                            vim.notify("Generating compile_commands.json for PlatformIO project...")
+                            vim.fn.system("cd " .. root_dir .. " && pio run --target compiledb")
+                        end
+
+                        -- Set compile commands directory
+                        config.cmd = vim.list_extend(config.cmd or {}, {
+                            "--compile-commands-dir=" .. root_dir .. "/.pio/build"
+                        })
+                    end
+                end
+            },
             -- Docker.
             dockerls = {
                 root_markers = {"Dockerfile", ".git"}

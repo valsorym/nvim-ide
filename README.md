@@ -1,13 +1,13 @@
 # NeoVim IDE Configuration
 
-A full-featured IDE configuration for Neovim with support for Python + Django, JavaScript/TypeScript, Vue.js, C/C++, Go, and other programming languages.
+Full-featured IDE configuration for Neovim with support for Python + Django, JavaScript/TypeScript, Vue.js, C/C++, Go, PlatformIO and other programming languages.
 
 ## Installation
 
-### 1. Install Dependencies and Tools
+### 1. Installing Dependencies and Tools
 
 ```bash
-# Update system and install essential tools
+# System update and essential tools installation
 sudo apt update && \
 sudo apt install -y \
   build-essential \
@@ -32,10 +32,11 @@ sudo apt install -y \
   nodejs \
   npm \
   python3-pip \
-  ripgrep
+  ripgrep \
+  platformio
 ```
 
-### 2. Install Nerd Fonts
+### 2. Installing Nerd Fonts
 
 ```bash
 # Download and install popular Nerd Fonts
@@ -68,9 +69,9 @@ rm *.zip && \
 fc-cache -fv
 ```
 
-**⚠️ IMPORTANT**: Set one of the Nerd Font Mono fonts as your terminal's default font for proper icon display.
+**⚠️ IMPORTANT**: Set one of the Nerd Font Mono as the default font in your terminal for proper icon display.
 
-### 3. Install NeoVim from Source
+### 3. Installing NeoVim from Source
 
 ```bash
 # Create temporary directory and clone repository
@@ -82,10 +83,10 @@ make CMAKE_BUILD_TYPE=Release && \
 sudo make install
 ```
 
-### 4. Install Python Tools
+### 4. Installing Python Tools
 
 ```bash
-# Global Python formatter installation
+# Global Python formatters installation
 pip3 install black isort
 
 # Or for specific project with virtual environment
@@ -94,7 +95,23 @@ source .venv/bin/activate
 pip install black isort django  # add other dependencies as needed
 ```
 
-### 5. Install NVim-IDE Configuration
+### 5. Installing PlatformIO Core
+
+```bash
+# Via pip (recommended method)
+pip3 install platformio
+
+# Or via homebrew (macOS)
+brew install platformio
+
+# Or via snap (Ubuntu)
+sudo snap install --classic platformio
+
+# Verify installation
+pio --version
+```
+
+### 6. Installing NVim-IDE Configuration
 
 ```bash
 bash -lc '
@@ -121,12 +138,12 @@ echo "Plugins will install automatically on first launch..."
 ' && nvim
 ```
 
-On first launch, Neovim will automatically:
-- Install all plugins through Lazy.nvim
-- Download LSP servers through Mason
+On first Neovim launch, it will automatically:
+- Install all plugins via Lazy.nvim
+- Download LSP servers via Mason
 - Configure Treesitter parsers
 
-## Features
+## Key Features
 
 ### Python + Django
 - Automatic virtual environment detection (.venv, venv)
@@ -134,25 +151,44 @@ On first launch, Neovim will automatically:
 - Automatic import sorting with isort
 - Code formatting with Black (79 characters per line)
 - LSP support with Pyright
-- Django management commands through terminal
+- Django management commands via terminal
 
 ### Web Development
 - Full HTML/CSS/JavaScript/TypeScript support
 - Vue.js with Vue Language Server
-- CSS/JS in `<style>` and `<script>` blocks within HTML files
-- Emmet for rapid HTML/CSS development
+- CSS/JS in `<style>` and `<script>` blocks of HTML files
+- Emmet for rapid HTML/CSS writing
 - Prettier for formatting
 - JSON schemas from SchemaStore
 
+### PlatformIO - Embedded Development
+- Automatic PlatformIO project detection (platformio.ini)
+- LSP support for C/C++ with clangd
+- Automatic `compile_commands.json` generation
+- Support for popular boards: Arduino, ESP32/ESP8266, STM32, Raspberry Pi Pico
+- Integration with PlatformIO terminal commands
+- Fast code navigation with IntelliSense
+- Syntax highlighting for Arduino sketches
+
+#### Supported PlatformIO platforms:
+- **Arduino**: Uno, Nano, Mega, Leonardo
+- **ESP**: ESP32, ESP8266 (all variants)
+- **STM32**: Bluepill, Nucleo, Discovery boards
+- **Raspberry Pi**: Pico, Pico W
+- **Teensy**: 3.x, 4.x series
+- **AVR**: ATmega, ATtiny microcontrollers
+- **ARM**: Cortex-M based MCUs
+- **RISC-V**: CH32V, ESP32-C3/S3
+
 ### Core IDE Features
 - LSP servers for 10+ programming languages
-- Intelligent file manager with file filtering
+- Intelligent file manager with tab mode
 - Telescope for fast file and text search
 - Git integration with gitsigns
 - Multi-functional terminal
-- Automatic bracket and pair closing
+- Automatic bracket and symbol pairing
 - Smart comments for all languages
-- Treesitter for accurate syntax highlighting
+- Treesitter for precise syntax highlighting
 - Which-key for intuitive navigation
 - Automatic formatting on save
 
@@ -161,23 +197,22 @@ On first launch, Neovim will automatically:
 ### 1. Open File Tree
 ```
 F9                    # Open file manager in modal window
-<leader>ee            # Alternative way (<leader> = Space)
+<leader>ee            # Alternative method (<leader> = Space)
 
 In file manager:
 Enter                 # Open file in new tab or expand folder
-f                     # Start filtering files by name
-F                     # Clear file filter
+t                     # Switch between files and tabs mode
 q or Esc              # Close file manager
 ```
 
 ### 2. Open List of Open Buffers/Tabs
 ```
 F8                    # Show list of all open tabs
-<leader>et            # Alternative way
+<leader>et            # Alternative method
 
-F10                   # Show buffers through Telescope
-<leader>eb            # Show buffers through Telescope
-<leader>fb            # Show buffers through Telescope
+F10                   # Show buffers via Telescope
+<leader>eb            # Show buffers via Telescope
+<leader>fb            # Show buffers via Telescope
 
 In tabs list:
 Enter                 # Switch to selected tab
@@ -206,7 +241,16 @@ Automatic detection:
 4. Uses system python3
 ```
 
-### 5. Move Files in Subdirectory (nvim-tree)
+### 5. PlatformIO Quick Start
+```
+<leader>pn            # Create new PlatformIO project
+<leader>pb            # Build project
+<leader>pu            # Upload to device
+<leader>pm            # Open serial monitor
+<leader>pf            # Build and upload (quick command)
+```
+
+### 6. Move Files to Subdirectory (nvim-tree)
 ```
 F9                    # Open nvim-tree
 x                     # Cut file
@@ -218,7 +262,7 @@ c                     # Copy file
 p                     # Paste copy
 ```
 
-### 6. Close File (and All Files)
+### 7. Close File (and All Files)
 ```
 <leader>qq            # Close current tab
 <leader>qa            # Close all tabs and exit nvim
@@ -230,16 +274,17 @@ p                     # Paste copy
 
 ### Files and Navigation
 
-| Keys         | Action                             |
-| ------------ | ---------------------------------- |
-| `F9`         | Open/close file manager            |
-| `<leader>ee` | Open file manager                  |
-| `<leader>ff` | Find files (Telescope)             |
+| Keys | Action |
+|------|--------|
+| `F9` | Open/close file manager |
+| `<leader>ee` | Open file manager |
+| `<leader>ff` | Find files (Telescope) |
 | `<leader>fg` | Search text in project (Live Grep) |
-| `<leader>fb` | List open buffers                  |
-| `<leader>fh` | Help (Help tags)                   |
-| `<leader>fs` | Document symbols                   |
-| `<leader>fw` | Workspace symbols                  |
+| `<leader>fb` | List open buffers |
+| `<leader>fh` | Help tags |
+| `<leader>fs` | Document symbols |
+| `<leader>fw` | Workspace symbols |
+| `<leader>fp` | Find projects (Telescope) |
 
 ### Tabs
 
@@ -256,18 +301,39 @@ p                     # Paste copy
 | `<leader>eb`         | List buffers (Telescope) |
 | `<leader>fb`         | List buffers (Telescope) |
 
-### Terminal
+**In file manager:**
+- `t` - switch between files and tabs mode
+- `Enter` - open file in new tab or go to existing one
+
+### PlatformIO - Embedded Development
 
 | Keys         | Action                                     |
 | ------------ | ------------------------------------------ |
-| `Ctrl + \`   | Open/close floating terminal               |
-| `<leader>tf` | Floating terminal                          |
-| `<leader>th` | Horizontal terminal                        |
-| `<leader>tv` | Vertical terminal (width 80)               |
+| `<leader>pb` | Build project (pio run)                    |
+| `<leader>pu` | Upload to device (pio run --target upload) |
+| `<leader>pm` | Serial monitor (pio device monitor)        |
+| `<leader>pc` | Clean build (pio run --target clean)       |
+| `<leader>pf` | Build and upload (quick command)           |
+| `<leader>pt` | Run tests (pio test)                       |
+| `<leader>pl` | List libraries (pio lib list)              |
+| `<leader>pi` | Install library (pio lib install)          |
+| `<leader>ps` | List devices (pio device list)             |
+| `<leader>pn` | Create new project (interactive)           |
+| `<leader>pg` | Generate compile_commands.json             |
+| `<leader>po` | Open platformio.ini in new tab             |
+
+### Terminal
+
+| Keys | Action |
+|------|--------|
+| `Ctrl + \` | Open/close floating terminal |
+| `<leader>tf` | Floating terminal |
+| `<leader>th` | Horizontal terminal |
+| `<leader>tv` | Vertical terminal (width 80) |
 | `<leader>tp` | Python terminal (with virtual environment) |
-| `<leader>td` | Django shell                               |
-| `<leader>tr` | Django runserver                           |
-| `<leader>tn` | Node.js terminal                           |
+| `<leader>td` | Django shell |
+| `<leader>tr` | Django runserver |
+| `<leader>tn` | Node.js terminal |
 
 ### LSP (Language Server)
 
@@ -284,22 +350,23 @@ p                     # Paste copy
 
 ### Formatting and Saving
 
-| Keys         | Action                      |
-| ------------ | --------------------------- |
-| `F2`         | Smart save + formatting     |
-| `<leader>f`  | Format current buffer       |
-| `<leader>F`  | Format document             |
-| `<leader>tf` | Toggle auto-format on save  |
+| Keys | Action |
+|------|--------|
+| `F2` | Smart save + formatting |
+| `<leader>f` | Format current buffer |
+| `<leader>F` | Format document |
+| `<leader>tf` | Toggle auto-format on save |
 | `<leader>is` | Sort Python imports (isort) |
 
 ### Diagnostics
 
-| Keys        | Action                              |
-| ----------- | ----------------------------------- |
-| `]d`        | Next error/warning                  |
-| `[d`        | Previous error/warning              |
-| `<leader>d` | Show diagnostics in floating window |
-| `<leader>q` | Open error list (quickfix)          |
+| Keys         | Action                              |
+| ------------ | ----------------------------------- |
+| `]d`         | Next error/warning                  |
+| `[d`         | Previous error/warning              |
+| `<leader>xx` | Show diagnostics in floating window |
+| `gl`         | Show diagnostics in floating window |
+| `<leader>xl` | Open error list (quickfix)          |
 
 ### Editing
 
@@ -316,61 +383,151 @@ p                     # Paste copy
 
 ### Clipboard
 
-| Keys         | Action                                            |
-| ------------ | ------------------------------------------------- |
-| `<leader>ya` | Copy entire buffer to clipboard                   |
+| Keys | Action |
+|------|--------|
+| `<leader>ya` | Copy entire buffer to clipboard |
 | `<leader>yy` | Copy selection to clipboard (also in visual mode) |
-| `<leader>yp` | Paste from clipboard (also in visual mode)        |
+| `<leader>yp` | Paste from clipboard (also in visual mode) |
 
 ### Windows
 
 | Keys             | Action                   |
 | ---------------- | ------------------------ |
 | `<C-h/j/k/l>`    | Navigate between windows |
-| `<C-Up/Down>`    | Change window height     |
-| `<C-Left/Right>` | Change window width      |
+| `<C-Up/Down>`    | Resize window height     |
+| `<C-Left/Right>` | Resize window width      |
 
 ### Git
 
-| Keys         | Action               |
-| ------------ | -------------------- |
-| `<leader>hs` | Stage hunk           |
-| `<leader>hr` | Reset hunk changes   |
-| `<leader>hp` | Preview hunk         |
-| `<leader>hb` | Show blame for line  |
+| Keys | Action |
+|------|--------|
+| `<leader>hs` | Stage hunk |
+| `<leader>hr` | Reset hunk |
+| `<leader>hp` | Preview hunk |
+| `<leader>hb` | Show line blame |
 | `<leader>tb` | Toggle blame display |
-| `<leader>hd` | Show diff            |
-| `]c`         | Next hunk            |
-| `[c`         | Previous hunk        |
+| `<leader>hd` | Show diff |
+| `]c` | Next hunk |
+| `[c` | Previous hunk |
+
+### Themes and UI
+
+| Keys         | Action                        |
+| ------------ | ----------------------------- |
+| `<leader>ut` | Theme switcher (preview)      |
+| `<leader>us` | Set permanent theme           |
+| `<leader>ui` | Current theme info            |
+| `<leader>ud` | Show available themes (debug) |
 
 ### System and Others
 
-| Keys         | Action                            |
-| ------------ | --------------------------------- |
-| `<leader>m`  | Open Mason (LSP manager)          |
+| Keys | Action |
+|------|--------|
+| `<leader>m` | Open Mason (LSP manager) |
 | `<leader>vs` | Select Python virtual environment |
-| `<leader>qq` | Close current tab                 |
-| `<leader>qa` | Close all tabs and exit           |
-| `<leader>qQ` | Force close current tab           |
-| `<leader>qA` | Force close everything and exit   |
-| `<leader>h`  | Clear search highlighting         |
+| `<leader>qq` | Close current tab |
+| `<leader>qa` | Close all tabs and exit |
+| `<leader>qQ` | Force close current tab |
+| `<leader>qA` | Force close everything and exit |
+| `<leader>h` | Clear search highlights |
 
 ## Supported Programming Languages
 
-| Language                  | LSP Server | Formatter     | Features                         |
-| ------------------------- | ---------- | ------------- | -------------------------------- |
-| **Python**                | Pyright    | Black + isort | Django templates, venv detection |
-| **JavaScript/TypeScript** | ts_ls      | Prettier      | Inlay hints, auto-import         |
-| **Vue.js**                | vue_ls     | Prettier      | Single File Components           |
-| **HTML**                  | html       | Prettier      | Django template support          |
-| **CSS/SCSS**              | cssls      | Prettier      | Emmet integration                |
-| **Go**                    | gopls      | goimports     | Automatic imports                |
-| **C/C++**                 | clangd     | clang-format  | Background indexing              |
-| **Lua**                   | lua_ls     | stylua        | Neovim API support               |
-| **JSON**                  | jsonls     | Prettier      | Schema validation                |
-| **YAML**                  | yamlls     | Prettier      | GitHub Actions, Docker Compose   |
-| **Docker**                | dockerls   | -             | Dockerfile support               |
-| **Bash**                  | bashls     | -             | Shell scripting                  |
+| Language                  | LSP Server | Formatter     | Features                                  |
+| ------------------------- | ---------- | ------------- | ----------------------------------------- |
+| **Python**                | Pyright    | Black + isort | Django templates, venv detection          |
+| **JavaScript/TypeScript** | ts_ls      | Prettier      | Inlay hints, auto-import                  |
+| **Vue.js**                | vue_ls     | Prettier      | Single File Components                    |
+| **HTML**                  | html       | Prettier      | Django template support                   |
+| **CSS/SCSS**              | cssls      | Prettier      | Emmet integration                         |
+| **C/C++**                 | clangd     | clang-format  | PlatformIO support, compile_commands.json |
+| **Go**                    | gopls      | goimports     | Automatic imports                         |
+| **Lua**                   | lua_ls     | stylua        | Neovim API support                        |
+| **JSON**                  | jsonls     | Prettier      | Schema validation                         |
+| **YAML**                  | yamlls     | Prettier      | GitHub Actions, Docker Compose            |
+| **Docker**                | dockerls   | -             | Dockerfile support                        |
+| **Bash**                  | bashls     | -             | Shell scripting                           |
+
+## PlatformIO Workflow
+
+### 1. Creating New Project
+```bash
+<leader>pn          # Interactive project creation
+# Choose project name and board from list
+
+# Available popular boards:
+arduino-uno         # Arduino Uno
+arduino-nano        # Arduino Nano
+arduino-mega        # Arduino Mega
+esp32dev           # ESP32 Development Board
+esp8266            # ESP8266 (NodeMCU, Wemos D1)
+bluepill_f103c8    # STM32 Blue Pill
+nucleo_f401re      # STM32 Nucleo
+raspberry-pi-pico  # Raspberry Pi Pico
+```
+
+### 2. Development and Debugging
+```bash
+<leader>po          # Open platformio.ini for configuration
+<leader>pg          # Generate compile_commands.json for LSP
+<leader>pb          # Build project
+<leader>pu          # Upload to device
+<leader>pm          # Open serial monitor
+<leader>pf          # Build and upload (quick command)
+```
+
+### 3. Library Management
+```bash
+<leader>pl          # Show installed libraries
+<leader>pi          # Install new library
+<leader>ps          # Show connected devices
+```
+
+### 4. Testing
+```bash
+<leader>pt          # Run unit tests
+<leader>pc          # Clean build (when having issues)
+```
+
+## Example PlatformIO Project Structure
+
+```
+my_arduino_project/
+├── platformio.ini              # Project configuration
+├── src/
+│   └── main.cpp               # Main program code
+├── include/
+│   └── README                 # Header files
+├── lib/
+│   └── README                 # Private libraries
+├── test/
+│   └── README                 # Unit tests
+└── .pio/                      # Build and cache (auto-generated)
+    ├── build/
+    │   └── compile_commands.json  # For LSP support
+    └── libdeps/
+```
+
+### Example platformio.ini:
+```ini
+[env:uno]
+platform = atmelavr
+board = uno
+framework = arduino
+monitor_speed = 9600
+lib_deps =
+    arduino-libraries/Servo@^1.1.8
+    adafruit/Adafruit NeoPixel@^1.10.7
+
+[env:esp32]
+platform = espressif32
+board = esp32dev
+framework = arduino
+monitor_speed = 115200
+lib_deps =
+    bblanchon/ArduinoJson@^6.19.4
+    knolleary/PubSubClient@^2.8
+```
 
 ## Project Structure
 
@@ -382,40 +539,59 @@ p                     # Paste copy
 └── lua/
     ├── config/
     │   ├── colorcolumn.lua              # Vertical line at 79 characters
-    │   ├── keymaps.lua                  # Centralized key mappings
+    │   ├── keymaps.lua                  # Centralized key bindings
     │   ├── line-numbers.lua             # Smart line numbers
     │   └── nvim-tabs.lua                # Custom tabs with parent/filename
     └── plugins/
         ├── additional.lua               # Treesitter, Telescope, Git, Terminal
         ├── completion.lua               # nvim-cmp with LuaSnip
         ├── dashboard.lua                # Start screen
+        ├── footer.lua                   # Status line (lualine)
         ├── formatting.lua               # null-ls for formatting
         ├── lsp.lua                      # LSP configuration for all languages
         ├── mason.lua                    # LSP server manager
-        ├── nvim-tree.lua               # File manager
-        ├── tabs-list.lua               # Independent tabs list
-        ├── theme.lua                    # Catppuccin theme
-        └── which-key.lua               # Key bindings helper
+        ├── nvim-tree.lua               # File manager with tab mode
+        ├── platformio.lua              # PlatformIO integration
+        ├── scroll.lua                   # Scrollbar with indicators
+        ├── tabs-list.lua               # Independent tab list
+        ├── theme.lua                    # Multi-theme support with switcher
+        └── which-key.lua               # Key bindings help
 ```
 
 ## Configuration Features
 
 ### Smart Tabs
 - Show parent/filename for better navigation
-- Auto-close empty tabs with only NvimTree
+- Automatic closure of empty tabs with only NvimTree
 - Preserve last tab with new empty file
 
-### File Manager
-- Modal floating window
-- Live file filtering with `f` key
-- Sync with current file
-- Root directory management
+### File Manager with Two Modes
+- **Files**: standard file tree view
+- **Tabs**: list of all open tabs
+- Switch with `t` key
 
-### Automatic Python Environment Detection
+### Automatic Environment Detection
+**Python:**
 1. Checks `VIRTUAL_ENV` variable
 2. Looks for `.venv` in current directory
 3. Looks for `venv` in current directory
 4. Uses system `python3`
+
+**PlatformIO:**
+1. Detects `platformio.ini` in project root
+2. Automatically generates `compile_commands.json`
+3. Configures clangd to work with `.pio/build`
+4. Connects specific terminal commands
+
+### Multi-Theme Support
+- Catppuccin (Mocha, Latte, Frappe, Macchiato)
+- Tokyo Night (Night, Storm, Moon, Day)
+- Gruvbox Material
+- Kanagawa (Wave, Dragon, Lotus)
+- Nord
+- One Dark
+- Telescope switcher with preview
+- Theme persistence between sessions
 
 ### Smart Line Numbers
 - Hybrid in Normal mode (relative + current absolute)
@@ -424,8 +600,9 @@ p                     # Paste copy
 
 ### Optimized Diagnostics
 - Muted colors for virtual text
-- Single warning symbol (⚠) for all types
+- Special icons for different message types (☣ ⚠ 💡 ℹ)
 - Floating windows with rounded corners
+- Scrollbar indicators for file errors
 
 ## Django Development
 
@@ -454,16 +631,30 @@ p                     # Paste copy
 
 ## Troubleshooting
 
-### LSP Servers Won't Install
+### LSP Servers Not Installing
 ```bash
 :Mason
-# Select required server and press 'i' to install
+# Select needed server and press 'i' to install
 ```
 
 ### Python Environment Not Found
 ```bash
 :VenvSelect  # Manually select venv
-<leader>vs   # Alternative way
+<leader>vs   # Alternative method
+```
+
+### PlatformIO Projects Not Recognized
+```bash
+# Make sure platformio.ini file exists
+ls platformio.ini
+
+# Generate compile_commands.json for LSP
+<leader>pg
+# or
+pio run --target compiledb
+
+# Restart LSP server
+:LspRestart
 ```
 
 ### Formatting Not Working
@@ -471,38 +662,75 @@ p                     # Paste copy
 # In virtual environment
 pip install black isort
 
+# For C/C++ (PlatformIO)
+sudo apt install clang-format
+
 # Check status
 :lua print(vim.g.format_on_save)
 <leader>tf  # Enable auto-formatting
 ```
 
-### Telescope Can't Find Files
+### Telescope Not Finding Files
 ```bash
 # Install ripgrep
 sudo apt install ripgrep  # Ubuntu/Debian
 brew install ripgrep      # macOS
+
+# For PlatformIO files (.cpp, .h in src/)
+<leader>ff  # Telescope finds all files
+```
+
+### PlatformIO Commands Not Working
+```bash
+# Check PlatformIO installation
+pio --version
+
+# Install globally
+pip3 install platformio
+
+# Add to PATH (if needed)
+echo 'export PATH=$PATH:~/.local/bin' >> ~/.bashrc
+source ~/.bashrc
 ```
 
 ### Fonts Not Displaying Correctly
-- Ensure Nerd Font is installed
-- Set one of the Nerd Font Mono fonts as terminal default
+- Make sure Nerd Font is installed
+- Set one of Nerd Font Mono as default terminal font
 - Recommended: JetBrains Mono Nerd Font, Fira Code Nerd Font
 
 ### Slow which-key Performance
-Configuration is optimized with:
+Configuration optimized with:
 - `delay = 100ms`
 - `timeoutlen = 300ms`
 - Disabled notifications
 
+### clangd Issues in PlatformIO
+```bash
+# Generate compile_commands.json
+cd /path/to/your/platformio/project
+pio run --target compiledb
+
+# Check if file was created
+ls .pio/build/compile_commands.json
+
+# Restart LSP
+:LspRestart
+```
+
 ## Customization
 
-### Change Theme
-In `lua/plugins/theme.lua` modify:
+### Changing Theme
+```bash
+<leader>ut              # Theme preview
+<leader>us              # Set permanent theme
+```
+
+Or manually in `lua/plugins/theme.lua`:
 ```lua
 flavour = "mocha", -- latte, frappe, macchiato, mocha
 ```
 
-### Add New Languages
+### Adding New Languages
 In `lua/plugins/lsp.lua` add new server:
 ```lua
 new_server = {
@@ -511,20 +739,75 @@ new_server = {
 }
 ```
 
-### Configure Key Mappings
+### Configuring Key Bindings
 In `lua/config/keymaps.lua` add new mappings:
 ```lua
 map("n", "<leader>xx", ":YourCommand<CR>", { desc = "Your description" })
 ```
 
-### Change Tab Format
+### PlatformIO Configuration for New Boards
+In `lua/plugins/platformio.lua` add new board to list:
+```lua
+-- In project initialization function
+"your-custom-board",
+```
+
+### Changing Tab Format
 In `lua/config/nvim-tabs.lua` modify style in `tab_name()` function.
+
+### Adding New PlatformIO Commands
+In `lua/config/keymaps.lua`:
+```lua
+map("n", "<leader>px", ":TermExec cmd='pio run --target clean'<CR>",
+    {desc = "PlatformIO: Custom command"})
+```
+
+## Additional Tips
+
+### PlatformIO Best Practices
+1. **Code Organization**: Use `lib/` for custom libraries
+2. **Versioning**: Specify exact library versions in `platformio.ini`
+3. **Testing**: Create unit tests in `test/` folder
+4. **Documentation**: Comment code for better LSP experience
+
+### Performance Optimization
+- Use `.pio/` in `.gitignore`
+- Regularly clean builds: `<leader>pc`
+- Generate `compile_commands.json` after dependency changes: `<leader>pg`
+
+### Git Integration
+```bash
+# .gitignore for PlatformIO projects
+.pio/
+.vscode/
+*.tmp
+*.bak
+```
+
+### Working with Large Projects
+1. Use `<leader>fs` for symbol navigation
+2. `<leader>fw` for workspace-wide search
+3. `gr` to find all function usages
+4. `gd` for quick definition jumping
 
 ## Performance
 
-- Lazy loading of plugins for fast startup
+- Lazy loading plugins for fast startup
 - Optimized autocmd groups
 - Minimal interface delays
 - Efficient memory usage
+- Special optimization for PlatformIO projects
+- Automatic LSP metadata generation
+- Scrollbar with error indicators for quick navigation
 
-This configuration is designed for maximum productivity while maintaining all necessary IDE functionality.
+## Community Support
+
+This configuration is designed for maximum productivity while maintaining all necessary IDE functionality. It supports both web development (Python/Django, JavaScript/Vue.js) and embedded development (PlatformIO, Arduino, ESP32).
+
+### Useful Resources
+- [PlatformIO Documentation](https://docs.platformio.org/)
+- [Arduino Reference](https://www.arduino.cc/reference/en/)
+- [ESP32 Documentation](https://docs.espressif.com/projects/esp-idf/en/latest/)
+- [Neovim LSP Configuration](https://neovim.io/doc/user/lsp.html)
+
+This configuration transforms Neovim into a full-featured IDE that competes with VSCode and integrated development environments, while remaining fast and efficient.

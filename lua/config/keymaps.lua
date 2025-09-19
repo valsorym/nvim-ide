@@ -310,6 +310,70 @@ function M.setup()
 
     -- Override :new to create new tab instead of split
     vim.cmd("cabbrev new tabnew")
+
+    -- PlatformIO shortcuts
+    map("n", "<leader>pb", "<cmd>lua _PIO_BUILD()<CR>", {desc = "PlatformIO: Build"})
+    map("n", "<leader>pu", "<cmd>lua _PIO_UPLOAD()<CR>", {desc = "PlatformIO: Upload"})
+    map("n", "<leader>pm", "<cmd>lua _PIO_MONITOR()<CR>", {desc = "PlatformIO: Monitor"})
+    map("n", "<leader>pc", "<cmd>lua _PIO_CLEAN()<CR>", {desc = "PlatformIO: Clean"})
+
+    -- PlatformIO advanced commands
+    map("n", "<leader>pt", ":TermExec cmd='pio test'<CR>", {desc = "PlatformIO: Run tests"})
+    map("n", "<leader>pl", ":TermExec cmd='pio lib list'<CR>", {desc = "PlatformIO: List libraries"})
+    map("n", "<leader>pi", ":TermExec cmd='pio lib install'<CR>", {desc = "PlatformIO: Install library"})
+    map("n", "<leader>ps", ":TermExec cmd='pio device list'<CR>", {desc = "PlatformIO: List devices"})
+
+    -- Quick project initialization
+    map("n", "<leader>pn", function()
+        vim.ui.input({
+            prompt = "Project name: ",
+            default = "my_project"
+        }, function(project_name)
+            if project_name and project_name ~= "" then
+                vim.ui.select({
+                    "arduino-uno",
+                    "arduino-nano",
+                    "arduino-mega",
+                    "esp32dev",
+                    "esp8266",
+                    "bluepill_f103c8",
+                    "nucleo_f401re",
+                    "raspberry-pi-pico"
+                }, {
+                    prompt = "Select board: ",
+                    format_item = function(item)
+                        return item
+                    end
+                }, function(board)
+                    if board then
+                        local cmd = string.format("pio project init --board %s %s", board, project_name)
+                        vim.cmd("TermExec cmd='" .. cmd .. "'")
+                    end
+                end)
+            end
+        end)
+    end, {desc = "PlatformIO: New project"})
+
+    -- Build and upload in one command
+    map("n", "<leader>pf", function()
+        vim.cmd("lua _PIO_BUILD()")
+        vim.defer_fn(function()
+            vim.cmd("lua _PIO_UPLOAD()")
+        end, 2000) -- wait 2 seconds for build to complete
+    end, {desc = "PlatformIO: Build & Upload"})
+
+    -- Generate compile_commands.json for better LSP support
+    map("n", "<leader>pg", ":TermExec cmd='pio run --target compiledb'<CR>", {desc = "PlatformIO: Generate compile commands"})
+
+    -- Open platformio.ini in new tab
+    map("n", "<leader>po", function()
+        local pio_ini = vim.fn.getcwd() .. "/platformio.ini"
+        if vim.fn.filereadable(pio_ini) == 1 then
+            vim.cmd("tabnew " .. pio_ini)
+        else
+            print("platformio.ini not found in current directory")
+        end
+    end, {desc = "PlatformIO: Open config"})
 end
 
 return M
