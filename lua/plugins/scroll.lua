@@ -7,7 +7,7 @@ return {
         local colors = require("catppuccin.palettes").get_palette("mocha")
 
         require("scrollbar").setup({
-            -- Show scrollbar only when needed.
+            -- Show scrollbar only when needed
             show = true,
             show_in_active_only = false,
             set_highlights = true,
@@ -16,7 +16,7 @@ return {
             hide_if_all_visible = true, -- hide if entire file is visible
             throttle_ms = 100,
 
-            -- Handle configuration.
+            -- Handle configuration
             handle = {
                 text = " ",
                 blend = 30, -- transparency
@@ -26,7 +26,7 @@ return {
                 hide_if_all_visible = true
             },
 
-            -- Marks on scrollbar (diagnostics, search, etc.).
+            -- Marks on scrollbar (diagnostics, search, etc.)
             marks = {
                 Cursor = {
                     text = "▒",
@@ -75,42 +75,10 @@ return {
                     color = colors.teal,
                     color_nr = nil,
                     highlight = "DiagnosticVirtualTextHint"
-                },
-                Misc = {
-                    text = { "-", "-" },
-                    priority = 6,
-                    gui = nil,
-                    color = colors.overlay0,
-                    color_nr = nil,
-                    highlight = "Normal"
-                },
-                GitAdd = {
-                    text = "┃",
-                    priority = 7,
-                    gui = nil,
-                    color = colors.green,
-                    color_nr = nil,
-                    highlight = "GitSignsAdd"
-                },
-                GitChange = {
-                    text = "┃",
-                    priority = 7,
-                    gui = nil,
-                    color = colors.yellow,
-                    color_nr = nil,
-                    highlight = "GitSignsChange"
-                },
-                GitDelete = {
-                    text = "▁",
-                    priority = 7,
-                    gui = nil,
-                    color = colors.red,
-                    color_nr = nil,
-                    highlight = "GitSignsDelete"
                 }
             },
 
-            -- Excluded file types (where scrollbar should not appear).
+            -- Excluded file types (where scrollbar should not appear)
             excluded_buftypes = {
                 "terminal",
                 "nofile",
@@ -136,7 +104,7 @@ return {
                 "gitrebase"
             },
 
-            -- Auto-command setup.
+            -- Auto-command setup
             autocmd = {
                 render = {
                     "BufWinEnter",
@@ -156,14 +124,14 @@ return {
                 }
             },
 
-            -- Handler configuration.
+            -- Handler configuration
             handlers = {
                 cursor = true,
                 diagnostic = true,
-                gitsigns = true, -- requires gitsigns.nvim
+                gitsigns = false, -- disabled - already shown in sign column
                 handle = true,
-                search = true, -- requires hlslens.nvim
-                ale = false     -- ALE support disabled
+                search = true,
+                ale = false
             }
         })
 
@@ -177,7 +145,7 @@ return {
                 local ft = vim.bo.filetype
                 local bt = vim.bo.buftype
 
-                -- Additional conditions to hide scrollbar.
+                -- Additional conditions to hide scrollbar
                 if ft == "dashboard" or
                    ft == "alpha" or
                    ft == "NvimTree" or
@@ -185,7 +153,7 @@ return {
                    bt == "nofile" then
                     pcall(require("scrollbar").clear)
                 else
-                    -- Show scrollbar for normal files.
+                    -- Show scrollbar for normal files
                     vim.defer_fn(function()
                         pcall(require("scrollbar").show)
                     end, 100)
@@ -193,7 +161,7 @@ return {
             end
         })
 
-        -- Refresh scrollbar when diagnostics change.
+        -- Refresh scrollbar when diagnostics change
         vim.api.nvim_create_autocmd("DiagnosticChanged", {
             group = scrollbar_group,
             callback = function()
@@ -201,7 +169,7 @@ return {
             end
         })
 
-        -- Integration with search highlighting.
+        -- Integration with search highlighting
         vim.api.nvim_create_autocmd({"CmdlineEnter", "CmdlineLeave"}, {
             group = scrollbar_group,
             pattern = {"/"}, -- search commands
