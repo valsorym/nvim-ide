@@ -55,31 +55,35 @@ return {
                 spec = {
                     -- EXPLORER - New group for file management
                     {"<leader>e", group = " Explorer"},
-                    {"<leader>ee", function()
-                        vim.defer_fn(function()
-                            _G.NvimTreeModal()
-                        end, 100)
-                    end, desc = "• Open File Explorer"},
+                    {
+                        "<leader>ee",
+                        function()
+                            vim.defer_fn(
+                                function()
+                                    _G.NvimTreeModal()
+                                end,
+                                100
+                            )
+                        end,
+                        desc = "• Open File Explorer"
+                    },
                     {"<leader>et", desc = "• Show Tabs List"},
                     {"<leader>eb", desc = "• Show Buffers List"},
-
                     -- FILES
                     {"<leader>f", group = " Files"},
                     {"<leader>ff", desc = "• Find Files"},
                     {"<leader>fr", desc = "• Recent Files"},
                     {"<leader>fs", desc = "• Save File"},
                     {"<leader>fn", desc = "• New File"},
-
                     -- YANK / CLIPBOARD (Normal mode)
-                    { "<leader>y", group = " Yank/Clipboard", mode = "n" },
-                    { "<leader>ya", desc = "• Yank entire buffer to clipboard", mode = "n" },
-                    { "<leader>yy", desc = "• Yank selection to clipboard",      mode = "n" },
-                    { "<leader>yp", desc = "• Paste from clipboard",             mode = "n" },
+                    {"<leader>y", group = " Yank/Clipboard", mode = "n"},
+                    {"<leader>ya", desc = "• Yank entire buffer to clipboard", mode = "n"},
+                    {"<leader>yy", desc = "• Yank selection to clipboard", mode = "n"},
+                    {"<leader>yp", desc = "• Paste from clipboard", mode = "n"},
                     -- YANK / CLIPBOARD (Visual mode)
-                    { "<leader>y", group = " Yank/Clipboard", mode = "v" },
-                    { "<leader>yy", desc = "• Yank selection to clipboard",      mode = "v" },
-                    { "<leader>yp", desc = "• Paste from clipboard",             mode = "v" },
-
+                    {"<leader>y", group = " Yank/Clipboard", mode = "v"},
+                    {"<leader>yy", desc = "• Yank selection to clipboard", mode = "v"},
+                    {"<leader>yp", desc = "• Paste from clipboard", mode = "v"},
                     -- SEARCH
                     {"<leader>s", group = " Search"},
                     {"<leader>sg", desc = "• Live Grep"},
@@ -87,7 +91,6 @@ return {
                     {"<leader>sh", desc = "• Help Tags"},
                     {"<leader>ss", desc = "• Document Symbols"},
                     {"<leader>sw", desc = "• Workspace Symbols"},
-
                     -- BUFFERS / TABS
                     {"<leader>b", group = " Buffers/Tabs"},
                     {"<leader>bb", desc = "• List Buffers"},
@@ -99,7 +102,6 @@ return {
                     {"<A-Right>", desc = "• Next Tab", mode = "n"},
                     {"<A-h>", desc = "• Move Tab Left", mode = "n"},
                     {"<A-l>", desc = "• Move Tab Right", mode = "n"},
-
                     -- GIT
                     {"<leader>g", group = " Git"},
                     {"<leader>gs", desc = "• Stage Hunk"},
@@ -107,7 +109,6 @@ return {
                     {"<leader>gp", desc = "• Preview Hunk"},
                     {"<leader>gb", desc = "• Blame Line"},
                     {"<leader>gd", desc = "• Diff This"},
-
                     -- LSP / CODE
                     {"<leader>c", group = " Code/LSP"},
                     {"<leader>ca", desc = "• Code Action"},
@@ -119,13 +120,13 @@ return {
                     {"gi", desc = "• Implementation"},
                     {"gr", desc = "• References"},
                     {"K", desc = "• Hover Info"},
-
                     -- DIAGNOSTICS
-                    {"<leader>d", group = " Diagnostics"},
-                    {"<leader>dd", desc = "• Open Diagnostics"},
+                    {"<leader>x", group = " Diagnostics"},
+                    {"<leader>xx", desc = "• Show Line Diagnostics"},
+                    {"<leader>xl", desc = "• Open Diagnostic List"},
+                    {"gl", desc = "• Show Line Diagnostics"},
                     {"]d", desc = "• Next Diagnostic"},
                     {"[d", desc = "• Previous Diagnostic"},
-
                     -- TERMINAL / TOOLS
                     {"<leader>t", group = " Terminal/Tools"},
                     {"<leader>tf", desc = "• Float Terminal"},
@@ -134,18 +135,15 @@ return {
                     {"<leader>tb", desc = "• Toggle Git Blame"},
                     {"<leader>m", desc = "• Mason"},
                     {"<leader>v", desc = "• Select Python Venv"},
-
                     -- OPTIONS
                     {"<leader>o", group = " Options"},
                     {"<leader>oh", desc = "• Clear Highlights"},
-
                     -- QUIT / TABS
                     {"<leader>q", group = " Quit/Tabs"},
                     {"<leader>qq", desc = "• Close Current Tab"},
                     {"<leader>qa", desc = "• Close All Tabs & Exit"},
                     {"<leader>qQ", desc = "• Force Close Current Tab"},
                     {"<leader>qA", desc = "• Force Close All Tabs & Exit"},
-
                     -- FUNCTION KEYS - Updated with F10
                     {"<F2>", desc = "• Save & Format"},
                     {"<F5>", desc = "• Previous Tab"},

@@ -128,18 +128,14 @@ function M.setup()
     map("v", "p", '"_dP', opts)
 
     -- Yank entire buffer to clipboard
-    map("n", "<leader>ya", "ggVG\"+y",
-        { desc = "Yank entire buffer to clipboard" })
+    map("n", "<leader>ya", 'ggVG"+y', {desc = "Yank entire buffer to clipboard"})
 
     -- Yank selection to clipboard
-    map("v", "<leader>yy", '"+y',
-        { desc = "Yank selection to clipboard" })
+    map("v", "<leader>yy", '"+y', {desc = "Yank selection to clipboard"})
 
     -- Paste from clipboard
-    map("n", "<leader>yp", '"+p',
-        { desc = "Paste from clipboard" })
-    map("v", "<leader>yp", '"+p',
-        { desc = "Paste from clipboard" })
+    map("n", "<leader>yp", '"+p', {desc = "Paste from clipboard"})
+    map("v", "<leader>yp", '"+p', {desc = "Paste from clipboard"})
 
     -- Clear search highlighting.
     map("n", "<leader>h", ":nohlsearch<CR>", {desc = "Clear highlights"})
@@ -179,9 +175,20 @@ function M.setup()
     -- Mason.
     map("n", "<leader>m", ":Mason<CR>", {desc = "Open Mason"})
 
-    -- Diagnostics.
-    map("n", "<leader>q", vim.diagnostic.setloclist,
-        {desc = "Open diagnostic quickfix list"})
+    -- Diagnostics with improved quickfix window
+    map(
+        "n",
+        "<leader>xl",
+        function()
+            vim.diagnostic.setloclist()
+            -- Open quickfix window and enable cursorline
+            vim.cmd("lopen")
+            vim.wo.cursorline = true
+            vim.wo.number = true
+            vim.wo.relativenumber = false
+        end,
+        {desc = "Open diagnostic quickfix list"}
+    )
 end
 
 return M

@@ -11,22 +11,22 @@ return {
     config = function()
         local cmp_nvim_lsp = require("cmp_nvim_lsp")
 
-        -- Enhanced capabilities with autocompletion
+        -- Enhanced capabilities with autocompletion.
         local capabilities = cmp_nvim_lsp.default_capabilities()
 
-        -- Python virtual environment detection
+        -- Python virtual environment detection.
         local function get_python_path()
             local venv_path = vim.fn.getenv("VIRTUAL_ENV")
             if venv_path ~= vim.NIL and venv_path ~= "" then
                 return venv_path .. "/bin/python"
             end
 
-            -- Check for .venv directory
+            -- Check for .venv directory.
             if vim.fn.isdirectory(".venv") == 1 then
                 return vim.fn.getcwd() .. "/.venv/bin/python"
             end
 
-            -- Check for venv directory
+            -- Check for venv directory.
             if vim.fn.isdirectory("venv") == 1 then
                 return vim.fn.getcwd() .. "/venv/bin/python"
             end
@@ -34,11 +34,24 @@ return {
             return "python3"
         end
 
-        -- Key mappings for LSP
-        local on_attach = function(client, bufnr)
+        -- Function to show detailed diagnostics in floating window.
+        local function show_line_diagnostics()
+            local opts = {
+                focusable = false, -- window not focusable for quick dismiss
+                close_events = {"BufLeave", "CursorMoved", "InsertEnter", "FocusLost"},
+                border = "rounded",
+                source = "always",
+                prefix = " ",
+                scope = "line"
+            }
+            vim.diagnostic.open_float(nil, opts)
+        end
+
+        -- Key mappings for LSP.
+        local function on_attach(client, bufnr)
             local opts = {buffer = bufnr, silent = true}
 
-            -- Navigation
+            -- Navigation.
             vim.keymap.set(
                 "n",
                 "gd",
@@ -59,7 +72,7 @@ return {
                 vim.tbl_extend("force", opts, {desc = "Go to implementation"})
             )
 
-            -- Documentation
+            -- Documentation.
             vim.keymap.set("n", "K", vim.lsp.buf.hover, vim.tbl_extend("force", opts, {desc = "Show hover info"}))
             vim.keymap.set(
                 "n",
@@ -68,7 +81,7 @@ return {
                 vim.tbl_extend("force", opts, {desc = "Signature help"})
             )
 
-            -- Code actions
+            -- Code actions.
             vim.keymap.set(
                 "n",
                 "<leader>ca",
@@ -82,7 +95,7 @@ return {
                 vim.tbl_extend("force", opts, {desc = "Rename symbol"})
             )
 
-            -- Diagnostics
+            -- Diagnostics navigation.
             vim.keymap.set(
                 "n",
                 "[d",
@@ -95,14 +108,24 @@ return {
                 vim.diagnostic.goto_next,
                 vim.tbl_extend("force", opts, {desc = "Next diagnostic"})
             )
+
+            -- Show line diagnostics in floating window
             vim.keymap.set(
                 "n",
-                "<leader>d",
-                vim.diagnostic.open_float,
-                vim.tbl_extend("force", opts, {desc = "Show diagnostics"})
+                "<leader>xx",
+                show_line_diagnostics,
+                vim.tbl_extend("force", opts, {desc = "Show line diagnostics"})
             )
 
-            -- Format
+            -- Alternative key for quick access to diagnostics.
+            vim.keymap.set(
+                "n",
+                "gl",
+                show_line_diagnostics,
+                vim.tbl_extend("force", opts, {desc = "Show line diagnostics"})
+            )
+
+            -- Format.
             vim.keymap.set(
                 "n",
                 "<leader>f",
@@ -113,41 +136,84 @@ return {
             )
         end
 
-        -- Diagnostic configuration
+        -- Diagnostic configuration.
         vim.diagnostic.config(
             {
-                virtual_text = {
-                    prefix = "⚠", -- Warning triangle instead of circle
-                    source = "if_many",
-                    -- Make virtual text more subtle
-                    format = function(diagnostic)
-                        return diagnostic.message
-                    end
-                },
+                -- Disable virtual text (text at end of line).
+                virtual_text = false,
+                -- Show icons in sign column.
                 signs = true,
+                -- Enable underlines for errors.
                 underline = true,
+                -- Don't update in insert mode for performance.
                 update_in_insert = false,
+                -- Sort by severity
                 severity_sort = true,
+                -- Floating window configuration.
                 float = {
                     border = "rounded",
-                    source = "always"
+                    source = "always",
+                    header = "",
+                    prefix = "",
+                    -- Compact format.
+                    format = function(diagnostic)
+                        return string.format("%s: %s", diagnostic.source or "LSP", diagnostic.message)
+                    end
                 }
             }
         )
 
-        -- Diagnostic signs with warning triangle
+        -- Diagnostic signs with beautiful UTF-8 icons.
         local signs = {
-            Error = "⚠",
-            Warn = "⚠",
-            Hint = "⚠",
-            Info = "⚠"
+            Error = "☣", -- Biohazard symbol for errors
+            Warn = "⚠", -- Warning sign
+            Hint = "💡", -- Light bulb
+            Info = "ℹ" -- Information source
         }
+
         for type, icon in pairs(signs) do
             local hl = "DiagnosticSign" .. type
-            vim.fn.sign_define(hl, {text = icon, texthl = hl, numhl = hl})
+            vim.fn.sign_define(
+                hl,
+                {
+                    text = icon,
+                    texthl = hl,
+                    numhl = "", -- don't highlight line number
+                    linehl = "" -- don't highlight entire line
+                }
+            )
         end
 
-        -- Make virtual text colors more subtle
+        -- Debug function to check if diagnostics are working.
+        local function debug_diagnostics()
+            local diagnostics = vim.diagnostic.get(0)
+            print("Diagnostics count:", #diagnostics)
+            print("Signcolumn setting:", vim.wo.signcolumn)
+            print("Testing icons: ✖ ⚠ 💡 ℹ")
+
+            -- Force refresh signs
+            vim.diagnostic.show(0, 0, diagnostics)
+
+            for i, diag in ipairs(diagnostics) do
+                print(string.format("Line %d: %s [%s]", diag.lnum + 1, diag.message, diag.severity))
+            end
+        end
+
+        -- Add debug command.
+        vim.api.nvim_create_user_command("DiagnosticsDebug", debug_diagnostics, {desc = "Debug diagnostics"})
+
+        -- Force enable signcolumn and refresh diagnostics.
+        vim.api.nvim_create_autocmd(
+            "LspAttach",
+            {
+                callback = function()
+                    vim.wo.signcolumn = "yes"
+                    vim.diagnostic.show()
+                end
+            }
+        )
+
+        -- Make virtual text colors more subtle (kept for potential re-enabling).
         vim.api.nvim_set_hl(
             0,
             "DiagnosticVirtualTextError",
@@ -181,9 +247,9 @@ return {
             }
         )
 
-        -- Server configurations using modern vim.lsp.config API
+        -- Server configurations using modern vim.lsp.config API.
         local servers = {
-            -- Python with Django support
+            -- Python with Django support.
             pyright = {
                 settings = {
                     python = {
@@ -256,7 +322,7 @@ return {
                 },
                 root_markers = {".git"}
             },
-            -- CSS with embedded support
+            -- CSS with embedded support.
             cssls = {
                 settings = {
                     css = {
@@ -274,7 +340,7 @@ return {
                 },
                 root_markers = {"package.json", ".git"}
             },
-            -- Emmet for HTML/CSS
+            -- Emmet for HTML/CSS.
             emmet_ls = {
                 filetypes = {
                     "html",
@@ -294,7 +360,7 @@ return {
                 },
                 root_markers = {".git"}
             },
-            -- Go
+            -- Go.
             gopls = {
                 settings = {
                     gopls = {
@@ -307,7 +373,7 @@ return {
                 },
                 root_markers = {"go.mod", ".git"}
             },
-            -- C/C++
+            -- C/C++.
             clangd = {
                 cmd = {
                     "clangd",
@@ -323,11 +389,11 @@ return {
                 },
                 root_markers = {"compile_commands.json", ".git"}
             },
-            -- Docker
+            -- Docker.
             dockerls = {
                 root_markers = {"Dockerfile", ".git"}
             },
-            -- YAML
+            -- YAML.
             yamlls = {
                 settings = {
                     yaml = {
@@ -339,7 +405,7 @@ return {
                 },
                 root_markers = {".git"}
             },
-            -- JSON
+            -- JSON.
             jsonls = {
                 settings = {
                     json = {
@@ -349,7 +415,7 @@ return {
                 },
                 root_markers = {"package.json", ".git"}
             },
-            -- Lua
+            -- Lua.
             lua_ls = {
                 settings = {
                     Lua = {

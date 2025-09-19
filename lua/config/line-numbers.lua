@@ -26,7 +26,7 @@ end
 local function set_relative_numbers()
     if should_show_numbers() then
         vim.wo.number = true
-        vim.wo.relativenumber = true
+        vim.wo.relativenumber = false -- set true for relative, false for hybrid
     else
         vim.wo.number = false
         vim.wo.relativenumber = false

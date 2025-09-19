@@ -15,8 +15,10 @@ return {
             local file_path = vim.fn.bufname(current_buf)
 
             -- Return empty string for special buffers
-            if file_path == "" or file_path:match("NvimTree_") or
-               file_path:match("toggleterm") or file_path:match("dashboard") then
+            if
+                file_path == "" or file_path:match("NvimTree_") or file_path:match("toggleterm") or
+                    file_path:match("dashboard")
+             then
                 return ""
             end
 
@@ -33,21 +35,25 @@ return {
             end
 
             -- Open tree in modal mode.
-            api.tree.open({
-                current_window = false,
-                find_file = false,
-                update_root = false
-            })
+            api.tree.open(
+                {
+                    current_window = false,
+                    find_file = false,
+                    update_root = false
+                }
+            )
 
             -- Get current file for sync.
             local current_file = get_current_file()
 
             -- Schedule sync after tree opens.
-            vim.schedule(function()
-                if current_file ~= "" then
-                    api.tree.find_file(current_file)
+            vim.schedule(
+                function()
+                    if current_file ~= "" then
+                        api.tree.find_file(current_file)
+                    end
                 end
-            end)
+            )
         end
 
         -- Function to change root directory.
@@ -138,7 +144,7 @@ return {
                     dotfiles = false,
                     git_clean = false,
                     no_buffer = false,
-                    custom = { ".DS_Store" },
+                    custom = {".DS_Store"},
                     exclude = {}
                 },
                 renderer = {
@@ -184,14 +190,14 @@ return {
                             bookmark = "",
                             modified = "●",
                             folder = {
-                                arrow_closed = "",   -- ►
-                                arrow_open   = "",   -- ▼
-                                default      = "📁",  -- closed folder
-                                open         = "📂",  -- open folder
-                                empty        = "🗀",  -- empty closed
-                                empty_open   = "🗁",  -- empty open
-                                symlink      = "",  -- symlink folder
-                                symlink_open = ""   -- symlink open
+                                arrow_closed = "", -- ►
+                                arrow_open = "", -- ▼
+                                default = "📁", -- closed folder
+                                open = "📂", -- open folder
+                                empty = "📁", -- "🗀",  -- empty closed
+                                empty_open = "📂", -- "🗁",  -- empty open
+                                symlink = "", -- symlink folder
+                                symlink_open = "" -- symlink open
                             },
                             git = {
                                 unstaged = "✗",
@@ -204,7 +210,7 @@ return {
                             }
                         }
                     },
-                    special_files = { "Cargo.toml", "Makefile", "README.md", "readme.md" }
+                    special_files = {"Cargo.toml", "Makefile", "README.md", "readme.md"}
                 },
                 on_attach = function(bufnr)
                     local api = require("nvim-tree.api")
@@ -241,7 +247,9 @@ return {
                                             break
                                         end
                                     end
-                                    if found then break end
+                                    if found then
+                                        break
+                                    end
                                 end
 
                                 if not found then
@@ -249,9 +257,10 @@ return {
 
                                     -- Check if current tab is dashboard or empty
                                     local curbuf = vim.api.nvim_get_current_buf()
-                                    if vim.bo[curbuf].filetype == "dashboard"
-                                    or (vim.fn.bufname(curbuf) == "" and not vim.bo[curbuf].modified)
-                                    then
+                                    if
+                                        vim.bo[curbuf].filetype == "dashboard" or
+                                            (vim.fn.bufname(curbuf) == "" and not vim.bo[curbuf].modified)
+                                     then
                                         replace_current = true
                                     end
 
@@ -265,63 +274,60 @@ return {
                                 end
                             end
                         end,
-                        {buffer = bufnr,
-                         desc = "Expand folder or open file in new tab"}
+                        {
+                            buffer = bufnr,
+                            desc = "Expand folder or open file in new tab"
+                        }
                     )
 
                     -- Close tree with Escape or q
-                    vim.keymap.set("n", "<Esc>", api.tree.close,
-                        {buffer = bufnr, desc = "Close tree"})
-                    vim.keymap.set("n", "q", api.tree.close,
-                        {buffer = bufnr, desc = "Close tree"})
+                    vim.keymap.set("n", "<Esc>", api.tree.close, {buffer = bufnr, desc = "Close tree"})
+                    vim.keymap.set("n", "q", api.tree.close, {buffer = bufnr, desc = "Close tree"})
 
                     -- Root directory management
-                    vim.keymap.set("n", "C", change_root_to_cwd,
-                        {buffer = bufnr, desc = "Change root to CWD"})
-                    vim.keymap.set("n", "R", pick_root_directory,
-                        {buffer = bufnr, desc = "Pick root directory"})
+                    vim.keymap.set("n", "C", change_root_to_cwd, {buffer = bufnr, desc = "Change root to CWD"})
+                    vim.keymap.set("n", "R", pick_root_directory, {buffer = bufnr, desc = "Pick root directory"})
 
                     -- Navigate up one directory level
-                    vim.keymap.set("n", "P", api.tree.change_root_to_parent,
-                        {buffer = bufnr, desc = "Parent directory"})
+                    vim.keymap.set(
+                        "n",
+                        "P",
+                        api.tree.change_root_to_parent,
+                        {buffer = bufnr, desc = "Parent directory"}
+                    )
 
                     -- Refresh tree
-                    vim.keymap.set("n", "r", api.tree.reload,
-                        {buffer = bufnr, desc = "Refresh"})
+                    vim.keymap.set("n", "r", api.tree.reload, {buffer = bufnr, desc = "Refresh"})
 
                     -- Create file/directory
-                    vim.keymap.set("n", "a", api.fs.create,
-                        {buffer = bufnr, desc = "Create file/directory"})
+                    vim.keymap.set("n", "a", api.fs.create, {buffer = bufnr, desc = "Create file/directory"})
 
                     -- Delete file/directory
-                    vim.keymap.set("n", "d", api.fs.remove,
-                        {buffer = bufnr, desc = "Delete"})
+                    vim.keymap.set("n", "d", api.fs.remove, {buffer = bufnr, desc = "Delete"})
 
                     -- Rename file/directory
-                    vim.keymap.set("n", "rn", api.fs.rename,
-                        {buffer = bufnr, desc = "Rename"})
+                    vim.keymap.set("n", "rn", api.fs.rename, {buffer = bufnr, desc = "Rename"})
 
                     -- Copy file/directory
-                    vim.keymap.set("n", "c", api.fs.copy.node,
-                        {buffer = bufnr, desc = "Copy"})
+                    vim.keymap.set("n", "c", api.fs.copy.node, {buffer = bufnr, desc = "Copy"})
 
                     -- Cut file/directory
-                    vim.keymap.set("n", "x", api.fs.cut,
-                        {buffer = bufnr, desc = "Cut"})
+                    vim.keymap.set("n", "x", api.fs.cut, {buffer = bufnr, desc = "Cut"})
 
                     -- Paste file/directory
-                    vim.keymap.set("n", "p", api.fs.paste,
-                        {buffer = bufnr, desc = "Paste"})
+                    vim.keymap.set("n", "p", api.fs.paste, {buffer = bufnr, desc = "Paste"})
 
                     -- Toggle hidden files
-                    vim.keymap.set("n", "H", api.tree.toggle_hidden_filter,
-                        {buffer = bufnr, desc = "Toggle hidden files"})
+                    vim.keymap.set(
+                        "n",
+                        "H",
+                        api.tree.toggle_hidden_filter,
+                        {buffer = bufnr, desc = "Toggle hidden files"}
+                    )
 
                     -- Filter files (live filter)
-                    vim.keymap.set("n", "f", api.live_filter.start,
-                        {buffer = bufnr, desc = "Filter files"})
-                    vim.keymap.set("n", "F", api.live_filter.clear,
-                        {buffer = bufnr, desc = "Clear filter"})
+                    vim.keymap.set("n", "f", api.live_filter.start, {buffer = bufnr, desc = "Filter files"})
+                    vim.keymap.set("n", "F", api.live_filter.clear, {buffer = bufnr, desc = "Clear filter"})
                 end
             }
         )
@@ -330,17 +336,13 @@ return {
         _G.NvimTreeModal = open_tree_modal
 
         -- Create user command for modal tree
-        vim.api.nvim_create_user_command(
-            "NvimTreeModal",
-            open_tree_modal,
-            { desc = "Open NvimTree as modal window" }
-        )
+        vim.api.nvim_create_user_command("NvimTreeModal", open_tree_modal, {desc = "Open NvimTree as modal window"})
 
         -- Create command for changing root
         vim.api.nvim_create_user_command(
             "NvimTreeChangeRoot",
             pick_root_directory,
-            { desc = "Change NvimTree root directory" }
+            {desc = "Change NvimTree root directory"}
         )
     end
 }
