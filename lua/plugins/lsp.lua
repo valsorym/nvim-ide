@@ -136,13 +136,20 @@ return {
             )
         end
 
-        -- Diagnostic configuration.
+        -- Diagnostic configuration with modern API.
         vim.diagnostic.config(
             {
                 -- Disable virtual text (text at end of line).
                 virtual_text = false,
-                -- Show icons in sign column.
-                signs = true,
+                -- Show icons in sign column using modern API.
+                signs = {
+                    text = {
+                        [vim.diagnostic.severity.ERROR] = "☣",
+                        [vim.diagnostic.severity.WARN] = "⚠",
+                        [vim.diagnostic.severity.HINT] = "💡",
+                        [vim.diagnostic.severity.INFO] = "ℹ"
+                    }
+                },
                 -- Enable underlines for errors.
                 underline = true,
                 -- Don't update in insert mode for performance.
@@ -163,33 +170,12 @@ return {
             }
         )
 
-        -- Diagnostic signs with beautiful UTF-8 icons.
-        local signs = {
-            Error = "☣", -- Biohazard symbol for errors
-            Warn = "⚠", -- Warning sign
-            Hint = "💡", -- Light bulb
-            Info = "ℹ" -- Information source
-        }
-
-        for type, icon in pairs(signs) do
-            local hl = "DiagnosticSign" .. type
-            vim.fn.sign_define(
-                hl,
-                {
-                    text = icon,
-                    texthl = hl,
-                    numhl = "", -- don't highlight line number
-                    linehl = "" -- don't highlight entire line
-                }
-            )
-        end
-
         -- Debug function to check if diagnostics are working.
         local function debug_diagnostics()
             local diagnostics = vim.diagnostic.get(0)
             print("Diagnostics count:", #diagnostics)
             print("Signcolumn setting:", vim.wo.signcolumn)
-            print("Testing icons: ✖ ⚠ 💡 ℹ")
+            print("Testing icons: ☣ ⚠ 💡 ℹ")
 
             -- Force refresh signs
             vim.diagnostic.show(0, 0, diagnostics)

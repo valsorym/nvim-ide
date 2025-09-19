@@ -41,25 +41,17 @@ return {
             end
 
             local status_str = ""
-            if modified > 0 then
-                status_str = status_str .. "~" .. modified
-            end
-            if added > 0 then
-                status_str = status_str .. "+" .. added
-            end
-            if deleted > 0 then
-                status_str = status_str .. "-" .. deleted
-            end
-            if untracked > 0 then
-                status_str = status_str .. "?" .. untracked
-            end
+            if modified > 0 then status_str = status_str .. "~" .. modified end
+            if added > 0 then status_str = status_str .. "+" .. added end
+            if deleted > 0 then status_str = status_str .. "-" .. deleted end
+            if untracked > 0 then status_str = status_str .. "?" .. untracked end
 
             return " " .. branch .. (status_str ~= "" and " [" .. status_str .. "]" or "")
         end
 
         -- Custom function to show LSP status
         local function lsp_status()
-            local clients = vim.lsp.get_active_clients({bufnr = 0})
+            local clients = vim.lsp.get_clients({bufnr = 0})
             if #clients == 0 then
                 return ""
             end
@@ -93,18 +85,10 @@ return {
             end
 
             local result = {}
-            if errors > 0 then
-                table.insert(result, "E:" .. errors)
-            end
-            if warnings > 0 then
-                table.insert(result, "W:" .. warnings)
-            end
-            if info > 0 then
-                table.insert(result, "I:" .. info)
-            end
-            if hints > 0 then
-                table.insert(result, "H:" .. hints)
-            end
+            if errors > 0 then table.insert(result, "E:" .. errors) end
+            if warnings > 0 then table.insert(result, "W:" .. warnings) end
+            if info > 0 then table.insert(result, "I:" .. info) end
+            if hints > 0 then table.insert(result, "H:" .. hints) end
 
             return table.concat(result, " ")
         end
@@ -179,115 +163,113 @@ return {
             return ""
         end
 
-        lualine.setup(
-            {
-                options = {
-                    theme = "catppuccin",
-                    component_separators = {left = "", right = ""},
-                    section_separators = {left = "", right = ""},
-                    disabled_filetypes = {
-                        statusline = {"dashboard", "alpha", "NvimTree"},
-                        winbar = {}
-                    },
-                    ignore_focus = {},
-                    always_divide_middle = true,
-                    globalstatus = false,
-                    refresh = {
-                        statusline = 1000,
-                        tabline = 1000,
-                        winbar = 1000
+        lualine.setup({
+            options = {
+                theme = "catppuccin",
+                component_separators = { left = "", right = "" },
+                section_separators = { left = "", right = "" },
+                disabled_filetypes = {
+                    statusline = {"dashboard", "alpha", "NvimTree"},
+                    winbar = {},
+                },
+                ignore_focus = {},
+                always_divide_middle = true,
+                globalstatus = false,
+                refresh = {
+                    statusline = 1000,
+                    tabline = 1000,
+                    winbar = 1000,
+                }
+            },
+            sections = {
+                lualine_a = {
+                    {
+                        "mode",
+                        fmt = function(str)
+                            return str:sub(1, 3) -- Shorten mode names
+                        end
                     }
                 },
-                sections = {
-                    lualine_a = {
-                        {
-                            "mode",
-                            fmt = function(str)
-                                return str:sub(1, 3) -- Shorten mode names
-                            end
-                        }
-                    },
-                    lualine_b = {
-                        {
-                            git_branch_with_status,
-                            icon = "",
-                            color = {fg = "#a6e3a1"} -- Green color for git
-                        }
-                    },
-                    lualine_c = {
-                        {
-                            "filename",
-                            file_status = true,
-                            newfile_status = true,
-                            path = 1, -- Relative path
-                            symbols = {
-                                modified = " [+]",
-                                readonly = " []",
-                                unnamed = "[No Name]",
-                                newfile = "[New]"
-                            }
-                        },
-                        {
-                            file_size,
-                            color = {fg = "#fab387"} -- Orange color
-                        }
-                    },
-                    lualine_x = {
-                        {
-                            selection_info,
-                            color = {fg = "#f9e2af"} -- Yellow color for selection
-                        },
-                        {
-                            python_venv,
-                            color = {fg = "#89b4fa"} -- Blue color for Python
-                        },
-                        {
-                            diagnostics_count,
-                            color = {fg = "#f38ba8"} -- Red color for diagnostics
-                        },
-                        {
-                            lsp_status,
-                            color = {fg = "#cba6f7"} -- Purple color for LSP
-                        },
-                        "encoding",
-                        "fileformat",
-                        "filetype"
-                    },
-                    lualine_y = {
-                        "progress"
-                    },
-                    lualine_z = {
-                        {
-                            "location",
-                            fmt = function(str)
-                                local line, col = str:match("(%d+):(%d+)")
-                                if line and col then
-                                    return "☰ " .. line .. " ⟨" .. col .. "⟩"
-                                end
-                                return str
-                            end
-                        }
+                lualine_b = {
+                    {
+                        git_branch_with_status,
+                        icon = "",
+                        color = { fg = "#a6e3a1" } -- Green color for git
                     }
                 },
-                inactive_sections = {
-                    lualine_a = {},
-                    lualine_b = {},
-                    lualine_c = {
-                        {
-                            "filename",
-                            file_status = true,
-                            path = 1
+                lualine_c = {
+                    {
+                        "filename",
+                        file_status = true,
+                        newfile_status = true,
+                        path = 1, -- Relative path
+                        symbols = {
+                            modified = " [+]",
+                            readonly = " []",
+                            unnamed = "[No Name]",
+                            newfile = "[New]"
                         }
                     },
-                    lualine_x = {"location"},
-                    lualine_y = {},
-                    lualine_z = {}
+                    {
+                        file_size,
+                        color = { fg = "#fab387" } -- Orange color
+                    }
                 },
-                tabline = {},
-                winbar = {},
-                inactive_winbar = {},
-                extensions = {"nvim-tree", "toggleterm", "mason"}
-            }
-        )
+                lualine_x = {
+                    {
+                        selection_info,
+                        color = { fg = "#f9e2af" } -- Yellow color for selection
+                    },
+                    {
+                        python_venv,
+                        color = { fg = "#89b4fa" } -- Blue color for Python
+                    },
+                    {
+                        diagnostics_count,
+                        color = { fg = "#f38ba8" } -- Red color for diagnostics
+                    },
+                    {
+                        lsp_status,
+                        color = { fg = "#cba6f7" } -- Purple color for LSP
+                    },
+                    "encoding",
+                    "fileformat",
+                    "filetype"
+                },
+                lualine_y = {
+                    "progress"
+                },
+                lualine_z = {
+                    {
+                        "location",
+                        fmt = function(str)
+                            local line, col = str:match("(%d+):(%d+)")
+                            if line and col then
+                                return "☰ " .. line .. " ⟨" .. col .. "⟩"
+                            end
+                            return str
+                        end
+                    }
+                }
+            },
+            inactive_sections = {
+                lualine_a = {},
+                lualine_b = {},
+                lualine_c = {
+                    {
+                        "filename",
+                        file_status = true,
+                        path = 1
+                    }
+                },
+                lualine_x = {"location"},
+                lualine_y = {},
+                lualine_z = {}
+            },
+            tabline = {},
+            winbar = {},
+            inactive_winbar = {},
+            extensions = {"nvim-tree", "toggleterm", "mason"}
+        })
     end
 }
