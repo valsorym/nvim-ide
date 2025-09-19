@@ -1,0 +1,2196 @@
+You are now being provided with the following files:
+- after/plugin/nvimtree-autoclose.lua
+- init.lua
+- lua/config/colorcolumn.lua
+- lua/config/keymaps.lua
+- lua/config/line-numbers.lua
+- lua/config/nvim-tabs.lua
+- lua/plugins/additional.lua
+- lua/plugins/completion.lua
+- lua/plugins/dashboard.lua
+- lua/plugins/formatting.lua
+- lua/plugins/lsp.lua
+- lua/plugins/mason.lua
+- lua/plugins/nvim-tree.lua
+
+This is part of the codebase. Don't take any action, just review it and reply: "Keep going."
+
+after/plugin/nvimtree-autoclose.lua  |  107 lines  |  2887 bytes  |  sha:aceb836bae5d
+```lua
+-- ~/.config/nvim/after/plugin/nvim-tree-autoclose.lua
+-- Close tab if it contains only NvimTree or NvimTree + empty [No Name].
+
+local function should_close_tab(buflist)
+    local real_files = 0
+    local tree_windows = 0
+    local empty_buffers = 0
+
+    for _, bufnr in ipairs(buflist) do
+        local bufname = vim.fn.bufname(bufnr)
+
+        if bufname:match("NvimTree_") then
+            tree_windows = tree_windows + 1
+        elseif bufname == "" then
+            -- empty buffer - check if it's modified
+            if vim.bo[bufnr].modified then
+                real_files = real_files + 1 -- modified empty buffer counts as real
+            else
+                empty_buffers = empty_buffers + 1 -- clean empty buffer
+            end
+        else
+            real_files = real_files + 1 -- normal file
+        end
+    end
+
+    -- Close tab if only tree, or tree + clean empty buffers.
+    return tree_windows > 0 and real_files == 0
+end
+
+local function handle_last_tab_cleanup()
+    local total_tabs = vim.fn.tabpagenr("$")
+    local current_tab = vim.fn.tabpagenr()
+    local buflist = vim.fn.tabpagebuflist(current_tab)
+
+    -- If this is the last tab and should be closed.
+    if total_tabs == 1 and should_close_tab(buflist) then
+        -- Close NvimTree first.
+        local api = require("nvim-tree.api")
+        if api.tree.is_visible() then
+            api.tree.close()
+        end
+
+        -- Create new empty buffer.
+        vim.cmd("enew")
+        return true
+    end
+
+    return false
+end
+
+local function close_empty_tabs()
+    local total_tabs = vim.fn.tabpagenr("$")
+
+    -- Handle last tab special case.
+    if handle_last_tab_cleanup() then
+        return
+    end
+
+    -- Close empty tabs (but not the last one).
+    if total_tabs <= 1 then
+        return
+    end
+
+    for tab_nr = total_tabs, 1, -1 do
+        local buflist = vim.fn.tabpagebuflist(tab_nr)
+        if should_close_tab(buflist) then
+            vim.cmd(tab_nr .. "tabclose")
+        end
+    end
+end
+
+-- Create autocmd group for better management.
+local autoclose_group = vim.api.nvim_create_augroup("NvimTreeAutoclose", {clear = true})
+
+-- Main trigger - after buffer operations.
+vim.api.nvim_create_autocmd(
+    {"BufDelete", "BufWipeout", "BufUnload"},
+    {
+        group = autoclose_group,
+        callback = function()
+            -- Delay to let vim finish buffer operations.
+            vim.defer_fn(close_empty_tabs, 100)
+        end
+    }
+)
+
+-- Trigger when window is closed.
+vim.api.nvim_create_autocmd(
+    "WinClosed",
+    {
+        group = autoclose_group,
+        callback = function()
+            vim.defer_fn(close_empty_tabs, 50)
+        end
+    }
+)
+
+-- Trigger for tab operations.
+vim.api.nvim_create_autocmd(
+    {"TabEnter", "TabClosed"},
+    {
+        group = autoclose_group,
+        callback = function()
+            vim.defer_fn(close_empty_tabs, 50)
+        end
+    }
+)
+
+```
+init.lua  |  43 lines  |  995 bytes  |  sha:96900965ed69
+```lua
+-- ~/.config/nvim/init.lua
+-- Main NeoVim configuration file
+
+-- Bootstrap lazy.nvim
+local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+if not vim.loop.fs_stat(lazypath) then
+    vim.fn.system(
+        {
+            "git",
+            "clone",
+            "--filter=blob:none",
+            "https://github.com/folke/lazy.nvim.git",
+            "--branch=stable",
+            lazypath
+        }
+    )
+end
+vim.opt.rtp:prepend(lazypath)
+
+-- Leader keys.
+vim.g.mapleader = " "
+vim.g.maplocalleader = " "
+
+-- Load plugins.
+require("lazy").setup("plugins")
+
+-- Basic settings.
+vim.opt.number = true
+vim.opt.relativenumber = true
+vim.opt.expandtab = true
+vim.opt.shiftwidth = 2
+vim.opt.tabstop = 2
+vim.opt.smartindent = true
+vim.opt.wrap = false
+vim.opt.ignorecase = true
+vim.opt.smartcase = true
+vim.opt.termguicolors = true
+
+-- Local configs.
+require("config.nvim-tabs").setup()
+require("config.keymaps").setup()
+require("config.line-numbers").setup()
+require("config.colorcolumn").setup()
+
+```
+lua/config/colorcolumn.lua  |  50 lines  |  1214 bytes  |  sha:222aff7f48bf
+```lua
+-- ~/.config/nvim/lua/config/colorcolumn.lua
+-- Vertical line guide at 79 characters.
+
+local M = {}
+
+local function should_show_colorcolumn()
+    local buftype = vim.bo.buftype
+    local filetype = vim.bo.filetype
+
+    -- Exclude special buffers.
+    if buftype ~= "" then
+        return false
+    end
+
+    -- Exclude file explorers and help.
+    if
+        filetype == "NvimTree" or filetype == "neo-tree" or filetype == "oil" or filetype == "help" or
+            filetype == "dashboard" or
+            filetype == "alpha"
+     then
+        return false
+    end
+
+    return true
+end
+
+function M.setup()
+    -- Set default colorcolumn.
+    vim.opt.colorcolumn = "79"
+
+    -- Create autocmd group.
+    local colorcolumn_group = vim.api.nvim_create_augroup("ColorColumn", {clear = true})
+
+    -- Handle buffer type changes.
+    vim.api.nvim_create_autocmd(
+        {"BufEnter", "BufWinEnter", "FileType"},
+        {
+            group = colorcolumn_group,
+            callback = function()
+                if should_show_colorcolumn() then
+                    vim.wo.colorcolumn = "79"
+                else
+                    vim.wo.colorcolumn = ""
+                end
+            end
+        }
+    )
+end
+
+return M
+
+```
+lua/config/keymaps.lua  |  139 lines  |  4440 bytes  |  sha:45adc76af6f8
+```lua
+-- ~/.config/nvim/lua/config/keymaps.lua
+-- Centralized keymaps.
+
+local M = {}
+
+function M.setup()
+    local map = vim.keymap.set
+    local opts = {noremap = true, silent = true}
+
+    -- Tabs navigation.
+    map("n", "<A-Left>", ":tabprevious<CR>", {desc = "Previous tab"})
+    map("n", "<A-Right>", ":tabnext<CR>", {desc = "Next tab"})
+    map("n", "<A-1>", "1gt", {desc = "Go to tab 1"})
+    map("n", "<A-2>", "2gt", {desc = "Go to tab 2"})
+    map("n", "<A-3>", "3gt", {desc = "Go to tab 3"})
+    map("n", "<A-4>", "4gt", {desc = "Go to tab 4"})
+    map("n", "<A-5>", "5gt", {desc = "Go to tab 5"})
+    map("n", "<A-6>", "6gt", {desc = "Go to tab 6"})
+    map("n", "<A-7>", "7gt", {desc = "Go to tab 7"})
+    map("n", "<A-8>", "8gt", {desc = "Go to tab 8"})
+    map("n", "<A-9>", "9gt", {desc = "Go to tab 9"})
+
+    -- Move current tab.
+    map("n", "<A-h>", ":-tabmove<CR>", {desc = "Move tab left"})
+    map("n", "<A-l>", ":+tabmove<CR>", {desc = "Move tab right"})
+
+    -- File tree toggle with F9.
+    map(
+        "n",
+        "<F9>",
+        function()
+            require("nvim-tree.api").tree.toggle()
+        end,
+        {desc = "Toggle file tree", silent = true}
+    )
+
+    -- Sync tree with current file.
+    map(
+        "n",
+        "<leader>ef",
+        function()
+            require("nvim-tree.api").tree.find_file()
+        end,
+        {desc = "Find current file in tree", silent = true}
+    )
+
+    -- Tab navigation with F keys.
+    map("n", "<F5>", ":tabprevious<CR>", {desc = "Previous tab"})
+    map("n", "<F6>", ":tabnext<CR>", {desc = "Next tab"})
+
+    -- Global quit commands - close all tabs and exit.
+    map("n", "<leader>qq", ":qa<CR>", {desc = "Quit all and exit"})
+    map("n", "<leader>qQ", ":qa!<CR>", {desc = "Force quit all and exit"})
+
+    -- Better window navigation.
+    map("n", "<C-h>", "<C-w>h", {desc = "Go to left window"})
+    map("n", "<C-j>", "<C-w>j", {desc = "Go to lower window"})
+    map("n", "<C-k>", "<C-w>k", {desc = "Go to upper window"})
+    map("n", "<C-l>", "<C-w>l", {desc = "Go to right window"})
+
+    -- Resize windows.
+    map("n", "<C-Up>", ":resize +2<CR>", opts)
+    map("n", "<C-Down>", ":resize -2<CR>", opts)
+    map("n", "<C-Left>", ":vertical resize -2<CR>", opts)
+    map("n", "<C-Right>", ":vertical resize +2<CR>", opts)
+
+    -- Stay in indent mode.
+    map("v", "<", "<gv", opts)
+    map("v", ">", ">gv", opts)
+
+    -- Move text up and down.
+    map("v", "<A-j>", ":m .+1<CR>==", opts)
+    map("v", "<A-k>", ":m .-2<CR>==", opts)
+    map("x", "J", ":move '>+1<CR>gv-gv", opts)
+    map("x", "K", ":move '<-2<CR>gv-gv", opts)
+    map("x", "<A-j>", ":move '>+1<CR>gv-gv", opts)
+    map("x", "<A-k>", ":move '<-2<CR>gv-gv", opts)
+
+    -- Better paste.
+    map("v", "p", '"_dP', opts)
+
+    -- Yank entire buffer to clipboard
+    map("n", "<leader>ya", "ggVG\"+y",
+        { desc = "Yank entire buffer to clipboard" })
+
+    -- Yank selection to clipboard
+    map("v", "<leader>yy", '"+y',
+        { desc = "Yank selection to clipboard" })
+
+    -- Paste from clipboard
+    map("n", "<leader>yp", '"+p',
+        { desc = "Paste from clipboard" })
+    map("v", "<leader>yp", '"+p',
+        { desc = "Paste from clipboard" })
+
+
+    -- Clear search highlighting.
+    map("n", "<leader>h", ":nohlsearch<CR>", {desc = "Clear highlights"})
+
+    -- F2 for smart save and format
+    map(
+        "n",
+        "<F2>",
+        function()
+            -- Save file.
+            vim.cmd("write")
+            -- Format if formatting is available and enabled.
+            if vim.g.format_on_save ~= false then
+                vim.lsp.buf.format({async = false, timeout_ms = 2000})
+            end
+            print("File saved and formatted")
+        end,
+        {desc = "Save and format file"}
+    )
+
+    map(
+        "i",
+        "<F2>",
+        function()
+            -- Exit insert mode, save and format, then return to insert mode.
+            vim.cmd("stopinsert")
+            vim.cmd("write")
+            if vim.g.format_on_save ~= false then
+                vim.lsp.buf.format({async = false, timeout_ms = 2000})
+            end
+            vim.cmd("startinsert")
+            print("File saved and formatted")
+        end,
+        {desc = "Save and format file"}
+    )
+
+    -- Mason.
+    map("n", "<leader>m", ":Mason<CR>", {desc = "Open Mason"})
+
+    -- Diagnostics.
+    map("n", "<leader>q", vim.diagnostic.setloclist, {desc = "Open diagnostic quickfix list"})
+end
+
+return M
+
+```
+lua/config/line-numbers.lua  |  80 lines  |  2057 bytes  |  sha:92084ae7e850
+```lua
+-- ~/.config/nvim/lua/config/line-numbers.lua
+-- Standard hybrid line numbers with exclusions.
+
+local M = {}
+
+local function should_show_numbers()
+    local buftype = vim.bo.buftype
+    local filetype = vim.bo.filetype
+
+    -- Exclude special buffers.
+    if buftype ~= "" then
+        return false
+    end
+
+    -- Exclude file explorers and special UIs.
+    if
+        filetype == "NvimTree" or filetype == "neo-tree" or filetype == "oil" or filetype == "help" or
+            filetype == "dashboard"
+     then
+        return false
+    end
+
+    return true
+end
+
+local function set_relative_numbers()
+    if should_show_numbers() then
+        vim.wo.number = true
+        vim.wo.relativenumber = true
+    else
+        vim.wo.number = false
+        vim.wo.relativenumber = false
+    end
+end
+
+local function set_absolute_numbers()
+    if should_show_numbers() then
+        vim.wo.number = true
+        vim.wo.relativenumber = false
+    else
+        vim.wo.number = false
+        vim.wo.relativenumber = false
+    end
+end
+
+function M.setup()
+    -- Start with hybrid mode.
+    vim.opt.number = true
+    vim.opt.relativenumber = true
+    vim.opt.numberwidth = 4
+
+    local line_numbers_group = vim.api.nvim_create_augroup("SmartLineNumbers", {clear = true})
+
+    -- Handle buffer type changes.
+    vim.api.nvim_create_autocmd(
+        {"BufEnter", "BufWinEnter", "FileType"},
+        {group = line_numbers_group, callback = set_relative_numbers}
+    )
+
+    -- Switch to absolute in insert mode, etc.
+    vim.api.nvim_create_autocmd(
+        {"InsertEnter", "FocusLost", "WinLeave", "CmdlineEnter"},
+        {group = line_numbers_group, callback = set_absolute_numbers}
+    )
+
+    -- Switch back to relative in normal mode.
+    vim.api.nvim_create_autocmd(
+        {"InsertLeave", "FocusGained", "WinEnter", "CmdlineLeave"},
+        {
+            group = line_numbers_group,
+            callback = function()
+                if vim.fn.mode() == "n" then
+                    set_relative_numbers()
+                end
+            end
+        }
+    )
+end
+
+return M
+
+```
+lua/config/nvim-tabs.lua  |  74 lines  |  1872 bytes  |  sha:18569dca876a
+```lua
+-- ~/.config/nvim/lua/config/nvim-tabs.lua
+-- Smart tabs configuration.
+
+local M = {}
+
+-- Tab label generator.
+local function tab_label(n, style)
+    local buflist = vim.fn.tabpagebuflist(n)
+    local winnr = vim.fn.tabpagewinnr(n)
+    local buf = buflist[winnr]
+
+    -- Find the first normal buffer (not NvimTree).
+    for _, b in ipairs(buflist) do
+        local name = vim.fn.bufname(b)
+        if not name:match("NvimTree_") and name ~= "" then
+            buf = b
+            break
+        end
+    end
+
+    local file = vim.fn.bufname(buf)
+    local label = vim.fn.fnamemodify(file, ":t")
+
+    if label == "" then
+        label = "[No Name]"
+    else
+        local parent = vim.fn.fnamemodify(file, ":p:h:t")
+        if parent ~= "" and style ~= 0 then
+            if style == 2 then
+                parent = parent:sub(1, 1) .. ".." .. parent:sub(-1)
+            elseif style == 3 then
+                parent = parent:sub(1, 1)
+            elseif style == 4 and #parent > 5 then
+                parent = parent:sub(1, 3) .. ".."
+            end
+            label = parent .. "/" .. label
+        end
+    end
+
+    if vim.bo[buf].modified then
+        label = label .. "*"
+    end
+
+    return string.format(" %d. %s ", n, label)
+end
+
+-- Tabline renderer.
+local function tab_name(style)
+    local s = ""
+    local tabs = vim.fn.tabpagenr("$")
+    local current = vim.fn.tabpagenr()
+    for i = 1, tabs do
+        if i == current then
+            s = s .. "%#TabLineSel#"
+        else
+            s = s .. "%#TabLine#"
+        end
+        s = s .. "%" .. i .. "T" .. tab_label(i, style) .. " ▕"
+    end
+    s = s .. "%#TabLineFill#%T"
+    return s
+end
+
+-- Public API.
+function M.setup()
+    vim.o.showtabline = 2
+    vim.o.tabline = "%!v:lua.require'config.nvim-tabs'.render()"
+end
+
+function M.render()
+    return tab_name(1) -- style 1: parent/filename
+end
+
+return M
+
+```
+lua/plugins/additional.lua  |  433 lines  |  15483 bytes  |  sha:478f21f53e1c
+```lua
+-- ~/.config/nvim/lua/plugins/additional.lua
+-- Additional essential plugins for IDE functionality
+
+return {
+    -- JSON schemas for better JSON editing
+    {
+        "b0o/schemastore.nvim",
+        lazy = true
+    },
+    -- Treesitter for better syntax highlighting.
+    {
+        "nvim-treesitter/nvim-treesitter",
+        build = ":TSUpdate",
+        config = function()
+            require("nvim-treesitter.configs").setup(
+                {
+                    ensure_installed = {
+                        "python",
+                        "javascript",
+                        "typescript",
+                        "vue",
+                        "html",
+                        "css",
+                        "scss",
+                        "go",
+                        "c",
+                        "cpp",
+                        "lua",
+                        "json",
+                        "yaml",
+                        "dockerfile",
+                        "bash",
+                        "markdown",
+                        "gitignore",
+                        "htmldjango" -- django templates
+                    },
+                    sync_install = false,
+                    auto_install = true,
+                    highlight = {
+                        enable = true,
+                        additional_vim_regex_highlighting = false
+                    },
+                    indent = {
+                        enable = true
+                    }
+                }
+            )
+        end
+    },
+    -- Fuzzy finder.
+    {
+        "nvim-telescope/telescope.nvim",
+        dependencies = {
+            "nvim-lua/plenary.nvim",
+            {
+                "nvim-telescope/telescope-fzf-native.nvim",
+                build = "make"
+            }
+        },
+        config = function()
+            require("telescope").setup(
+                {
+                    defaults = {
+                        prompt_prefix = " ",
+                        selection_caret = " ",
+                        path_display = {"truncate"},
+                        file_ignore_patterns = {
+                            "node_modules",
+                            ".git/",
+                            "*.pyc",
+                            "__pycache__",
+                            ".venv",
+                            "venv",
+                            ".env",
+                            "migrations/",
+                            "*.min.js",
+                            "*.min.css",
+                            "static/admin/",
+                            "media/"
+                        }
+                    },
+                    pickers = {
+                        find_files = {
+                            hidden = true,
+                            find_command = {
+                                "rg",
+                                "--files",
+                                "--hidden",
+                                "--glob",
+                                "!**/.git/*",
+                                "--glob",
+                                "!**/__pycache__/*",
+                                "--glob",
+                                "!**/.venv/*"
+                            }
+                        },
+                        live_grep = {
+                            additional_args = function()
+                                return {
+                                    "--hidden",
+                                    "--glob",
+                                    "!**/.git/*",
+                                    "--glob",
+                                    "!**/__pycache__/*",
+                                    "--glob",
+                                    "!**/.venv/*",
+                                    "--glob",
+                                    "!**/migrations/*"
+                                }
+                            end
+                        }
+                    }
+                }
+            )
+
+            require("telescope").load_extension("fzf")
+
+            -- Key mappings
+            local builtin = require("telescope.builtin")
+            vim.keymap.set("n", "<leader>ff", builtin.find_files, {desc = "Find files"})
+            vim.keymap.set("n", "<leader>fg", builtin.live_grep, {desc = "Live grep"})
+            vim.keymap.set("n", "<leader>fb", builtin.buffers, {desc = "Find buffers"})
+            vim.keymap.set("n", "<leader>fh", builtin.help_tags, {desc = "Help tags"})
+            vim.keymap.set("n", "<leader>fs", builtin.lsp_document_symbols, {desc = "Document symbols"})
+            vim.keymap.set("n", "<leader>fw", builtin.lsp_workspace_symbols, {desc = "Workspace symbols"})
+        end
+    },
+    -- Git integration.
+    {
+        "lewis6991/gitsigns.nvim",
+        config = function()
+            require("gitsigns").setup(
+                {
+                    signs = {
+                        add = {text = "│"},
+                        change = {text = "│"},
+                        delete = {text = "_"},
+                        topdelete = {text = "‾"},
+                        changedelete = {text = "~"},
+                        untracked = {text = "┆"}
+                    },
+                    signcolumn = true,
+                    numhl = false,
+                    linehl = false,
+                    word_diff = false,
+                    watch_gitdir = {
+                        interval = 1000,
+                        follow_files = true
+                    },
+                    attach_to_untracked = true,
+                    current_line_blame = false,
+                    current_line_blame_opts = {
+                        virt_text = true,
+                        virt_text_pos = "eol",
+                        delay = 1000,
+                        ignore_whitespace = false
+                    },
+                    preview_config = {
+                        border = "single",
+                        style = "minimal",
+                        relative = "cursor",
+                        row = 0,
+                        col = 1
+                    },
+                    on_attach = function(bufnr)
+                        local gs = package.loaded.gitsigns
+
+                        local function map(mode, l, r, opts)
+                            opts = opts or {}
+                            opts.buffer = bufnr
+                            vim.keymap.set(mode, l, r, opts)
+                        end
+
+                        -- Navigation
+                        map(
+                            "n",
+                            "]c",
+                            function()
+                                if vim.wo.diff then
+                                    return "]c"
+                                end
+                                vim.schedule(
+                                    function()
+                                        gs.next_hunk()
+                                    end
+                                )
+                                return "<Ignore>"
+                            end,
+                            {expr = true, desc = "Next hunk"}
+                        )
+
+                        map(
+                            "n",
+                            "[c",
+                            function()
+                                if vim.wo.diff then
+                                    return "[c"
+                                end
+                                vim.schedule(
+                                    function()
+                                        gs.prev_hunk()
+                                    end
+                                )
+                                return "<Ignore>"
+                            end,
+                            {expr = true, desc = "Previous hunk"}
+                        )
+
+                        -- Actions.
+                        map("n", "<leader>hs", gs.stage_hunk, {desc = "Stage hunk"})
+                        map("n", "<leader>hr", gs.reset_hunk, {desc = "Reset hunk"})
+                        map("n", "<leader>hp", gs.preview_hunk, {desc = "Preview hunk"})
+                        map(
+                            "n",
+                            "<leader>hb",
+                            function()
+                                gs.blame_line {full = true}
+                            end,
+                            {desc = "Blame line"}
+                        )
+                        map("n", "<leader>tb", gs.toggle_current_line_blame, {desc = "Toggle blame"})
+                        map("n", "<leader>hd", gs.diffthis, {desc = "Diff this"})
+                    end
+                }
+            )
+        end
+    },
+    -- Terminal integration.
+    {
+        "akinsho/toggleterm.nvim",
+        version = "*",
+        config = function()
+            require("toggleterm").setup(
+                {
+                    size = 20,
+                    open_mapping = [[<c-\>]],
+                    hide_numbers = true,
+                    shade_terminals = true,
+                    shading_factor = 2,
+                    start_in_insert = true,
+                    insert_mappings = true,
+                    persist_size = true,
+                    direction = "float",
+                    close_on_exit = true,
+                    shell = vim.o.shell,
+                    float_opts = {
+                        border = "curved",
+                        winblend = 0,
+                        highlights = {
+                            border = "Normal",
+                            background = "Normal"
+                        }
+                    }
+                }
+            )
+
+            -- Custom terminals.
+            local Terminal = require("toggleterm.terminal").Terminal
+
+            -- Python virtual environment terminal.
+            local function get_python_venv()
+                -- Check for .venv first, then venv, then fall back to system python.
+                if vim.fn.isdirectory(".venv") == 1 then
+                    return ".venv/bin/python"
+                elseif vim.fn.isdirectory("venv") == 1 then
+                    return "venv/bin/python"
+                else
+                    return "python3"
+                end
+            end
+
+            local python =
+                Terminal:new(
+                {
+                    cmd = get_python_venv(),
+                    hidden = true,
+                    direction = "float"
+                }
+            )
+
+            function _PYTHON_TOGGLE()
+                python:toggle()
+            end
+
+            -- Django management terminal.
+            local django =
+                Terminal:new(
+                {
+                    cmd = get_python_venv() .. " manage.py shell",
+                    hidden = true,
+                    direction = "float"
+                }
+            )
+
+            function _DJANGO_SHELL_TOGGLE()
+                django:toggle()
+            end
+
+            -- Django development server.
+            local runserver =
+                Terminal:new(
+                {
+                    cmd = get_python_venv() .. " manage.py runserver",
+                    hidden = true,
+                    direction = "horizontal"
+                }
+            )
+
+            function _DJANGO_RUNSERVER()
+                runserver:toggle()
+            end
+
+            -- Node terminal
+            local node =
+                Terminal:new(
+                {
+                    cmd = "node",
+                    hidden = true,
+                    direction = "float"
+                }
+            )
+
+            function _NODE_TOGGLE()
+                node:toggle()
+            end
+
+            -- Key mappings.
+            vim.keymap.set("n", "<leader>tf", "<cmd>ToggleTerm direction=float<cr>", {desc = "Float terminal"})
+            vim.keymap.set(
+                "n",
+                "<leader>th",
+                "<cmd>ToggleTerm direction=horizontal<cr>",
+                {desc = "Horizontal terminal"}
+            )
+            vim.keymap.set(
+                "n",
+                "<leader>tv",
+                "<cmd>ToggleTerm direction=vertical size=80<cr>",
+                {desc = "Vertical terminal"}
+            )
+            vim.keymap.set("n", "<leader>tp", "<cmd>lua _PYTHON_TOGGLE()<CR>", {desc = "Python terminal"})
+            vim.keymap.set("n", "<leader>td", "<cmd>lua _DJANGO_SHELL_TOGGLE()<CR>", {desc = "Django shell"})
+            vim.keymap.set("n", "<leader>tr", "<cmd>lua _DJANGO_RUNSERVER()<CR>", {desc = "Django runserver"})
+            vim.keymap.set("n", "<leader>tn", "<cmd>lua _NODE_TOGGLE()<CR>", {desc = "Node terminal"})
+        end
+    },
+    -- Auto pairs.
+    {
+        "windwp/nvim-autopairs",
+        event = "InsertEnter",
+        config = function()
+            require("nvim-autopairs").setup(
+                {
+                    check_ts = true,
+                    ts_config = {
+                        lua = {"string", "source"},
+                        javascript = {"string", "template_string"},
+                        java = false
+                    },
+                    disable_filetype = {"TelescopePrompt", "spectre_panel"},
+                    fast_wrap = {
+                        map = "<M-e>",
+                        chars = {"{", "[", "(", '"', "'"},
+                        pattern = string.gsub([[ [%'%"%)%>%]%)%}%,] ]], "%s+", ""),
+                        offset = 0,
+                        end_key = "$",
+                        keys = "qwertyuiopzxcvbnmasdfghjkl",
+                        check_comma = true,
+                        highlight = "PmenuSel",
+                        highlight_grey = "LineNr"
+                    }
+                }
+            )
+
+            -- Integration with nvim-cmp.
+            local cmp_autopairs = require("nvim-autopairs.completion.cmp")
+            local cmp = require("cmp")
+            cmp.event:on("confirm_done", cmp_autopairs.on_confirm_done())
+        end
+    },
+    -- Comment plugin.
+    {
+        "numToStr/Comment.nvim",
+        config = function()
+            require("Comment").setup(
+                {
+                    toggler = {
+                        line = "gcc",
+                        block = "gbc"
+                    },
+                    opleader = {
+                        line = "gc",
+                        block = "gb"
+                    },
+                    extra = {
+                        above = "gcO",
+                        below = "gco",
+                        eol = "gcA"
+                    },
+                    mappings = {
+                        basic = true,
+                        extra = true
+                    },
+                    pre_hook = nil,
+                    post_hook = nil
+                }
+            )
+        end
+    },
+    -- Django/Jinja2 template support.
+    {
+        "Glench/Vim-Jinja2-Syntax",
+        ft = {"htmldjango", "html"}
+    },
+    -- Python virtual environment detection.
+    {
+        "linux-cultist/venv-selector.nvim",
+        dependencies = {
+            "neovim/nvim-lspconfig",
+            "nvim-telescope/telescope.nvim",
+            "mfussenegger/nvim-dap-python"
+        },
+        config = function()
+            require("venv-selector").setup(
+                {
+                    name = {".venv", "venv"},
+                    auto_refresh = true
+                }
+            )
+            vim.keymap.set("n", "<leader>vs", "<cmd>VenvSelect<cr>", {desc = "• Python venv"})
+        end
+    }
+}
+
+```
+lua/plugins/completion.lua  |  141 lines  |  5009 bytes  |  sha:1964aebbe84d
+```lua
+-- ~/.config/nvim/lua/plugins/completion.lua
+-- Autocompletion configuration.
+
+return {
+    "hrsh7th/nvim-cmp",
+    dependencies = {
+        -- Completion sources.
+        "hrsh7th/cmp-nvim-lsp",
+        "hrsh7th/cmp-buffer",
+        "hrsh7th/cmp-path",
+        "hrsh7th/cmp-cmdline",
+        "hrsh7th/cmp-nvim-lua",
+        -- Snippets.
+        "L3MON4D3/LuaSnip",
+        "saadparwaiz1/cmp_luasnip",
+        "rafamadriz/friendly-snippets",
+        -- Icons.
+        "onsails/lspkind.nvim"
+    },
+    config = function()
+        local cmp = require("cmp")
+        local luasnip = require("luasnip")
+        local lspkind = require("lspkind")
+
+        -- Load friendly-snippets.
+        require("luasnip.loaders.from_vscode").lazy_load()
+
+        cmp.setup(
+            {
+                snippet = {
+                    expand = function(args)
+                        luasnip.lsp_expand(args.body)
+                    end
+                },
+                window = {
+                    completion = cmp.config.window.bordered(),
+                    documentation = cmp.config.window.bordered()
+                },
+                mapping = cmp.mapping.preset.insert(
+                    {
+                        ["<C-b>"] = cmp.mapping.scroll_docs(-4),
+                        ["<C-f>"] = cmp.mapping.scroll_docs(4),
+                        ["<C-Space>"] = cmp.mapping.complete(),
+                        ["<C-e>"] = cmp.mapping.abort(),
+                        ["<CR>"] = cmp.mapping.confirm(
+                            {
+                                behavior = cmp.ConfirmBehavior.Replace,
+                                select = true
+                            }
+                        ),
+                        ["<Tab>"] = cmp.mapping(
+                            function(fallback)
+                                if cmp.visible() then
+                                    cmp.select_next_item()
+                                elseif luasnip.expand_or_jumpable() then
+                                    luasnip.expand_or_jump()
+                                else
+                                    fallback()
+                                end
+                            end,
+                            {"i", "s"}
+                        ),
+                        ["<S-Tab>"] = cmp.mapping(
+                            function(fallback)
+                                if cmp.visible() then
+                                    cmp.select_prev_item()
+                                elseif luasnip.jumpable(-1) then
+                                    luasnip.jump(-1)
+                                else
+                                    fallback()
+                                end
+                            end,
+                            {"i", "s"}
+                        )
+                    }
+                ),
+                sources = cmp.config.sources(
+                    {
+                        {name = "nvim_lsp", priority = 1000},
+                        {name = "luasnip", priority = 750},
+                        {name = "nvim_lua", priority = 700},
+                        {name = "path", priority = 500},
+                        {name = "buffer", priority = 250}
+                    }
+                ),
+                formatting = {
+                    format = lspkind.cmp_format(
+                        {
+                            mode = "symbol_text",
+                            maxwidth = 50,
+                            ellipsis_char = "...",
+                            before = function(entry, vim_item)
+                                -- Source name.
+                                vim_item.menu =
+                                    ({
+                                    nvim_lsp = "[LSP]",
+                                    luasnip = "[Snip]",
+                                    nvim_lua = "[Lua]",
+                                    buffer = "[Buf]",
+                                    path = "[Path]"
+                                })[entry.source.name]
+                                return vim_item
+                            end
+                        }
+                    )
+                },
+                experimental = {
+                    ghost_text = {
+                        hl_group = "Comment"
+                    }
+                }
+            }
+        )
+
+        -- Command line completion.
+        cmp.setup.cmdline(
+            {"/", "?"},
+            {
+                mapping = cmp.mapping.preset.cmdline(),
+                sources = {
+                    {name = "buffer"}
+                }
+            }
+        )
+
+        cmp.setup.cmdline(
+            ":",
+            {
+                mapping = cmp.mapping.preset.cmdline(),
+                sources = cmp.config.sources(
+                    {
+                        {name = "path"}
+                    },
+                    {
+                        {name = "cmdline"}
+                    }
+                )
+            }
+        )
+    end
+}
+
+```
+lua/plugins/dashboard.lua  |  66 lines  |  2673 bytes  |  sha:85916b2cd103
+```lua
+-- ~/.config/nvim/lua/plugins/dashboard.lua
+-- Dashboard.
+
+return {
+  "nvimdev/dashboard-nvim",
+  event = "VimEnter",
+  dependencies = { "nvim-tree/nvim-web-devicons" },
+  config = function()
+    local db = require("dashboard")
+    db.setup({
+      theme = "doom",
+      config = {
+        header = {
+            "",
+            "███╗   ██╗██╗   ██╗██╗███╗   ███╗    ██╗██████╗ ███████╗",
+            "████╗  ██║██║   ██║██║████╗ ████║    ██║██╔══██╗██╔════╝",
+            "██╔██╗ ██║██║   ██║██║██╔████╔██║    ██║██║  ██║█████╗  ",
+            "██║╚██╗██║╚██╗ ██╔╝██║██║╚██╔╝██║    ██║██║  ██║██╔══╝  ",
+            "██║ ╚████║ ╚████╔╝ ██║██║ ╚═╝ ██║    ██║██████╔╝███████╗",
+            "╚═╝  ╚═══╝  ╚═══╝  ╚═╝╚═╝     ╚═╝    ╚═╝╚═════╝ ╚══════╝",
+            "",
+            "     Welcome to your development environment!",
+            "",
+        },
+        center = {
+          { icon = "  ", desc = "Find File",   key = "f",
+            action = "Telescope find_files" },
+          { icon = "  ", desc = "Recent Files", key = "r",
+            action = "Telescope oldfiles" },
+          { icon = "  ", desc = "Find Text",    key = "g",
+            action = "Telescope live_grep" },
+          { icon = "  ", desc = "New File",     key = "n",
+            action = "enew" },
+          { icon = "󰗼  ", desc = "Quit",         key = "q",
+            action = "qa" },
+        },
+        footer = {
+          "",
+          " Click F9 to toggle file explorer.",
+        },
+      },
+    })
+
+    -- Stronger version: force-disable numbers by window options.
+    local function hide_numbers()
+      if vim.bo.filetype == "dashboard" then
+        local win = vim.api.nvim_get_current_win()
+        vim.wo[win].number = false
+        vim.wo[win].relativenumber = false
+        vim.wo[win].signcolumn = "no"
+        vim.wo[win].foldcolumn = "0"
+        pcall(function()
+          vim.wo[win].statuscolumn = ""
+        end)
+      end
+    end
+
+    vim.api.nvim_create_autocmd(
+      { "FileType", "BufWinEnter", "WinEnter", "TabEnter" },
+      {
+        pattern = "dashboard",
+        callback = hide_numbers,
+      }
+    )
+  end,
+}
+
+```
+lua/plugins/formatting.lua  |  161 lines  |  6360 bytes  |  sha:3b12bb29c442
+```lua
+-- ~/.config/nvim/lua/plugins/formatting.lua
+-- Formatting and linting configuration.
+
+return {
+    "nvimtools/none-ls.nvim",
+    dependencies = {
+        "nvim-lua/plenary.nvim",
+        "jay-babu/mason-null-ls.nvim"
+    },
+    config = function()
+        local null_ls = require("null-ls")
+
+        -- Python virtual environment detection.
+        local function get_python_executable()
+            local venv_path = vim.fn.getenv("VIRTUAL_ENV")
+            if venv_path ~= vim.NIL and venv_path ~= "" then
+                return venv_path .. "/bin/python"
+            end
+
+            -- Check for .venv directory.
+            if vim.fn.isdirectory(".venv") == 1 then
+                return vim.fn.getcwd() .. "/.venv/bin/python"
+            end
+
+            -- Check for venv directory.
+            if vim.fn.isdirectory("venv") == 1 then
+                return vim.fn.getcwd() .. "/venv/bin/python"
+            end
+
+            return "python3"
+        end
+
+        null_ls.setup(
+            {
+                sources = {
+                    -- Python formatting.
+                    null_ls.builtins.formatting.black.with(
+                        {
+                            command = function()
+                                local python_path = get_python_executable()
+                                local black_cmd = python_path:gsub("/python$", "/black")
+                                if vim.fn.executable(black_cmd) == 1 then
+                                    return black_cmd
+                                end
+                                return "black"
+                            end,
+                            extra_args = {"--line-length", "79"}
+                        }
+                    ),
+                    null_ls.builtins.formatting.isort.with(
+                        {
+                            command = function()
+                                local python_path = get_python_executable()
+                                local isort_cmd = python_path:gsub("/python$", "/isort")
+                                if vim.fn.executable(isort_cmd) == 1 then
+                                    return isort_cmd
+                                end
+                                return "isort"
+                            end,
+                            extra_args = {"--profile", "black", "--line-length", "79"}
+                        }
+                    ),
+                    -- JavaScript/TypeScript/Vue/CSS/HTML.
+                    null_ls.builtins.formatting.prettier.with(
+                        {
+                            filetypes = {
+                                "javascript",
+                                "typescript",
+                                "vue",
+                                "css",
+                                "scss",
+                                "html",
+                                "json",
+                                "yaml",
+                                "markdown"
+                            },
+                            extra_args = {"--print-width", "79"}
+                        }
+                    ),
+                    -- Lua.
+                    null_ls.builtins.formatting.stylua,
+                    -- Go (goimports includes gofmt functionality).
+                    null_ls.builtins.formatting.goimports,
+                    -- C/C++.
+                    null_ls.builtins.formatting.clang_format.with(
+                        {
+                            extra_args = {"-style='{BasedOnStyle: llvm, ColumnLimit: 79}'"}
+                        }
+                    )
+                },
+                -- Format on save.
+                on_attach = function(client, bufnr)
+                    if client.supports_method("textDocument/formatting") then
+                        local augroup = vim.api.nvim_create_augroup("LspFormatting", {clear = false})
+                        vim.api.nvim_clear_autocmds({group = augroup, buffer = bufnr})
+                        vim.api.nvim_create_autocmd(
+                            "BufWritePre",
+                            {
+                                group = augroup,
+                                buffer = bufnr,
+                                callback = function()
+                                    if vim.g.format_on_save then
+                                        vim.lsp.buf.format(
+                                            {
+                                                filter = function(client)
+                                                    -- Use null-ls for formatting when available
+                                                    return client.name == "null-ls"
+                                                end,
+                                                bufnr = bufnr
+                                            }
+                                        )
+                                    end
+                                end
+                            }
+                        )
+                    end
+                end
+            }
+        )
+
+        -- Manual format command.
+        vim.keymap.set(
+            "n",
+            "<leader>F",
+            function()
+                vim.lsp.buf.format({async = true})
+            end,
+            {desc = "Format document"}
+        )
+
+        -- Toggle format on save.
+        vim.g.format_on_save = true
+        vim.keymap.set(
+            "n",
+            "<leader>tf",
+            function()
+                vim.g.format_on_save = not vim.g.format_on_save
+                print("Format on save: " .. (vim.g.format_on_save and "ON" or "OFF"))
+            end,
+            {desc = "Toggle format on save"}
+        )
+
+        -- Sort Python imports manually
+        vim.keymap.set(
+            "n",
+            "<leader>is",
+            function()
+                vim.cmd("write")
+                local python_path = get_python_executable()
+                local isort_cmd = python_path:gsub("/python$", "/isort")
+                if vim.fn.executable(isort_cmd) == 1 then
+                    vim.cmd("!" .. isort_cmd .. " --profile black --line-length 79 %")
+                else
+                    vim.cmd("!isort --profile black --line-length 79 %")
+                end
+                vim.cmd("edit!")
+            end,
+            {desc = "Sort Python imports"}
+        )
+    end
+}
+
+```
+lua/plugins/lsp.lua  |  395 lines  |  13204 bytes  |  sha:d65d53a0f2c1
+```lua
+-- ~/.config/nvim/lua/plugins/lsp.lua
+-- Language Server Protocol configuration.
+
+return {
+    "neovim/nvim-lspconfig",
+    dependencies = {
+        "mason.nvim",
+        "williamboman/mason-lspconfig.nvim",
+        "hrsh7th/cmp-nvim-lsp"
+    },
+    config = function()
+        local cmp_nvim_lsp = require("cmp_nvim_lsp")
+
+        -- Enhanced capabilities with autocompletion
+        local capabilities = cmp_nvim_lsp.default_capabilities()
+
+        -- Python virtual environment detection
+        local function get_python_path()
+            local venv_path = vim.fn.getenv("VIRTUAL_ENV")
+            if venv_path ~= vim.NIL and venv_path ~= "" then
+                return venv_path .. "/bin/python"
+            end
+
+            -- Check for .venv directory
+            if vim.fn.isdirectory(".venv") == 1 then
+                return vim.fn.getcwd() .. "/.venv/bin/python"
+            end
+
+            -- Check for venv directory
+            if vim.fn.isdirectory("venv") == 1 then
+                return vim.fn.getcwd() .. "/venv/bin/python"
+            end
+
+            return "python3"
+        end
+
+        -- Key mappings for LSP
+        local on_attach = function(client, bufnr)
+            local opts = {buffer = bufnr, silent = true}
+
+            -- Navigation
+            vim.keymap.set(
+                "n",
+                "gd",
+                vim.lsp.buf.definition,
+                vim.tbl_extend("force", opts, {desc = "Go to definition"})
+            )
+            vim.keymap.set(
+                "n",
+                "gD",
+                vim.lsp.buf.declaration,
+                vim.tbl_extend("force", opts, {desc = "Go to declaration"})
+            )
+            vim.keymap.set("n", "gr", vim.lsp.buf.references, vim.tbl_extend("force", opts, {desc = "Show references"}))
+            vim.keymap.set(
+                "n",
+                "gi",
+                vim.lsp.buf.implementation,
+                vim.tbl_extend("force", opts, {desc = "Go to implementation"})
+            )
+
+            -- Documentation
+            vim.keymap.set("n", "K", vim.lsp.buf.hover, vim.tbl_extend("force", opts, {desc = "Show hover info"}))
+            vim.keymap.set(
+                "n",
+                "<C-k>",
+                vim.lsp.buf.signature_help,
+                vim.tbl_extend("force", opts, {desc = "Signature help"})
+            )
+
+            -- Code actions
+            vim.keymap.set(
+                "n",
+                "<leader>ca",
+                vim.lsp.buf.code_action,
+                vim.tbl_extend("force", opts, {desc = "Code action"})
+            )
+            vim.keymap.set(
+                "n",
+                "<leader>rn",
+                vim.lsp.buf.rename,
+                vim.tbl_extend("force", opts, {desc = "Rename symbol"})
+            )
+
+            -- Diagnostics
+            vim.keymap.set(
+                "n",
+                "[d",
+                vim.diagnostic.goto_prev,
+                vim.tbl_extend("force", opts, {desc = "Previous diagnostic"})
+            )
+            vim.keymap.set(
+                "n",
+                "]d",
+                vim.diagnostic.goto_next,
+                vim.tbl_extend("force", opts, {desc = "Next diagnostic"})
+            )
+            vim.keymap.set(
+                "n",
+                "<leader>d",
+                vim.diagnostic.open_float,
+                vim.tbl_extend("force", opts, {desc = "Show diagnostics"})
+            )
+
+            -- Format
+            vim.keymap.set(
+                "n",
+                "<leader>f",
+                function()
+                    vim.lsp.buf.format({async = true})
+                end,
+                vim.tbl_extend("force", opts, {desc = "Format buffer"})
+            )
+        end
+
+        -- Diagnostic configuration
+        vim.diagnostic.config(
+            {
+                virtual_text = {
+                    prefix = "⚠", -- Warning triangle instead of circle
+                    source = "if_many",
+                    -- Make virtual text more subtle
+                    format = function(diagnostic)
+                        return diagnostic.message
+                    end
+                },
+                signs = true,
+                underline = true,
+                update_in_insert = false,
+                severity_sort = true,
+                float = {
+                    border = "rounded",
+                    source = "always"
+                }
+            }
+        )
+
+        -- Diagnostic signs with warning triangle
+        local signs = {
+            Error = "⚠",
+            Warn = "⚠",
+            Hint = "⚠",
+            Info = "⚠"
+        }
+        for type, icon in pairs(signs) do
+            local hl = "DiagnosticSign" .. type
+            vim.fn.sign_define(hl, {text = icon, texthl = hl, numhl = hl})
+        end
+
+        -- Make virtual text colors more subtle
+        vim.api.nvim_set_hl(
+            0,
+            "DiagnosticVirtualTextError",
+            {
+                fg = "#6c6c6c",
+                italic = true
+            }
+        )
+        vim.api.nvim_set_hl(
+            0,
+            "DiagnosticVirtualTextWarn",
+            {
+                fg = "#6c6c6c",
+                italic = true
+            }
+        )
+        vim.api.nvim_set_hl(
+            0,
+            "DiagnosticVirtualTextInfo",
+            {
+                fg = "#6c6c6c",
+                italic = true
+            }
+        )
+        vim.api.nvim_set_hl(
+            0,
+            "DiagnosticVirtualTextHint",
+            {
+                fg = "#6c6c6c",
+                italic = true
+            }
+        )
+
+        -- Server configurations using modern vim.lsp.config API
+        local servers = {
+            -- Python with Django support
+            pyright = {
+                settings = {
+                    python = {
+                        pythonPath = get_python_path(),
+                        analysis = {
+                            typeCheckingMode = "basic",
+                            autoSearchPaths = true,
+                            useLibraryCodeForTypes = true,
+                            extraPaths = {"."}
+                        },
+                        workspace = {
+                            symbols = {
+                                maxSymbols = 2000
+                            }
+                        }
+                    }
+                },
+                root_markers = {
+                    "pyrightconfig.json",
+                    ".git",
+                    "pyproject.toml",
+                    "setup.py",
+                    "setup.cfg",
+                    "requirements.txt"
+                }
+            },
+            -- TypeScript/JavaScript.
+            ts_ls = {
+                settings = {
+                    typescript = {
+                        inlayHints = {
+                            includeInlayParameterNameHints = "literal",
+                            includeInlayParameterNameHintsWhenArgumentMatchesName = false,
+                            includeInlayFunctionParameterTypeHints = true,
+                            includeInlayVariableTypeHints = false,
+                            includeInlayPropertyDeclarationTypeHints = true,
+                            includeInlayFunctionLikeReturnTypeHints = true
+                        }
+                    }
+                },
+                root_markers = {"package.json", "tsconfig.json", ".git"}
+            },
+            -- Vue.js (using vue_ls - modern replacement for volar)
+            vue_ls = {
+                filetypes = {"vue"},
+                init_options = {
+                    typescript = {
+                        -- Path to typescript that Mason installs with vue-language-server
+                        tsdk = vim.fn.stdpath("data") ..
+                            "/mason/packages/vue-language-server/node_modules/typescript/lib"
+                    }
+                },
+                root_markers = {"package.json", "vue.config.js", ".git"}
+            },
+            -- HTML with Django template support
+            html = {
+                filetypes = {"html", "htmldjango"},
+                settings = {
+                    html = {
+                        format = {
+                            templating = true,
+                            wrapLineLength = 79,
+                            wrapAttributes = "auto"
+                        },
+                        hover = {
+                            documentation = true,
+                            references = true
+                        }
+                    }
+                },
+                root_markers = {".git"}
+            },
+            -- CSS with embedded support
+            cssls = {
+                settings = {
+                    css = {
+                        validate = true,
+                        lint = {
+                            unknownAtRules = "ignore"
+                        }
+                    },
+                    scss = {
+                        validate = true
+                    },
+                    less = {
+                        validate = true
+                    }
+                },
+                root_markers = {"package.json", ".git"}
+            },
+            -- Emmet for HTML/CSS
+            emmet_ls = {
+                filetypes = {
+                    "html",
+                    "css",
+                    "scss",
+                    "javascript",
+                    "typescript",
+                    "vue",
+                    "htmldjango"
+                },
+                init_options = {
+                    html = {
+                        options = {
+                            ["bem.enabled"] = true
+                        }
+                    }
+                },
+                root_markers = {".git"}
+            },
+            -- Go
+            gopls = {
+                settings = {
+                    gopls = {
+                        analyses = {
+                            unusedparams = true
+                        },
+                        staticcheck = true,
+                        gofumpt = true
+                    }
+                },
+                root_markers = {"go.mod", ".git"}
+            },
+            -- C/C++
+            clangd = {
+                cmd = {
+                    "clangd",
+                    "--background-index",
+                    "--clang-tidy",
+                    "--header-insertion=iwyu",
+                    "--completion-style=detailed",
+                    "--function-arg-placeholders",
+                    "--fallback-style=llvm"
+                },
+                init_options = {
+                    usePlaceholders = true
+                },
+                root_markers = {"compile_commands.json", ".git"}
+            },
+            -- Docker
+            dockerls = {
+                root_markers = {"Dockerfile", ".git"}
+            },
+            -- YAML
+            yamlls = {
+                settings = {
+                    yaml = {
+                        schemas = {
+                            ["https://json.schemastore.org/github-workflow.json"] = "/.github/workflows/*",
+                            ["https://raw.githubusercontent.com/compose-spec/compose-spec/master/schema/compose-spec.json"] = "docker-compose*.yml"
+                        }
+                    }
+                },
+                root_markers = {".git"}
+            },
+            -- JSON
+            jsonls = {
+                settings = {
+                    json = {
+                        schemas = require("schemastore").json.schemas(),
+                        validate = {enable = true}
+                    }
+                },
+                root_markers = {"package.json", ".git"}
+            },
+            -- Lua
+            lua_ls = {
+                settings = {
+                    Lua = {
+                        runtime = {version = "LuaJIT"},
+                        diagnostics = {globals = {"vim"}},
+                        workspace = {
+                            library = vim.api.nvim_get_runtime_file("", true),
+                            checkThirdParty = false
+                        },
+                        telemetry = {enable = false}
+                    }
+                },
+                root_markers = {".luarc.json", ".git"}
+            },
+            -- Bash
+            bashls = {
+                filetypes = {"sh", "bash"},
+                root_markers = {".git"}
+            }
+        }
+
+        -- Setup servers using modern vim.lsp.config API.
+        for server_name, config in pairs(servers) do
+            vim.lsp.config(
+                server_name,
+                {
+                    cmd = config.cmd,
+                    root_markers = config.root_markers or {".git"},
+                    capabilities = capabilities,
+                    settings = config.settings or {},
+                    init_options = config.init_options or {},
+                    filetypes = config.filetypes,
+                    on_attach = on_attach
+                }
+            )
+        end
+
+        -- Enable the configured servers.
+        for server_name, _ in pairs(servers) do
+            vim.lsp.enable(server_name)
+        end
+    end
+}
+
+```
+lua/plugins/mason.lua  |  69 lines  |  2371 bytes  |  sha:fddbdcd05983
+```lua
+-- ~/.config/nvim/lua/plugins/mason.lua
+-- Mason package manager for LSP servers, formatters, linters.
+
+return {
+    {
+        "williamboman/mason.nvim",
+        config = function()
+            require("mason").setup(
+                {
+                    ui = {
+                        icons = {
+                            package_installed = "✓",
+                            package_pending = "➜",
+                            package_uninstalled = "✗"
+                        }
+                    }
+                }
+            )
+        end
+    },
+    {
+        "williamboman/mason-lspconfig.nvim",
+        dependencies = {"mason.nvim"},
+        config = function()
+            require("mason-lspconfig").setup(
+                {
+                    ensure_installed = {
+                        -- Python servers
+                        "pyright", -- Microsoft's Python LSP
+                        -- JavaScript/TypeScript (ts_ls will be installed via mason-tool-installer)
+                        "ts_ls", -- TypeScript Language Server
+                        -- Web technologies
+                        "html",
+                        "cssls",
+                        "emmet_ls",
+                        -- Go (use system gopls instead of Mason version)
+                        -- "gopls",        -- Commented out due to installation issues
+
+                        -- C/C++ (use system clangd instead of Mason version)
+                        -- "clangd",       -- Commented out due to installation issues
+
+                        -- DevOps
+                        "dockerls",
+                        "yamlls",
+                        "jsonls",
+                        -- Lua (for Neovim config).
+                        "lua_ls", -- Lua Language Server
+                        -- Bash.
+                        "bashls"
+                    },
+                    automatic_installation = true
+                }
+            )
+        end
+    },
+    {
+        "jay-babu/mason-null-ls.nvim",
+        dependencies = {"mason.nvim", "nvimtools/none-ls.nvim"},
+        config = function()
+            require("mason-null-ls").setup(
+                {
+                    -- Disable automatic installation completely.
+                    ensure_installed = {},
+                    automatic_installation = false
+                }
+            )
+        end
+    }
+}
+
+```
+lua/plugins/nvim-tree.lua  |  369 lines  |  14172 bytes  |  sha:b133c49347de
+```lua
+-- ~/.config/nvim/lua/plugins/nvim-tree.lua
+-- Smart file explorer with tabs mode.
+
+return {
+    "nvim-tree/nvim-tree.lua",
+    dependencies = {"nvim-tree/nvim-web-devicons"},
+    config = function()
+        -- disable netrw (conflicts with nvim-tree)
+        vim.g.loaded_netrw = 1
+        vim.g.loaded_netrwPlugin = 1
+
+        -- Global variable to track current mode
+        _G.nvim_tree_mode = "files" -- "files" or "tabs"
+
+        -- Function to get list of open tabs with their files
+        local function get_open_tabs()
+            local tabs = {}
+            for tab_nr = 1, vim.fn.tabpagenr("$") do
+                local buflist = vim.fn.tabpagebuflist(tab_nr)
+                local winnr = vim.fn.tabpagewinnr(tab_nr)
+                local buf = buflist[winnr]
+
+                -- Find the first normal buffer (not NvimTree)
+                for _, b in ipairs(buflist) do
+                    local name = vim.fn.bufname(b)
+                    if not name:match("NvimTree_") and name ~= "" then
+                        buf = b
+                        break
+                    end
+                end
+
+                local file_path = vim.fn.bufname(buf)
+                local file_name = vim.fn.fnamemodify(file_path, ":t")
+
+                if file_name == "" then
+                    file_name = "[No Name]"
+                end
+
+                -- Mark modified files
+                if vim.bo[buf].modified then
+                    file_name = file_name .. "*"
+                end
+
+                -- Mark current tab
+                local is_current = (tab_nr == vim.fn.tabpagenr())
+
+                table.insert(
+                    tabs,
+                    {
+                        tab_nr = tab_nr,
+                        file_name = file_name,
+                        file_path = file_path,
+                        is_current = is_current,
+                        is_modified = vim.bo[buf].modified
+                    }
+                )
+            end
+            return tabs
+        end
+
+        -- Function to create tabs list buffer content
+        local function create_tabs_content()
+            local tabs = get_open_tabs()
+            local lines = {}
+
+            -- Header
+            table.insert(lines, "")
+            table.insert(lines, " OPEN TABS")
+            table.insert(lines, " ─────────")
+            table.insert(lines, "")
+
+            -- Tab entries
+            for _, tab in ipairs(tabs) do
+                local prefix = tab.is_current and "▶ " or "  "
+                local line = string.format("%s%d. %s", prefix, tab.tab_nr, tab.file_name)
+                table.insert(lines, line)
+            end
+
+            if #tabs == 0 then
+                table.insert(lines, "  No open tabs")
+            end
+
+            return lines, tabs
+        end
+
+        -- Function to show tabs in nvim-tree window
+        local function show_tabs_mode()
+            local api = require("nvim-tree.api")
+            if not api.tree.is_visible() then
+                return
+            end
+
+            -- Get nvim-tree window and buffer
+            local tree_winid = api.tree.winid()
+            if not tree_winid or tree_winid == -1 then
+                return
+            end
+
+            -- Create or get tabs buffer
+            local tabs_bufnr = vim.fn.bufnr("NvimTree_Tabs", true)
+
+            -- Set buffer options
+            vim.bo[tabs_bufnr].buftype = "nofile"
+            vim.bo[tabs_bufnr].bufhidden = "wipe"
+            vim.bo[tabs_bufnr].swapfile = false
+            vim.bo[tabs_bufnr].filetype = "nvimtree_tabs"
+
+            -- Generate content
+            local content, tabs_data = create_tabs_content()
+
+            -- Set content
+            vim.api.nvim_buf_set_lines(tabs_bufnr, 0, -1, false, content)
+
+            -- Make buffer read-only
+            vim.bo[tabs_bufnr].modifiable = false
+
+            -- Switch to tabs buffer in tree window
+            vim.api.nvim_win_set_buf(tree_winid, tabs_bufnr)
+
+            -- Set up keymaps for tabs mode
+            vim.keymap.set(
+                "n",
+                "<CR>",
+                function()
+                    local line_nr = vim.fn.line(".")
+                    local line_content = vim.fn.getline(line_nr)
+
+                    -- Extract tab number from line
+                    local tab_nr = line_content:match("^%s*▶?%s*(%d+)%.")
+                    if tab_nr then
+                        tab_nr = tonumber(tab_nr)
+                        vim.cmd(tab_nr .. "tabnext")
+                    end
+                end,
+                {buffer = tabs_bufnr, desc = "Switch to tab"}
+            )
+
+            -- Close tab with 'd'
+            vim.keymap.set(
+                "n",
+                "d",
+                function()
+                    local line_nr = vim.fn.line(".")
+                    local line_content = vim.fn.getline(line_nr)
+
+                    local tab_nr = line_content:match("^%s*▶?%s*(%d+)%.")
+                    if tab_nr then
+                        tab_nr = tonumber(tab_nr)
+                        if vim.fn.tabpagenr("$") > 1 then
+                            vim.cmd(tab_nr .. "tabclose")
+                            -- Refresh tabs view
+                            vim.defer_fn(
+                                function()
+                                    if _G.nvim_tree_mode == "tabs" then
+                                        show_tabs_mode()
+                                    end
+                                end,
+                                50
+                            )
+                        end
+                    end
+                end,
+                {buffer = tabs_bufnr, desc = "Close tab"}
+            )
+        end
+
+        -- Function to toggle between modes
+        local function toggle_tree_mode()
+            if _G.nvim_tree_mode == "files" then
+                _G.nvim_tree_mode = "tabs"
+                show_tabs_mode()
+            else
+                _G.nvim_tree_mode = "files"
+                local api = require("nvim-tree.api")
+                api.tree.reload()
+            end
+        end
+
+        require("nvim-tree").setup(
+            {
+                sync_root_with_cwd = true,
+                update_focused_file = {
+                    enable = true,
+                    update_root = true
+                },
+                view = {
+                    width = 30,
+                    side = "left"
+                },
+                actions = {
+                    open_file = {
+                        quit_on_open = false
+                    }
+                },
+                git = {
+                    enable = false -- disable git integration completely
+                },
+                diagnostics = {
+                    enable = false -- disable LSP diagnostics
+                },
+                modified = {
+                    enable = false -- disable modified indicators
+                },
+                filters = {
+                    git_ignored = false
+                },
+                renderer = {
+                    icons = {
+                        show = {
+                            file = true,
+                            folder = true,
+                            folder_arrow = true,
+                            git = false, -- hide git status icons
+                            modified = false, -- hide modified indicators
+                            diagnostics = false, -- hide diagnostic icons
+                            bookmarks = false -- hide bookmark icons
+                        },
+                        glyphs = {
+                            git = {
+                                unstaged = "",
+                                staged = "",
+                                unmerged = "",
+                                renamed = "",
+                                untracked = "",
+                                deleted = "",
+                                ignored = ""
+                            }
+                        }
+                    },
+                    special_files = {}, -- don't highlight special files
+                    -- Add custom root folder title
+                    root_folder_label = function(path)
+                        local mode_indicator = _G.nvim_tree_mode == "tabs" and "[TABS]" or "[FILES]"
+                        return mode_indicator .. " " .. vim.fn.fnamemodify(path, ":t")
+                    end
+                },
+                on_attach = function(bufnr)
+                    local api = require("nvim-tree.api")
+                    api.config.mappings.default_on_attach(bufnr)
+
+                    -- Toggle between files and tabs mode with 't'.
+                    vim.keymap.set("n", "t", toggle_tree_mode, {buffer = bufnr, desc = "Toggle Files/Tabs mode"})
+
+                    -- Enter -> expand folder or open file in new tab.
+                    vim.keymap.set(
+                        "n",
+                        "<CR>",
+                        function()
+                            local api = require("nvim-tree.api")
+                            local node = api.tree.get_node_under_cursor()
+                            if not node then
+                                return
+                            end
+
+                            if node.type == "directory" then
+                                -- expand/collapse folder
+                                api.node.open.edit()
+                            elseif node.type == "file" then
+                                local file_path = node.absolute_path
+                                local found = false
+
+                                -- search for tab with this file
+                                for tab_nr = 1, vim.fn.tabpagenr("$") do
+                                    local buflist = vim.fn.tabpagebuflist(tab_nr)
+                                    for _, bufnr_tab in ipairs(buflist) do
+                                        local buf_name = vim.fn.bufname(bufnr_tab)
+                                        if buf_name == file_path then
+                                            -- file already open → switch to its tab
+                                            vim.cmd(tab_nr .. "tabnext")
+                                            found = true
+                                            break
+                                        end
+                                    end
+                                    if found then
+                                        break
+                                    end
+                                end
+
+                                if not found then
+                                    -- file not open → open in new tab
+                                    vim.cmd("tabnew " .. vim.fn.fnameescape(file_path))
+
+                                    -- reopen tree in new tab (sync with file)
+                                    vim.schedule(
+                                        function()
+                                            vim.cmd("NvimTreeFindFile")
+                                        end
+                                    )
+                                end
+
+                                -- ensure focus goes to file window, not tree
+                                vim.schedule(
+                                    function()
+                                        local side = require("nvim-tree").config.view.side
+                                        if side == "left" then
+                                            vim.cmd("wincmd l")
+                                        else
+                                            vim.cmd("wincmd h")
+                                        end
+                                    end
+                                )
+                            end
+                        end,
+                        {buffer = bufnr, desc = "Expand folder or open file in new tab"}
+                    )
+                end
+            }
+        )
+
+        -- Auto-refresh tabs mode when tabs change
+        local tabs_refresh_group = vim.api.nvim_create_augroup("NvimTreeTabsRefresh", {clear = true})
+
+        vim.api.nvim_create_autocmd(
+            {"TabEnter", "TabLeave", "TabClosed", "TabNew"},
+            {
+                group = tabs_refresh_group,
+                callback = function()
+                    -- Small delay to let vim finish tab operations
+                    vim.defer_fn(
+                        function()
+                            if _G.nvim_tree_mode == "tabs" then
+                                local api = require("nvim-tree.api")
+                                if api.tree.is_visible() then
+                                    show_tabs_mode()
+                                end
+                            end
+                        end,
+                        50
+                    )
+                end
+            }
+        )
+
+        -- Refresh tabs when buffer is modified/saved
+        vim.api.nvim_create_autocmd(
+            {"BufWritePost", "TextChanged", "TextChangedI"},
+            {
+                group = tabs_refresh_group,
+                callback = function()
+                    if _G.nvim_tree_mode == "tabs" then
+                        vim.defer_fn(
+                            function()
+                                local api = require("nvim-tree.api")
+                                if api.tree.is_visible() then
+                                    show_tabs_mode()
+                                end
+                            end,
+                            100
+                        )
+                    end
+                end
+            }
+        )
+
+        -- Auto-create empty buffer if only NvimTree is left
+        vim.api.nvim_create_autocmd(
+            "BufEnter",
+            {
+                nested = true,
+                callback = function()
+                    if #vim.api.nvim_list_wins() == 1 and vim.bo.filetype == "NvimTree" then
+                        -- just create empty buffer, do not reopen tree
+                        vim.cmd("enew")
+                    end
+                end
+            }
+        )
+    end
+}
+
+```

@@ -1,82 +1,179 @@
 -- ~/.config/nvim/lua/plugins/nvim-tree.lua
--- Modal file explorer - always opens as floating window.
+-- Smart file explorer with tabs mode.
 
 return {
     "nvim-tree/nvim-tree.lua",
     dependencies = {"nvim-tree/nvim-web-devicons"},
     config = function()
-        -- Disable netrw (conflicts with nvim-tree).
+        -- disable netrw (conflicts with nvim-tree)
         vim.g.loaded_netrw = 1
         vim.g.loaded_netrwPlugin = 1
 
-        -- Function to get current file path for sync.
-        local function get_current_file()
-            local current_buf = vim.api.nvim_get_current_buf()
-            local file_path = vim.fn.bufname(current_buf)
+        -- Global variable to track current mode
+        _G.nvim_tree_mode = "files" -- "files" or "tabs"
 
-            -- Return empty string for special buffers
-            if file_path == "" or file_path:match("NvimTree_") or
-               file_path:match("toggleterm") or file_path:match("dashboard") then
-                return ""
-            end
+        -- Function to get list of open tabs with their files
+        local function get_open_tabs()
+            local tabs = {}
+            for tab_nr = 1, vim.fn.tabpagenr("$") do
+                local buflist = vim.fn.tabpagebuflist(tab_nr)
+                local winnr = vim.fn.tabpagewinnr(tab_nr)
+                local buf = buflist[winnr]
 
-            return vim.fn.fnamemodify(file_path, ":p")
-        end
-
-        -- Function to open nvim-tree as modal window with sync.
-        local function open_tree_modal()
-            local api = require("nvim-tree.api")
-
-            -- Close existing tree if open.
-            if api.tree.is_visible() then
-                api.tree.close()
-            end
-
-            -- Open tree in modal mode.
-            api.tree.open({
-                current_window = false,
-                find_file = false,
-                update_root = false
-            })
-
-            -- Get current file for sync.
-            local current_file = get_current_file()
-
-            -- Schedule sync after tree opens.
-            vim.schedule(function()
-                if current_file ~= "" then
-                    api.tree.find_file(current_file)
-                end
-            end)
-        end
-
-        -- Function to change root directory.
-        local function change_root_to_cwd()
-            local api = require("nvim-tree.api")
-            local cwd = vim.fn.getcwd()
-            api.tree.change_root(cwd)
-            print("Root changed to: " .. cwd)
-        end
-
-        -- Function to pick root directory.
-        local function pick_root_directory()
-            vim.ui.input(
-                {
-                    prompt = "New root directory: ",
-                    default = vim.fn.getcwd(),
-                    completion = "dir"
-                },
-                function(input)
-                    if input and vim.fn.isdirectory(input) == 1 then
-                        local api = require("nvim-tree.api")
-                        local full_path = vim.fn.fnamemodify(input, ":p")
-                        api.tree.change_root(full_path)
-                        print("Root changed to: " .. full_path)
-                    elseif input then
-                        print("Directory does not exist: " .. input)
+                -- Find the first normal buffer (not NvimTree)
+                for _, b in ipairs(buflist) do
+                    local name = vim.fn.bufname(b)
+                    if not name:match("NvimTree_") and name ~= "" then
+                        buf = b
+                        break
                     end
                 end
+
+                local file_path = vim.fn.bufname(buf)
+                local file_name = vim.fn.fnamemodify(file_path, ":t")
+
+                if file_name == "" then
+                    file_name = "[No Name]"
+                end
+
+                -- Mark modified files
+                if vim.bo[buf].modified then
+                    file_name = file_name .. "*"
+                end
+
+                -- Mark current tab
+                local is_current = (tab_nr == vim.fn.tabpagenr())
+
+                table.insert(
+                    tabs,
+                    {
+                        tab_nr = tab_nr,
+                        file_name = file_name,
+                        file_path = file_path,
+                        is_current = is_current,
+                        is_modified = vim.bo[buf].modified
+                    }
+                )
+            end
+            return tabs
+        end
+
+        -- Function to create tabs list buffer content
+        local function create_tabs_content()
+            local tabs = get_open_tabs()
+            local lines = {}
+
+            -- Header
+            table.insert(lines, "")
+            table.insert(lines, " OPEN TABS")
+            table.insert(lines, " ─────────")
+            table.insert(lines, "")
+
+            -- Tab entries
+            for _, tab in ipairs(tabs) do
+                local prefix = tab.is_current and "▶ " or "  "
+                local line = string.format("%s%d. %s", prefix, tab.tab_nr, tab.file_name)
+                table.insert(lines, line)
+            end
+
+            if #tabs == 0 then
+                table.insert(lines, "  No open tabs")
+            end
+
+            return lines, tabs
+        end
+
+        -- Function to show tabs in nvim-tree window
+        local function show_tabs_mode()
+            local api = require("nvim-tree.api")
+            if not api.tree.is_visible() then
+                return
+            end
+
+            -- Get nvim-tree window and buffer
+            local tree_winid = api.tree.winid()
+            if not tree_winid or tree_winid == -1 then
+                return
+            end
+
+            -- Create or get tabs buffer
+            local tabs_bufnr = vim.fn.bufnr("NvimTree_Tabs", true)
+
+            -- Set buffer options
+            vim.bo[tabs_bufnr].buftype = "nofile"
+            vim.bo[tabs_bufnr].bufhidden = "wipe"
+            vim.bo[tabs_bufnr].swapfile = false
+            vim.bo[tabs_bufnr].filetype = "nvimtree_tabs"
+
+            -- Generate content
+            local content, tabs_data = create_tabs_content()
+
+            -- Set content
+            vim.api.nvim_buf_set_lines(tabs_bufnr, 0, -1, false, content)
+
+            -- Make buffer read-only
+            vim.bo[tabs_bufnr].modifiable = false
+
+            -- Switch to tabs buffer in tree window
+            vim.api.nvim_win_set_buf(tree_winid, tabs_bufnr)
+
+            -- Set up keymaps for tabs mode
+            vim.keymap.set(
+                "n",
+                "<CR>",
+                function()
+                    local line_nr = vim.fn.line(".")
+                    local line_content = vim.fn.getline(line_nr)
+
+                    -- Extract tab number from line
+                    local tab_nr = line_content:match("^%s*▶?%s*(%d+)%.")
+                    if tab_nr then
+                        tab_nr = tonumber(tab_nr)
+                        vim.cmd(tab_nr .. "tabnext")
+                    end
+                end,
+                {buffer = tabs_bufnr, desc = "Switch to tab"}
             )
+
+            -- Close tab with 'd'
+            vim.keymap.set(
+                "n",
+                "d",
+                function()
+                    local line_nr = vim.fn.line(".")
+                    local line_content = vim.fn.getline(line_nr)
+
+                    local tab_nr = line_content:match("^%s*▶?%s*(%d+)%.")
+                    if tab_nr then
+                        tab_nr = tonumber(tab_nr)
+                        if vim.fn.tabpagenr("$") > 1 then
+                            vim.cmd(tab_nr .. "tabclose")
+                            -- Refresh tabs view
+                            vim.defer_fn(
+                                function()
+                                    if _G.nvim_tree_mode == "tabs" then
+                                        show_tabs_mode()
+                                    end
+                                end,
+                                50
+                            )
+                        end
+                    end
+                end,
+                {buffer = tabs_bufnr, desc = "Close tab"}
+            )
+        end
+
+        -- Function to toggle between modes
+        local function toggle_tree_mode()
+            if _G.nvim_tree_mode == "files" then
+                _G.nvim_tree_mode = "tabs"
+                show_tabs_mode()
+            else
+                _G.nvim_tree_mode = "files"
+                local api = require("nvim-tree.api")
+                api.tree.reload()
+            end
         end
 
         require("nvim-tree").setup(
@@ -84,48 +181,19 @@ return {
                 sync_root_with_cwd = true,
                 update_focused_file = {
                     enable = true,
-                    update_root = false, -- don't auto-update root
-                    ignore_list = {}
+                    update_root = true
                 },
                 view = {
-                    width = 80,
-                    float = {
-                        enable = true,
-                        quit_on_focus_loss = true,
-                        open_win_config = function()
-                            local width = math.min(80, math.floor(vim.o.columns * 0.8))
-                            local height = math.min(30, math.floor(vim.o.lines * 0.8))
-                            local row = math.floor((vim.o.lines - height) / 2)
-                            local col = math.floor((vim.o.columns - width) / 2)
-
-                            return {
-                                relative = "editor",
-                                border = "rounded",
-                                width = width,
-                                height = height,
-                                row = row,
-                                col = col,
-                                title = " File Explorer ",
-                                title_pos = "center"
-                            }
-                        end
-                    }
+                    width = 30,
+                    side = "left"
                 },
                 actions = {
                     open_file = {
-                        quit_on_open = true, -- close tree after opening file
-                        window_picker = {
-                            enable = false -- always open in new tab
-                        }
-                    },
-                    change_dir = {
-                        enable = true,
-                        global = false,
-                        restrict_above_cwd = false
+                        quit_on_open = false
                     }
                 },
                 git = {
-                    enable = false -- disable git integration for simplicity
+                    enable = false -- disable git integration completely
                 },
                 diagnostics = {
                     enable = false -- disable LSP diagnostics
@@ -134,213 +202,168 @@ return {
                     enable = false -- disable modified indicators
                 },
                 filters = {
-                    git_ignored = false,
-                    dotfiles = false,
-                    git_clean = false,
-                    no_buffer = false,
-                    custom = { ".DS_Store" },
-                    exclude = {}
+                    git_ignored = false
                 },
                 renderer = {
-                    add_trailing = false,
-                    group_empty = false,
-                    highlight_git = false,
-                    full_name = false,
-                    highlight_opened_files = "all",
-                    highlight_modified = "none",
-                    root_folder_label = function(path)
-                        return vim.fn.fnamemodify(path, ":~")
-                    end,
-                    indent_width = 2,
-                    indent_markers = {
-                        enable = true,
-                        inline_arrows = true,
-                        icons = {
-                            corner = "└",
-                            edge = "│",
-                            item = "│",
-                            bottom = "─",
-                            none = " "
-                        }
-                    },
                     icons = {
-                        webdev_colors = true,
-                        git_placement = "before",
-                        modified_placement = "after",
-                        padding = " ",
-                        symlink_arrow = " ➛ ",
                         show = {
                             file = true,
                             folder = true,
                             folder_arrow = true,
-                            git = false,
-                            modified = false,
-                            diagnostics = false,
-                            bookmarks = false
+                            git = false, -- hide git status icons
+                            modified = false, -- hide modified indicators
+                            diagnostics = false, -- hide diagnostic icons
+                            bookmarks = false -- hide bookmark icons
                         },
                         glyphs = {
-                            default = "",
-                            symlink = "",
-                            bookmark = "",
-                            modified = "●",
-                            folder = {
-                                arrow_closed = "",   -- ►
-                                arrow_open   = "",   -- ▼
-                                default      = "📁",  -- closed folder
-                                open         = "📂",  -- open folder
-                                empty        = "🗀",  -- empty closed
-                                empty_open   = "🗁",  -- empty open
-                                symlink      = "",  -- symlink folder
-                                symlink_open = ""   -- symlink open
-                            },
                             git = {
-                                unstaged = "✗",
-                                staged = "✓",
+                                unstaged = "",
+                                staged = "",
                                 unmerged = "",
-                                renamed = "➜",
-                                untracked = "★",
+                                renamed = "",
+                                untracked = "",
                                 deleted = "",
-                                ignored = "◌"
+                                ignored = ""
                             }
                         }
                     },
-                    special_files = { "Cargo.toml", "Makefile", "README.md", "readme.md" }
+                    special_files = {}, -- don't highlight special files
+                    -- Add custom root folder title
+                    root_folder_label = function(path)
+                        local mode_indicator = _G.nvim_tree_mode == "tabs" and "[TABS]" or "[FILES]"
+                        return mode_indicator .. " " .. vim.fn.fnamemodify(path, ":t")
+                    end
                 },
                 on_attach = function(bufnr)
                     local api = require("nvim-tree.api")
-
-                    -- Clear default mappings
                     api.config.mappings.default_on_attach(bufnr)
 
-                    -- Enter -> expand folder or open file in new tab
+                    -- Toggle between files and tabs mode with 't'.
+                    vim.keymap.set("n", "t", toggle_tree_mode, {buffer = bufnr, desc = "Toggle Files/Tabs mode"})
+
+                    -- Enter -> expand folder or open file in new tab.
                     vim.keymap.set(
                         "n",
                         "<CR>",
                         function()
+                            local api = require("nvim-tree.api")
                             local node = api.tree.get_node_under_cursor()
                             if not node then
                                 return
                             end
 
                             if node.type == "directory" then
-                                -- Expand/collapse folder
+                                -- expand/collapse folder
                                 api.node.open.edit()
                             elseif node.type == "file" then
                                 local file_path = node.absolute_path
                                 local found = false
-                                local replace_current = false
 
-                                -- Check if file is already open in any tab
+                                -- search for tab with this file
                                 for tab_nr = 1, vim.fn.tabpagenr("$") do
                                     local buflist = vim.fn.tabpagebuflist(tab_nr)
-                                    for _, buf_nr in ipairs(buflist) do
-                                        if vim.fn.bufname(buf_nr) == file_path then
-                                            api.tree.close()
+                                    for _, bufnr_tab in ipairs(buflist) do
+                                        local buf_name = vim.fn.bufname(bufnr_tab)
+                                        if buf_name == file_path then
+                                            -- file already open → switch to its tab
                                             vim.cmd(tab_nr .. "tabnext")
                                             found = true
                                             break
                                         end
                                     end
-                                    if found then break end
+                                    if found then
+                                        break
+                                    end
                                 end
 
                                 if not found then
-                                    api.tree.close()
+                                    -- file not open → open in new tab
+                                    vim.cmd("tabnew " .. vim.fn.fnameescape(file_path))
 
-                                    -- Check if current tab is dashboard or empty
-                                    local curbuf = vim.api.nvim_get_current_buf()
-                                    if vim.bo[curbuf].filetype == "dashboard"
-                                    or (vim.fn.bufname(curbuf) == "" and not vim.bo[curbuf].modified)
-                                    then
-                                        replace_current = true
-                                    end
-
-                                    if replace_current then
-                                        -- Replace current tab with the file
-                                        vim.cmd("edit " .. vim.fn.fnameescape(file_path))
-                                    else
-                                        -- Open in new tab
-                                        vim.cmd("tabnew " .. vim.fn.fnameescape(file_path))
-                                    end
+                                    -- reopen tree in new tab (sync with file)
+                                    vim.schedule(
+                                        function()
+                                            vim.cmd("NvimTreeFindFile")
+                                        end
+                                    )
                                 end
+
+                                -- ensure focus goes to file window, not tree
+                                vim.schedule(
+                                    function()
+                                        local side = require("nvim-tree").config.view.side
+                                        if side == "left" then
+                                            vim.cmd("wincmd l")
+                                        else
+                                            vim.cmd("wincmd h")
+                                        end
+                                    end
+                                )
                             end
                         end,
-                        {buffer = bufnr,
-                         desc = "Expand folder or open file in new tab"}
+                        {buffer = bufnr, desc = "Expand folder or open file in new tab"}
                     )
-
-                    -- Close tree with Escape or q
-                    vim.keymap.set("n", "<Esc>", api.tree.close,
-                        {buffer = bufnr, desc = "Close tree"})
-                    vim.keymap.set("n", "q", api.tree.close,
-                        {buffer = bufnr, desc = "Close tree"})
-
-                    -- Root directory management
-                    vim.keymap.set("n", "C", change_root_to_cwd,
-                        {buffer = bufnr, desc = "Change root to CWD"})
-                    vim.keymap.set("n", "R", pick_root_directory,
-                        {buffer = bufnr, desc = "Pick root directory"})
-
-                    -- Navigate up one directory level
-                    vim.keymap.set("n", "P", api.tree.change_root_to_parent,
-                        {buffer = bufnr, desc = "Parent directory"})
-
-                    -- Refresh tree
-                    vim.keymap.set("n", "r", api.tree.reload,
-                        {buffer = bufnr, desc = "Refresh"})
-
-                    -- Create file/directory
-                    vim.keymap.set("n", "a", api.fs.create,
-                        {buffer = bufnr, desc = "Create file/directory"})
-
-                    -- Delete file/directory
-                    vim.keymap.set("n", "d", api.fs.remove,
-                        {buffer = bufnr, desc = "Delete"})
-
-                    -- Rename file/directory
-                    vim.keymap.set("n", "rn", api.fs.rename,
-                        {buffer = bufnr, desc = "Rename"})
-
-                    -- Copy file/directory
-                    vim.keymap.set("n", "c", api.fs.copy.node,
-                        {buffer = bufnr, desc = "Copy"})
-
-                    -- Cut file/directory
-                    vim.keymap.set("n", "x", api.fs.cut,
-                        {buffer = bufnr, desc = "Cut"})
-
-                    -- Paste file/directory
-                    vim.keymap.set("n", "p", api.fs.paste,
-                        {buffer = bufnr, desc = "Paste"})
-
-                    -- Toggle hidden files
-                    vim.keymap.set("n", "H", api.tree.toggle_hidden_filter,
-                        {buffer = bufnr, desc = "Toggle hidden files"})
-
-                    -- Filter files (live filter)
-                    vim.keymap.set("n", "f", api.live_filter.start,
-                        {buffer = bufnr, desc = "Filter files"})
-                    vim.keymap.set("n", "F", api.live_filter.clear,
-                        {buffer = bufnr, desc = "Clear filter"})
                 end
             }
         )
 
-        -- Global function for modal tree access
-        _G.NvimTreeModal = open_tree_modal
+        -- Auto-refresh tabs mode when tabs change
+        local tabs_refresh_group = vim.api.nvim_create_augroup("NvimTreeTabsRefresh", {clear = true})
 
-        -- Create user command for modal tree
-        vim.api.nvim_create_user_command(
-            "NvimTreeModal",
-            open_tree_modal,
-            { desc = "Open NvimTree as modal window" }
+        vim.api.nvim_create_autocmd(
+            {"TabEnter", "TabLeave", "TabClosed", "TabNew"},
+            {
+                group = tabs_refresh_group,
+                callback = function()
+                    -- Small delay to let vim finish tab operations
+                    vim.defer_fn(
+                        function()
+                            if _G.nvim_tree_mode == "tabs" then
+                                local api = require("nvim-tree.api")
+                                if api.tree.is_visible() then
+                                    show_tabs_mode()
+                                end
+                            end
+                        end,
+                        50
+                    )
+                end
+            }
         )
 
-        -- Create command for changing root
-        vim.api.nvim_create_user_command(
-            "NvimTreeChangeRoot",
-            pick_root_directory,
-            { desc = "Change NvimTree root directory" }
+        -- Refresh tabs when buffer is modified/saved
+        vim.api.nvim_create_autocmd(
+            {"BufWritePost", "TextChanged", "TextChangedI"},
+            {
+                group = tabs_refresh_group,
+                callback = function()
+                    if _G.nvim_tree_mode == "tabs" then
+                        vim.defer_fn(
+                            function()
+                                local api = require("nvim-tree.api")
+                                if api.tree.is_visible() then
+                                    show_tabs_mode()
+                                end
+                            end,
+                            100
+                        )
+                    end
+                end
+            }
+        )
+
+        -- Auto-create empty buffer if only NvimTree is left
+        vim.api.nvim_create_autocmd(
+            "BufEnter",
+            {
+                nested = true,
+                callback = function()
+                    if #vim.api.nvim_list_wins() == 1 and vim.bo.filetype == "NvimTree" then
+                        -- just create empty buffer, do not reopen tree
+                        vim.cmd("enew")
+                    end
+                end
+            }
         )
     end
 }

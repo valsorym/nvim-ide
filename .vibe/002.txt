@@ -1,0 +1,615 @@
+You are now being provided with the following files:
+- lua/plugins/tabs-list.lua
+- lua/plugins/theme.lua
+- lua/plugins/which-key.lua
+
+This is part of the codebase. Don't take any action, just review it and reply: "Keep going."
+
+lua/plugins/tabs-list.lua  |  282 lines  |  9437 bytes  |  sha:0e1eebbb7b8b
+```lua
+-- ~/.config/nvim/lua/plugins/tabs-list.lua
+-- Independent tabs list window.
+return {
+    "nvim-telescope/telescope.nvim",
+    dependencies = {"nvim-lua/plenary.nvim"},
+    config = function()
+        -- Global namespace for tabs list functionality.
+        _G.TabsList = {}
+
+        -- Function to get list of open tabs with their files.
+        function _G.TabsList.get_open_tabs()
+            local tabs = {}
+            for tab_nr = 1, vim.fn.tabpagenr("$") do
+                local buflist = vim.fn.tabpagebuflist(tab_nr)
+                local winnr = vim.fn.tabpagewinnr(tab_nr)
+                local buf = buflist[winnr]
+
+                -- Find the first normal buffer (not special buffers).
+                for _, b in ipairs(buflist) do
+                    local name = vim.fn.bufname(b)
+                    if
+                        not name:match("NvimTree_") and not name:match("toggleterm") and not name:match("dashboard") and
+                            name ~= ""
+                     then
+                        buf = b
+                        break
+                    end
+                end
+
+                local file_path = vim.fn.bufname(buf)
+                local file_name = vim.fn.fnamemodify(file_path, ":t")
+                local dir_name = vim.fn.fnamemodify(file_path, ":h:t")
+
+                if file_name == "" then
+                    file_name = "[No Name]"
+                    dir_name = ""
+                end
+
+                -- Mark modified files.
+                local is_modified = vim.bo[buf].modified
+                if is_modified then
+                    file_name = file_name .. "*"
+                end
+
+                -- Mark current tab.
+                local is_current = (tab_nr == vim.fn.tabpagenr())
+
+                -- Format display name.
+                local display_name = file_name
+                if dir_name ~= "" and dir_name ~= "." then
+                    display_name = dir_name .. "/" .. file_name
+                end
+
+                table.insert(
+                    tabs,
+                    {
+                        tab_nr = tab_nr,
+                        file_name = file_name,
+                        display_name = display_name,
+                        file_path = file_path,
+                        dir_name = dir_name,
+                        is_current = is_current,
+                        is_modified = is_modified,
+                        buf = buf
+                    }
+                )
+            end
+            return tabs
+        end
+
+        -- Function to create floating window with tabs list.
+        function _G.TabsList.show_tabs_window()
+            local tabs = _G.TabsList.get_open_tabs()
+
+            if #tabs == 0 then
+                print("No tabs open")
+                return
+            end
+
+            -- Create buffer for tabs list.
+            local buf = vim.api.nvim_create_buf(false, true)
+
+            -- Calculate window size.
+            local width = math.min(60, vim.o.columns - 10)
+            local height = math.min(15, #tabs + 5)
+
+            -- Calculate window position (center of screen).
+            local row = math.floor((vim.o.lines - height) / 2)
+            local col = math.floor((vim.o.columns - width) / 2)
+
+            -- Create floating window.
+            local win_opts = {
+                relative = "editor",
+                width = width,
+                height = height,
+                row = row,
+                col = col,
+                style = "minimal",
+                border = "rounded",
+                title = " Open Tabs ",
+                title_pos = "center"
+            }
+
+            local win = vim.api.nvim_open_win(buf, true, win_opts)
+
+            -- Prepare content and store tab mapping.
+            local lines = {}
+            local line_to_tab = {}
+            local current_tab_line = nil
+
+            -- Header.
+            table.insert(lines, "")
+            table.insert(lines, string.format(" %d tabs open:", #tabs))
+            table.insert(lines, string.rep("─", width - 2))
+            table.insert(lines, "")
+
+            -- Tab entries.
+            for i, tab in ipairs(tabs) do
+                local prefix = tab.is_current and " ▶ " or "   "
+                local status = tab.is_modified and " [+]" or ""
+                local line = string.format("%s%d. %s%s", prefix, tab.tab_nr, tab.display_name, status)
+                table.insert(lines, line)
+
+                -- Map line number to tab data.
+                local line_nr = #lines
+                line_to_tab[line_nr] = tab.tab_nr
+
+                -- Remember current tab line for cursor positioning.
+                if tab.is_current then
+                    current_tab_line = line_nr
+                end
+            end
+
+            table.insert(lines, "")
+            table.insert(lines, " Keys: <CR>=switch, d=close, q=quit")
+
+            -- Set buffer content.
+            vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+
+            -- Make buffer read-only.
+            vim.bo[buf].modifiable = false
+            vim.bo[buf].buftype = "nofile"
+            vim.bo[buf].bufhidden = "wipe"
+
+            -- Enable cursor line highlighting.
+            vim.wo[win].cursorline = true
+
+            -- Set up keymaps.
+            local keymap_opts = {buffer = buf, nowait = true, silent = true}
+
+            -- Switch to tab with Enter.
+            vim.keymap.set(
+                "n",
+                "<CR>",
+                function()
+                    local line_nr = vim.fn.line(".")
+                    local tab_nr = line_to_tab[line_nr]
+
+                    if tab_nr then
+                        vim.api.nvim_win_close(win, true)
+                        vim.cmd(tab_nr .. "tabnext")
+                    end
+                end,
+                keymap_opts
+            )
+
+            -- Close tab with 'd'.
+            vim.keymap.set(
+                "n",
+                "d",
+                function()
+                    local line_nr = vim.fn.line(".")
+                    local tab_nr = line_to_tab[line_nr]
+
+                    if tab_nr then
+                        if vim.fn.tabpagenr("$") > 1 then
+                            vim.api.nvim_win_close(win, true)
+                            vim.cmd(tab_nr .. "tabclose")
+                            -- Reopen window with updated list.
+                            vim.defer_fn(_G.TabsList.show_tabs_window, 100)
+                        else
+                            print("Cannot close the last tab")
+                        end
+                    end
+                end,
+                keymap_opts
+            )
+
+            -- Close window with 'q' or Escape.
+            vim.keymap.set(
+                "n",
+                "q",
+                function()
+                    vim.api.nvim_win_close(win, true)
+                end,
+                keymap_opts
+            )
+
+            vim.keymap.set(
+                "n",
+                "<Esc>",
+                function()
+                    vim.api.nvim_win_close(win, true)
+                end,
+                keymap_opts
+            )
+
+            -- Navigate with j/k and arrows.
+            vim.keymap.set(
+                "n",
+                "j",
+                function()
+                    local current_line = vim.fn.line(".")
+                    local next_line = current_line + 1
+
+                    -- Skip to next valid tab line.
+                    while next_line <= #lines and not line_to_tab[next_line] do
+                        next_line = next_line + 1
+                    end
+
+                    if line_to_tab[next_line] then
+                        vim.api.nvim_win_set_cursor(win, {next_line, 0})
+                    end
+                end,
+                keymap_opts
+            )
+
+            vim.keymap.set(
+                "n",
+                "k",
+                function()
+                    local current_line = vim.fn.line(".")
+                    local prev_line = current_line - 1
+
+                    -- Skip to previous valid tab line.
+                    while prev_line >= 1 and not line_to_tab[prev_line] do
+                        prev_line = prev_line - 1
+                    end
+
+                    if line_to_tab[prev_line] then
+                        vim.api.nvim_win_set_cursor(win, {prev_line, 0})
+                    end
+                end,
+                keymap_opts
+            )
+
+            vim.keymap.set(
+                "n",
+                "<Down>",
+                function()
+                    vim.cmd("normal! j")
+                end,
+                keymap_opts
+            )
+
+            vim.keymap.set(
+                "n",
+                "<Up>",
+                function()
+                    vim.cmd("normal! k")
+                end,
+                keymap_opts
+            )
+
+            -- Position cursor on current tab or first tab.
+            local start_line = current_tab_line or 5
+            vim.api.nvim_win_set_cursor(win, {start_line, 0})
+        end
+
+        -- Create user command.
+        vim.api.nvim_create_user_command(
+            "TabsList",
+            _G.TabsList.show_tabs_window,
+            {
+                desc = "Show list of open tabs"
+            }
+        )
+
+        -- Set up keymap (you can change this to whatever you prefer).
+        vim.keymap.set("n", "<leader>tt", _G.TabsList.show_tabs_window, {desc = "Show tabs list", silent = true})
+    end
+}
+
+```
+lua/plugins/theme.lua  |  173 lines  |  6106 bytes  |  sha:f41a3602134c
+```lua
+-- ~/.config/nvim/lua/plugins/theme.lua
+-- Catppuccin - modern dark theme with great plugin support.
+
+return {
+    "catppuccin/nvim",
+    name = "catppuccin",
+    lazy = false,
+    priority = 1000,
+    config = function()
+        require("catppuccin").setup(
+            {
+                flavour = "mocha", -- latte, frappe, macchiato, mocha
+                background = {
+                    -- :h background
+                    light = "latte",
+                    dark = "mocha"
+                },
+                transparent_background = false,
+                show_end_of_buffer = false, -- shows the '~' characters after end of buffers
+                term_colors = true, -- sets terminal colors
+                dim_inactive = {
+                    enabled = true, -- dims the background color of inactive window
+                    shade = "dark",
+                    percentage = 0.15 -- percentage of the shade to apply
+                },
+                no_italic = false, -- force no italic
+                no_bold = false, -- force no bold
+                no_underline = false, -- force no underline
+                styles = {
+                    -- handles the styles of general highlights
+                    comments = {"italic"}, -- change the style of comments
+                    conditionals = {"italic"},
+                    loops = {},
+                    functions = {},
+                    keywords = {},
+                    strings = {},
+                    variables = {},
+                    numbers = {},
+                    booleans = {},
+                    properties = {},
+                    types = {},
+                    operators = {}
+                },
+                color_overrides = {},
+                custom_highlights = {},
+                integrations = {
+                    cmp = true,
+                    gitsigns = true,
+                    nvimtree = true,
+                    treesitter = true,
+                    notify = false,
+                    mini = {
+                        enabled = true,
+                        indentscope_color = ""
+                    },
+                    -- Plugin integrations
+                    telescope = {
+                        enabled = true
+                    },
+                    which_key = true,
+                    mason = true,
+                    markdown = true,
+                    dashboard = true,
+                    lsp_trouble = false,
+                    ts_rainbow = false,
+                    hop = false,
+                    illuminate = {
+                        enabled = true,
+                        lsp = false
+                    },
+                    native_lsp = {
+                        enabled = true,
+                        virtual_text = {
+                            errors = {"italic"},
+                            hints = {"italic"},
+                            warnings = {"italic"},
+                            information = {"italic"}
+                        },
+                        underlines = {
+                            errors = {"underline"},
+                            hints = {"underline"},
+                            warnings = {"underline"},
+                            information = {"underline"}
+                        },
+                        inlay_hints = {
+                            background = true
+                        }
+                    }
+                }
+            }
+        )
+
+        -- Set colorscheme.
+        vim.cmd.colorscheme("catppuccin")
+
+        -- Optional: Custom highlights for better experience.
+        vim.api.nvim_create_autocmd(
+            "ColorScheme",
+            {
+                pattern = "catppuccin*",
+                callback = function()
+                    -- Make line numbers more subtle.
+                    vim.api.nvim_set_hl(
+                        0,
+                        "LineNr",
+                        {
+                            fg = "#585b70",
+                            bg = "NONE"
+                        }
+                    )
+
+                    -- Enhance cursor line number.
+                    vim.api.nvim_set_hl(
+                        0,
+                        "CursorLineNr",
+                        {
+                            fg = "#f9e2af",
+                            bg = "#1e1e2e",
+                            bold = true
+                        }
+                    )
+
+                    -- Better colorcolumn.
+                    vim.api.nvim_set_hl(
+                        0,
+                        "ColorColumn",
+                        {
+                            bg = "#1e1e2e"
+                        }
+                    )
+
+                    -- Subtle virtual text for diagnostics.
+                    vim.api.nvim_set_hl(
+                        0,
+                        "DiagnosticVirtualTextError",
+                        {
+                            fg = "#f38ba8",
+                            bg = "#302030",
+                            italic = true
+                        }
+                    )
+                    vim.api.nvim_set_hl(
+                        0,
+                        "DiagnosticVirtualTextWarn",
+                        {
+                            fg = "#fab387",
+                            bg = "#302820",
+                            italic = true
+                        }
+                    )
+                    vim.api.nvim_set_hl(
+                        0,
+                        "DiagnosticVirtualTextInfo",
+                        {
+                            fg = "#89dceb",
+                            bg = "#1a2030",
+                            italic = true
+                        }
+                    )
+                    vim.api.nvim_set_hl(
+                        0,
+                        "DiagnosticVirtualTextHint",
+                        {
+                            fg = "#94e2d5",
+                            bg = "#1a302a",
+                            italic = true
+                        }
+                    )
+                end
+            }
+        )
+    end
+}
+
+```
+lua/plugins/which-key.lua  |  141 lines  |  6769 bytes  |  sha:9b1901bef183
+```lua
+-- ~/.config/nvim/lua/plugins/which-key.lua
+-- Key bindings helper - popup with navigation menu.
+
+return {
+    "folke/which-key.nvim",
+    event = "VeryLazy",
+    config = function()
+        local wk = require("which-key")
+
+        wk.setup(
+            {
+                preset = "modern",
+                delay = 100, -- faster popup
+                expand = 1,
+                notify = false, -- disable notifications for speed
+                icons = {
+                    mappings = false, -- disable icons in submenus
+                    keys = {
+                        Up = " ",
+                        Down = " ",
+                        Left = " ",
+                        Right = " ",
+                        C = "󰘴 ",
+                        M = "󰘵 ",
+                        S = "󰘶 ",
+                        CR = "󰌑 ",
+                        Esc = "󱊷 ",
+                        ScrollWheelDown = "󱕐 ",
+                        ScrollWheelUp = "󱕑 ",
+                        NL = "󰌑 ",
+                        BS = "↩ ",
+                        Space = "󱁐 ",
+                        Tab = "󰌒 "
+                    }
+                },
+                win = {
+                    no_overlap = true,
+                    padding = {3, 3}, -- compact padding
+                    title = true,
+                    title_pos = "center",
+                    zindex = 1000,
+                    wo = {winblend = 10}
+                },
+                layout = {
+                    width = {min = 20}, -- minimum menu width
+                    spacing = 3 -- spacing between items
+                },
+                triggers = {
+                    {"<leader>", mode = {"n", "v"}},
+                    {"g", mode = {"n", "v"}},
+                    {"]", mode = "n"},
+                    {"[", mode = "n"},
+                    {"z", mode = "n"} -- folds
+                },
+                spec = {
+                    -- FILES
+                    {"<leader>f", group = " Files"},
+                    {"<leader>ff", desc = "• Find Files"},
+                    {"<leader>fr", desc = "• Recent Files"},
+                    {"<leader>fs", desc = "• Save File"},
+                    {"<leader>fn", desc = "• New File"},
+                    {"<leader>fe", desc = "• File Explorer"},
+                    {"<leader>ef", desc = "• Find Current in Tree"},
+                    -- YANK / CLIPBOARD (Normal mode)
+                    { "<leader>y", group = " Yank/Clipboard", mode = "n" },
+                    { "<leader>ya", desc = "• Yank entire buffer to clipboard", mode = "n" },
+                    { "<leader>yy", desc = "• Yank selection to clipboard",      mode = "n" },
+                    { "<leader>yp", desc = "• Paste from clipboard",             mode = "n" },
+                    -- YANK / CLIPBOARD (Visual mode)
+                    { "<leader>y", group = " Yank/Clipboard", mode = "v" },
+                    { "<leader>yy", desc = "• Yank selection to clipboard",      mode = "v" },
+                    { "<leader>yp", desc = "• Paste from clipboard",             mode = "v" },
+                    -- SEARCH
+                    {"<leader>s", group = " Search"},
+                    {"<leader>sg", desc = "• Live Grep"},
+                    {"<leader>sb", desc = "• Search Buffers"},
+                    {"<leader>sh", desc = "• Help Tags"},
+                    {"<leader>ss", desc = "• Document Symbols"},
+                    {"<leader>sw", desc = "• Workspace Symbols"},
+                    -- BUFFERS / TABS
+                    {"<leader>b", group = " Buffers/Tabs"},
+                    {"<leader>bb", desc = "• List Buffers"},
+                    {"<leader>bd", desc = "• Delete Buffer"},
+                    {"<leader>bn", desc = "• Next Buffer"},
+                    {"<leader>bp", desc = "• Previous Buffer"},
+                    {"<leader>tt", desc = "• Tabs List"},
+                    {"<A-Left>", desc = "• Previous Tab", mode = "n"},
+                    {"<A-Right>", desc = "• Next Tab", mode = "n"},
+                    {"<A-h>", desc = "• Move Tab Left", mode = "n"},
+                    {"<A-l>", desc = "• Move Tab Right", mode = "n"},
+                    -- GIT
+                    {"<leader>g", group = " Git"},
+                    {"<leader>gs", desc = "• Stage Hunk"},
+                    {"<leader>gr", desc = "• Reset Hunk"},
+                    {"<leader>gp", desc = "• Preview Hunk"},
+                    {"<leader>gb", desc = "• Blame Line"},
+                    {"<leader>gd", desc = "• Diff This"},
+                    -- LSP / CODE
+                    {"<leader>c", group = " Code/LSP"},
+                    {"<leader>ca", desc = "• Code Action"},
+                    {"<leader>rn", desc = "• Rename Symbol"},
+                    {"<leader>F", desc = "• Format Document"},
+                    {"g", group = " Go to..."},
+                    {"gd", desc = "• Definition"},
+                    {"gD", desc = "• Declaration"},
+                    {"gi", desc = "• Implementation"},
+                    {"gr", desc = "• References"},
+                    {"K", desc = "• Hover Info"},
+                    -- DIAGNOSTICS
+                    {"<leader>d", group = " Diagnostics"},
+                    {"<leader>dd", desc = "• Open Diagnostics"},
+                    {"]d", desc = "• Next Diagnostic"},
+                    {"[d", desc = "• Previous Diagnostic"},
+                    -- TERMINAL / TOOLS
+                    {"<leader>t", group = " Terminal/Tools"},
+                    {"<leader>tf", desc = "• Float Terminal"},
+                    {"<leader>th", desc = "• Horizontal Terminal"},
+                    {"<leader>tv", desc = "• Vertical Terminal"},
+                    {"<leader>tb", desc = "• Toggle Git Blame"},
+                    {"<leader>m", desc = "• Mason"},
+                    {"<leader>v", desc = "• Select Python Venv"},
+                    -- OPTIONS
+                    {"<leader>o", group = " Options"},
+                    {"<leader>oh", desc = "• Clear Highlights"},
+                    -- QUIT / SESSION
+                    {"<leader>q", group = " Quit/Session"},
+                    {"<leader>qq", desc = "• Quit All"},
+                    {"<leader>qQ", desc = "• Force Quit"},
+                    -- FUNCTION KEYS
+                    {"<F2>", desc = "• Save & Format"},
+                    {"<F5>", desc = "• Previous Tab"},
+                    {"<F6>", desc = "• Next Tab"},
+                    {"<F9>", desc = "• Toggle File Tree"}
+                }
+            }
+        )
+
+        -- Faster key timeout for responsiveness.
+        vim.opt.timeoutlen = 300
+    end
+}
+
+```

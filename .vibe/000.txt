@@ -1,0 +1,34 @@
+You will receive a codebase in multiple parts ("chunks"). Each chunk includes a file list and fenced contents with language tags.
+
+Guidelines:
+1) After each chunk, reply only with: "Keep going."
+2) Do not propose changes until I say we finished sending chunks.
+3) When modifying code later, rewrite only entire functions/methods
+   that change. Include the full updated function/method.
+4) Comments and texts in the code must be in English only.
+5) For programming code (py,go,c/c++,js,ts), keep lines ≤79 characters.
+6) Explanations in Ukrainian.
+7). Do'not create migration files unless explicitly requested.
+
+Acknowledge and wait for parts.
+
+
+Complete file list across all parts:
+P.S. Be sure to specify the name of the file you are making changes to.
+
+- after/plugin/nvimtree-autoclose.lua
+- init.lua
+- lua/config/colorcolumn.lua
+- lua/config/keymaps.lua
+- lua/config/line-numbers.lua
+- lua/config/nvim-tabs.lua
+- lua/plugins/additional.lua
+- lua/plugins/completion.lua
+- lua/plugins/dashboard.lua
+- lua/plugins/formatting.lua
+- lua/plugins/lsp.lua
+- lua/plugins/mason.lua
+- lua/plugins/nvim-tree.lua
+- lua/plugins/tabs-list.lua
+- lua/plugins/theme.lua
+- lua/plugins/which-key.lua

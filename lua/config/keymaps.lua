@@ -24,81 +24,33 @@ function M.setup()
     map("n", "<A-h>", ":-tabmove<CR>", {desc = "Move tab left"})
     map("n", "<A-l>", ":+tabmove<CR>", {desc = "Move tab right"})
 
-    -- File tree modal with F9.
+    -- File tree toggle with F9.
     map(
         "n",
         "<F9>",
         function()
-            _G.NvimTreeModal()
+            require("nvim-tree.api").tree.toggle()
         end,
-        {desc = "Open file explorer", silent = true}
+        {desc = "Toggle file tree", silent = true}
     )
 
-    -- Explorer commands
+    -- Sync tree with current file.
     map(
         "n",
-        "<leader>ee",
+        "<leader>ef",
         function()
-            _G.NvimTreeModal()
+            require("nvim-tree.api").tree.find_file()
         end,
-        {desc = "Open file explorer", silent = true}
-    )
-
-    -- Buffers list with F10 and leader shortcuts
-    map(
-        "n",
-        "<F10>",
-        function()
-            require("telescope.builtin").buffers()
-        end,
-        {desc = "Show buffers list", silent = true}
-    )
-
-    map(
-        "n",
-        "<leader>eb",
-        function()
-            require("telescope.builtin").buffers()
-        end,
-        {desc = "Show buffers list", silent = true}
-    )
-
-    -- Tabs list with F8 and leader shortcut
-    map(
-        "n",
-        "<F8>",
-        function()
-            if _G.TabsList and _G.TabsList.show_tabs_window then
-                _G.TabsList.show_tabs_window()
-            else
-                print("TabsList functionality not loaded yet")
-            end
-        end,
-        {desc = "Show tabs list", silent = true}
-    )
-
-    map(
-        "n",
-        "<leader>et",
-        function()
-            if _G.TabsList and _G.TabsList.show_tabs_window then
-                _G.TabsList.show_tabs_window()
-            else
-                print("TabsList functionality not loaded yet")
-            end
-        end,
-        {desc = "Show tabs list", silent = true}
+        {desc = "Find current file in tree", silent = true}
     )
 
     -- Tab navigation with F keys.
     map("n", "<F5>", ":tabprevious<CR>", {desc = "Previous tab"})
     map("n", "<F6>", ":tabnext<CR>", {desc = "Next tab"})
 
-    -- Updated quit commands - tab management instead of global exit
-    map("n", "<leader>qq", ":tabclose<CR>", {desc = "Close current tab"})
-    map("n", "<leader>qa", ":tabonly | qa<CR>", {desc = "Close all tabs and exit"})
-    map("n", "<leader>qQ", ":tabclose!<CR>", {desc = "Force close current tab"})
-    map("n", "<leader>qA", ":qa!<CR>", {desc = "Force close all tabs and exit"})
+    -- Global quit commands - close all tabs and exit.
+    map("n", "<leader>qq", ":qa<CR>", {desc = "Quit all and exit"})
+    map("n", "<leader>qQ", ":qa!<CR>", {desc = "Force quit all and exit"})
 
     -- Better window navigation.
     map("n", "<C-h>", "<C-w>h", {desc = "Go to left window"})
@@ -141,6 +93,7 @@ function M.setup()
     map("v", "<leader>yp", '"+p',
         { desc = "Paste from clipboard" })
 
+
     -- Clear search highlighting.
     map("n", "<leader>h", ":nohlsearch<CR>", {desc = "Clear highlights"})
 
@@ -180,8 +133,7 @@ function M.setup()
     map("n", "<leader>m", ":Mason<CR>", {desc = "Open Mason"})
 
     -- Diagnostics.
-    map("n", "<leader>q", vim.diagnostic.setloclist,
-        {desc = "Open diagnostic quickfix list"})
+    map("n", "<leader>q", vim.diagnostic.setloclist, {desc = "Open diagnostic quickfix list"})
 end
 
 return M

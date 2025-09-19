@@ -1,5 +1,5 @@
 -- ~/.config/nvim/lua/config/nvim-tabs.lua
--- Smart tabs configuration with dashboard support.
+-- Smart tabs configuration.
 
 local M = {}
 
@@ -21,14 +21,8 @@ local function tab_label(n, style)
     local file = vim.fn.bufname(buf)
     local label = vim.fn.fnamemodify(file, ":t")
 
-    -- Handle special cases
     if label == "" then
-        local filetype = vim.bo[buf].filetype
-        if filetype == "dashboard" then
-            label = "Dashboard"
-        else
-            label = "[No Name]"
-        end
+        label = "[No Name]"
     else
         local parent = vim.fn.fnamemodify(file, ":p:h:t")
         if parent ~= "" and style ~= 0 then
@@ -55,35 +49,15 @@ local function tab_name(style)
     local s = ""
     local tabs = vim.fn.tabpagenr("$")
     local current = vim.fn.tabpagenr()
-
-    -- Always show tabline if more than one tab OR if current tab is not dashboard
-    local should_show = true
-    if tabs == 1 then
-        local buf = vim.fn.tabpagebuflist(1)[1]
-        if vim.bo[buf].filetype == "Dashboard" then
-            should_show = false
+    for i = 1, tabs do
+        if i == current then
+            s = s .. "%#TabLineSel#"
+        else
+            s = s .. "%#TabLine#"
         end
+        s = s .. "%" .. i .. "T" .. tab_label(i, style) .. " ▕"
     end
-
-    if not should_show then
-        local current_buf = vim.api.nvim_get_current_buf()
-        local filetype = vim.bo[current_buf].filetype
-        local bufname = vim.fn.bufname(current_buf)
-        should_show = filetype ~= "Dashboard" or bufname ~= ""
-    end
-
-    if should_show then
-        for i = 1, tabs do
-            if i == current then
-                s = s .. "%#TabLineSel#"
-            else
-                s = s .. "%#TabLine#"
-            end
-            s = s .. "%" .. i .. "T" .. tab_label(i, style) .. " ▕"
-        end
-        s = s .. "%#TabLineFill#%T"
-    end
-
+    s = s .. "%#TabLineFill#%T"
     return s
 end
 

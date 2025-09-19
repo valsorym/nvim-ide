@@ -1,21 +1,11 @@
 -- ~/.config/nvim/lua/plugins/tabs-list.lua
 -- Independent tabs list window.
-
 return {
     "nvim-telescope/telescope.nvim",
     dependencies = {"nvim-lua/plenary.nvim"},
     config = function()
         -- Global namespace for tabs list functionality.
         _G.TabsList = {}
-        _G.TabsList.current_win = nil -- Track current window
-
-        -- Function to close any existing tabs window
-        function _G.TabsList.close_existing_window()
-            if _G.TabsList.current_win and vim.api.nvim_win_is_valid(_G.TabsList.current_win) then
-                pcall(vim.api.nvim_win_close, _G.TabsList.current_win, true)
-            end
-            _G.TabsList.current_win = nil
-        end
 
         -- Function to get list of open tabs with their files.
         function _G.TabsList.get_open_tabs()
@@ -80,9 +70,6 @@ return {
 
         -- Function to create floating window with tabs list.
         function _G.TabsList.show_tabs_window()
-            -- Close any existing window first
-            _G.TabsList.close_existing_window()
-
             local tabs = _G.TabsList.get_open_tabs()
 
             if #tabs == 0 then
@@ -95,7 +82,7 @@ return {
 
             -- Calculate window size.
             local width = math.min(60, vim.o.columns - 10)
-            local height = math.min(15, #tabs + 7)
+            local height = math.min(15, #tabs + 5)
 
             -- Calculate window position (center of screen).
             local row = math.floor((vim.o.lines - height) / 2)
@@ -111,12 +98,10 @@ return {
                 style = "minimal",
                 border = "rounded",
                 title = " Open Tabs ",
-                title_pos = "center",
-                zindex = 1000
+                title_pos = "center"
             }
 
             local win = vim.api.nvim_open_win(buf, true, win_opts)
-            _G.TabsList.current_win = win -- Store window reference
 
             -- Prepare content and store tab mapping.
             local lines = {}
@@ -131,7 +116,7 @@ return {
 
             -- Tab entries.
             for i, tab in ipairs(tabs) do
-                local prefix = tab.is_current and " ⚬ " or "   "
+                local prefix = tab.is_current and " ▶ " or "   "
                 local status = tab.is_modified and " [+]" or ""
                 local line = string.format("%s%d. %s%s", prefix, tab.tab_nr, tab.display_name, status)
                 table.insert(lines, line)
@@ -147,7 +132,7 @@ return {
             end
 
             table.insert(lines, "")
-            table.insert(lines, " Keys: <CR>=switch, d=close, q/ESC=quit")
+            table.insert(lines, " Keys: <CR>=switch, d=close, q=quit")
 
             -- Set buffer content.
             vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
@@ -159,14 +144,6 @@ return {
 
             -- Enable cursor line highlighting.
             vim.wo[win].cursorline = true
-
-            -- Helper function to close window safely
-            local function close_window()
-                if vim.api.nvim_win_is_valid(win) then
-                    vim.api.nvim_win_close(win, true)
-                end
-                _G.TabsList.current_win = nil
-            end
 
             -- Set up keymaps.
             local keymap_opts = {buffer = buf, nowait = true, silent = true}
@@ -180,7 +157,7 @@ return {
                     local tab_nr = line_to_tab[line_nr]
 
                     if tab_nr then
-                        close_window()
+                        vim.api.nvim_win_close(win, true)
                         vim.cmd(tab_nr .. "tabnext")
                     end
                 end,
@@ -197,10 +174,10 @@ return {
 
                     if tab_nr then
                         if vim.fn.tabpagenr("$") > 1 then
-                            close_window()
+                            vim.api.nvim_win_close(win, true)
                             vim.cmd(tab_nr .. "tabclose")
                             -- Reopen window with updated list.
-                            vim.defer_fn(_G.TabsList.show_tabs_window, 200)
+                            vim.defer_fn(_G.TabsList.show_tabs_window, 100)
                         else
                             print("Cannot close the last tab")
                         end
@@ -210,8 +187,23 @@ return {
             )
 
             -- Close window with 'q' or Escape.
-            vim.keymap.set("n", "q", close_window, keymap_opts)
-            vim.keymap.set("n", "<Esc>", close_window, keymap_opts)
+            vim.keymap.set(
+                "n",
+                "q",
+                function()
+                    vim.api.nvim_win_close(win, true)
+                end,
+                keymap_opts
+            )
+
+            vim.keymap.set(
+                "n",
+                "<Esc>",
+                function()
+                    vim.api.nvim_win_close(win, true)
+                end,
+                keymap_opts
+            )
 
             -- Navigate with j/k and arrows.
             vim.keymap.set(
@@ -252,27 +244,27 @@ return {
                 keymap_opts
             )
 
-            -- Arrow keys
-            vim.keymap.set("n", "<Down>", "j", keymap_opts)
-            vim.keymap.set("n", "<Up>", "k", keymap_opts)
+            vim.keymap.set(
+                "n",
+                "<Down>",
+                function()
+                    vim.cmd("normal! j")
+                end,
+                keymap_opts
+            )
 
-            -- Auto-close when window loses focus
-            vim.api.nvim_create_autocmd(
-                "WinLeave",
-                {
-                    buffer = buf,
-                    once = true,
-                    callback = function()
-                        vim.defer_fn(close_window, 100)
-                    end
-                }
+            vim.keymap.set(
+                "n",
+                "<Up>",
+                function()
+                    vim.cmd("normal! k")
+                end,
+                keymap_opts
             )
 
             -- Position cursor on current tab or first tab.
             local start_line = current_tab_line or 5
-            if start_line <= #lines then
-                vim.api.nvim_win_set_cursor(win, {start_line, 0})
-            end
+            vim.api.nvim_win_set_cursor(win, {start_line, 0})
         end
 
         -- Create user command.
