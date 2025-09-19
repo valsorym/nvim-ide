@@ -1,5 +1,6 @@
 lazy-lock.json
 core
+.last_colorscheme
 vibe.py
 .vibe/*
 .mypy_cache/*

@@ -145,7 +145,11 @@ return {
                     {"<F6>", desc = "• Next Tab"},
                     {"<F8>", desc = "• Show Tabs List"},
                     {"<F9>", desc = "• Open File Explorer"},
-                    {"<F10>", desc = "• Show Buffers List"}
+                    {"<F10>", desc = "• Show Buffers List"},
+                    -- UI / THEMES
+                    {"<leader>u", group = " UI/Themes"},
+                    {"<leader>ut", desc = "• Theme Switcher"},
+                    {"<leader>ub", desc = "• Toggle Background"}
                 }
             }
         )
