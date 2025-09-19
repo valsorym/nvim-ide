@@ -192,10 +192,10 @@ return {
                             folder = {
                                 arrow_closed = "", -- ►
                                 arrow_open = "", -- ▼
-                                default = "📁", -- closed folder
-                                open = "📂", -- open folder
-                                empty = "📁", -- "🗀",  -- empty closed
-                                empty_open = "📂", -- "🗁",  -- empty open
+                                default = "", -- closed folder
+                                open = "", -- open folder
+                                empty = "", -- "🗀",  -- empty closed
+                                empty_open = "", -- "🗁",  -- empty open
                                 symlink = "", -- symlink folder
                                 symlink_open = "" -- symlink open
                             },

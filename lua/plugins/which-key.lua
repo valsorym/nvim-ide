@@ -69,12 +69,14 @@ return {
                     },
                     {"<leader>et", desc = "• Show Tabs List"},
                     {"<leader>eb", desc = "• Show Buffers List"},
-                    -- FILES
-                    {"<leader>f", group = " Files"},
+                    -- FILES & SEARCH - Fixed section
+                    {"<leader>f", group = " Find/Search"},
                     {"<leader>ff", desc = "• Find Files"},
-                    {"<leader>fr", desc = "• Recent Files"},
-                    {"<leader>fs", desc = "• Save File"},
-                    {"<leader>fn", desc = "• New File"},
+                    {"<leader>fg", desc = "• Live Grep (search in files)"},
+                    {"<leader>fb", desc = "• Find Buffers"},
+                    {"<leader>fh", desc = "• Help Tags"},
+                    {"<leader>fs", desc = "• Document Symbols (LSP)"},
+                    {"<leader>fw", desc = "• Workspace Symbols (LSP)"},
                     -- YANK / CLIPBOARD (Normal mode)
                     {"<leader>y", group = " Yank/Clipboard", mode = "n"},
                     {"<leader>ya", desc = "• Yank entire buffer to clipboard", mode = "n"},
@@ -84,13 +86,6 @@ return {
                     {"<leader>y", group = " Yank/Clipboard", mode = "v"},
                     {"<leader>yy", desc = "• Yank selection to clipboard", mode = "v"},
                     {"<leader>yp", desc = "• Paste from clipboard", mode = "v"},
-                    -- SEARCH
-                    {"<leader>s", group = " Search"},
-                    {"<leader>sg", desc = "• Live Grep"},
-                    {"<leader>sb", desc = "• Search Buffers"},
-                    {"<leader>sh", desc = "• Help Tags"},
-                    {"<leader>ss", desc = "• Document Symbols"},
-                    {"<leader>sw", desc = "• Workspace Symbols"},
                     -- BUFFERS / TABS
                     {"<leader>b", group = " Buffers/Tabs"},
                     {"<leader>bb", desc = "• List Buffers"},
@@ -133,18 +128,18 @@ return {
                     {"<leader>th", desc = "• Horizontal Terminal"},
                     {"<leader>tv", desc = "• Vertical Terminal"},
                     {"<leader>tb", desc = "• Toggle Git Blame"},
+                    {"<leader>tn", desc = "• New Tab"},
                     {"<leader>m", desc = "• Mason"},
-                    {"<leader>v", desc = "• Select Python Venv"},
+                    {"<leader>vs", desc = "• Select Python Venv"},
                     -- OPTIONS
-                    {"<leader>o", group = " Options"},
-                    {"<leader>oh", desc = "• Clear Highlights"},
+                    {"<leader>h", desc = "• Clear Search Highlights"},
                     -- QUIT / TABS
                     {"<leader>q", group = " Quit/Tabs"},
-                    {"<leader>qq", desc = "• Close Current Tab"},
+                    {"<leader>qq", desc = "• Smart Close Current Tab"},
                     {"<leader>qa", desc = "• Close All Tabs & Exit"},
                     {"<leader>qQ", desc = "• Force Close Current Tab"},
                     {"<leader>qA", desc = "• Force Close All Tabs & Exit"},
-                    -- FUNCTION KEYS - Updated with F10
+                    -- FUNCTION KEYS
                     {"<F2>", desc = "• Save & Format"},
                     {"<F5>", desc = "• Previous Tab"},
                     {"<F6>", desc = "• Next Tab"},

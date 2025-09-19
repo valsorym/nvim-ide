@@ -61,6 +61,10 @@ function M.setup()
     map("n", "<A-h>", ":-tabmove<CR>", {desc = "Move tab left"})
     map("n", "<A-l>", ":+tabmove<CR>", {desc = "Move tab right"})
 
+    -- Create new tab
+    map("n", "<leader>tn", ":tabnew<CR>", {desc = "New tab"})
+    map("n", "<C-t>", ":tabnew<CR>", {desc = "New tab"})
+
     -- File tree modal with F9.
     map(
         "n",
@@ -243,6 +247,9 @@ function M.setup()
     vim.cmd('cabbrev q Q')
     vim.cmd('cabbrev wq Wq')
     vim.cmd('cabbrev WQ Wq')
+
+    -- Override :new to create new tab instead of split
+    vim.cmd('cabbrev new tabnew')
 end
 
 return M
