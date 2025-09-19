@@ -1,0 +1,395 @@
+-- ~/.config/nvim/lua/plugins/lsp.lua
+-- Language Server Protocol configuration.
+
+return {
+    "neovim/nvim-lspconfig",
+    dependencies = {
+        "mason.nvim",
+        "williamboman/mason-lspconfig.nvim",
+        "hrsh7th/cmp-nvim-lsp"
+    },
+    config = function()
+        local cmp_nvim_lsp = require("cmp_nvim_lsp")
+
+        -- Enhanced capabilities with autocompletion
+        local capabilities = cmp_nvim_lsp.default_capabilities()
+
+        -- Python virtual environment detection
+        local function get_python_path()
+            local venv_path = vim.fn.getenv("VIRTUAL_ENV")
+            if venv_path ~= vim.NIL and venv_path ~= "" then
+                return venv_path .. "/bin/python"
+            end
+
+            -- Check for .venv directory
+            if vim.fn.isdirectory(".venv") == 1 then
+                return vim.fn.getcwd() .. "/.venv/bin/python"
+            end
+
+            -- Check for venv directory
+            if vim.fn.isdirectory("venv") == 1 then
+                return vim.fn.getcwd() .. "/venv/bin/python"
+            end
+
+            return "python3"
+        end
+
+        -- Key mappings for LSP
+        local on_attach = function(client, bufnr)
+            local opts = {buffer = bufnr, silent = true}
+
+            -- Navigation
+            vim.keymap.set(
+                "n",
+                "gd",
+                vim.lsp.buf.definition,
+                vim.tbl_extend("force", opts, {desc = "Go to definition"})
+            )
+            vim.keymap.set(
+                "n",
+                "gD",
+                vim.lsp.buf.declaration,
+                vim.tbl_extend("force", opts, {desc = "Go to declaration"})
+            )
+            vim.keymap.set("n", "gr", vim.lsp.buf.references, vim.tbl_extend("force", opts, {desc = "Show references"}))
+            vim.keymap.set(
+                "n",
+                "gi",
+                vim.lsp.buf.implementation,
+                vim.tbl_extend("force", opts, {desc = "Go to implementation"})
+            )
+
+            -- Documentation
+            vim.keymap.set("n", "K", vim.lsp.buf.hover, vim.tbl_extend("force", opts, {desc = "Show hover info"}))
+            vim.keymap.set(
+                "n",
+                "<C-k>",
+                vim.lsp.buf.signature_help,
+                vim.tbl_extend("force", opts, {desc = "Signature help"})
+            )
+
+            -- Code actions
+            vim.keymap.set(
+                "n",
+                "<leader>ca",
+                vim.lsp.buf.code_action,
+                vim.tbl_extend("force", opts, {desc = "Code action"})
+            )
+            vim.keymap.set(
+                "n",
+                "<leader>rn",
+                vim.lsp.buf.rename,
+                vim.tbl_extend("force", opts, {desc = "Rename symbol"})
+            )
+
+            -- Diagnostics
+            vim.keymap.set(
+                "n",
+                "[d",
+                vim.diagnostic.goto_prev,
+                vim.tbl_extend("force", opts, {desc = "Previous diagnostic"})
+            )
+            vim.keymap.set(
+                "n",
+                "]d",
+                vim.diagnostic.goto_next,
+                vim.tbl_extend("force", opts, {desc = "Next diagnostic"})
+            )
+            vim.keymap.set(
+                "n",
+                "<leader>d",
+                vim.diagnostic.open_float,
+                vim.tbl_extend("force", opts, {desc = "Show diagnostics"})
+            )
+
+            -- Format
+            vim.keymap.set(
+                "n",
+                "<leader>f",
+                function()
+                    vim.lsp.buf.format({async = true})
+                end,
+                vim.tbl_extend("force", opts, {desc = "Format buffer"})
+            )
+        end
+
+        -- Diagnostic configuration
+        vim.diagnostic.config(
+            {
+                virtual_text = {
+                    prefix = "⚠", -- Warning triangle instead of circle
+                    source = "if_many",
+                    -- Make virtual text more subtle
+                    format = function(diagnostic)
+                        return diagnostic.message
+                    end
+                },
+                signs = true,
+                underline = true,
+                update_in_insert = false,
+                severity_sort = true,
+                float = {
+                    border = "rounded",
+                    source = "always"
+                }
+            }
+        )
+
+        -- Diagnostic signs with warning triangle
+        local signs = {
+            Error = "⚠",
+            Warn = "⚠",
+            Hint = "⚠",
+            Info = "⚠"
+        }
+        for type, icon in pairs(signs) do
+            local hl = "DiagnosticSign" .. type
+            vim.fn.sign_define(hl, {text = icon, texthl = hl, numhl = hl})
+        end
+
+        -- Make virtual text colors more subtle
+        vim.api.nvim_set_hl(
+            0,
+            "DiagnosticVirtualTextError",
+            {
+                fg = "#6c6c6c",
+                italic = true
+            }
+        )
+        vim.api.nvim_set_hl(
+            0,
+            "DiagnosticVirtualTextWarn",
+            {
+                fg = "#6c6c6c",
+                italic = true
+            }
+        )
+        vim.api.nvim_set_hl(
+            0,
+            "DiagnosticVirtualTextInfo",
+            {
+                fg = "#6c6c6c",
+                italic = true
+            }
+        )
+        vim.api.nvim_set_hl(
+            0,
+            "DiagnosticVirtualTextHint",
+            {
+                fg = "#6c6c6c",
+                italic = true
+            }
+        )
+
+        -- Server configurations using modern vim.lsp.config API
+        local servers = {
+            -- Python with Django support
+            pyright = {
+                settings = {
+                    python = {
+                        pythonPath = get_python_path(),
+                        analysis = {
+                            typeCheckingMode = "basic",
+                            autoSearchPaths = true,
+                            useLibraryCodeForTypes = true,
+                            extraPaths = {"."}
+                        },
+                        workspace = {
+                            symbols = {
+                                maxSymbols = 2000
+                            }
+                        }
+                    }
+                },
+                root_markers = {
+                    "pyrightconfig.json",
+                    ".git",
+                    "pyproject.toml",
+                    "setup.py",
+                    "setup.cfg",
+                    "requirements.txt"
+                }
+            },
+            -- TypeScript/JavaScript.
+            ts_ls = {
+                settings = {
+                    typescript = {
+                        inlayHints = {
+                            includeInlayParameterNameHints = "literal",
+                            includeInlayParameterNameHintsWhenArgumentMatchesName = false,
+                            includeInlayFunctionParameterTypeHints = true,
+                            includeInlayVariableTypeHints = false,
+                            includeInlayPropertyDeclarationTypeHints = true,
+                            includeInlayFunctionLikeReturnTypeHints = true
+                        }
+                    }
+                },
+                root_markers = {"package.json", "tsconfig.json", ".git"}
+            },
+            -- Vue.js (using vue_ls - modern replacement for volar)
+            vue_ls = {
+                filetypes = {"vue"},
+                init_options = {
+                    typescript = {
+                        -- Path to typescript that Mason installs with vue-language-server
+                        tsdk = vim.fn.stdpath("data") ..
+                            "/mason/packages/vue-language-server/node_modules/typescript/lib"
+                    }
+                },
+                root_markers = {"package.json", "vue.config.js", ".git"}
+            },
+            -- HTML with Django template support
+            html = {
+                filetypes = {"html", "htmldjango"},
+                settings = {
+                    html = {
+                        format = {
+                            templating = true,
+                            wrapLineLength = 79,
+                            wrapAttributes = "auto"
+                        },
+                        hover = {
+                            documentation = true,
+                            references = true
+                        }
+                    }
+                },
+                root_markers = {".git"}
+            },
+            -- CSS with embedded support
+            cssls = {
+                settings = {
+                    css = {
+                        validate = true,
+                        lint = {
+                            unknownAtRules = "ignore"
+                        }
+                    },
+                    scss = {
+                        validate = true
+                    },
+                    less = {
+                        validate = true
+                    }
+                },
+                root_markers = {"package.json", ".git"}
+            },
+            -- Emmet for HTML/CSS
+            emmet_ls = {
+                filetypes = {
+                    "html",
+                    "css",
+                    "scss",
+                    "javascript",
+                    "typescript",
+                    "vue",
+                    "htmldjango"
+                },
+                init_options = {
+                    html = {
+                        options = {
+                            ["bem.enabled"] = true
+                        }
+                    }
+                },
+                root_markers = {".git"}
+            },
+            -- Go
+            gopls = {
+                settings = {
+                    gopls = {
+                        analyses = {
+                            unusedparams = true
+                        },
+                        staticcheck = true,
+                        gofumpt = true
+                    }
+                },
+                root_markers = {"go.mod", ".git"}
+            },
+            -- C/C++
+            clangd = {
+                cmd = {
+                    "clangd",
+                    "--background-index",
+                    "--clang-tidy",
+                    "--header-insertion=iwyu",
+                    "--completion-style=detailed",
+                    "--function-arg-placeholders",
+                    "--fallback-style=llvm"
+                },
+                init_options = {
+                    usePlaceholders = true
+                },
+                root_markers = {"compile_commands.json", ".git"}
+            },
+            -- Docker
+            dockerls = {
+                root_markers = {"Dockerfile", ".git"}
+            },
+            -- YAML
+            yamlls = {
+                settings = {
+                    yaml = {
+                        schemas = {
+                            ["https://json.schemastore.org/github-workflow.json"] = "/.github/workflows/*",
+                            ["https://raw.githubusercontent.com/compose-spec/compose-spec/master/schema/compose-spec.json"] = "docker-compose*.yml"
+                        }
+                    }
+                },
+                root_markers = {".git"}
+            },
+            -- JSON
+            jsonls = {
+                settings = {
+                    json = {
+                        schemas = require("schemastore").json.schemas(),
+                        validate = {enable = true}
+                    }
+                },
+                root_markers = {"package.json", ".git"}
+            },
+            -- Lua
+            lua_ls = {
+                settings = {
+                    Lua = {
+                        runtime = {version = "LuaJIT"},
+                        diagnostics = {globals = {"vim"}},
+                        workspace = {
+                            library = vim.api.nvim_get_runtime_file("", true),
+                            checkThirdParty = false
+                        },
+                        telemetry = {enable = false}
+                    }
+                },
+                root_markers = {".luarc.json", ".git"}
+            },
+            -- Bash
+            bashls = {
+                filetypes = {"sh", "bash"},
+                root_markers = {".git"}
+            }
+        }
+
+        -- Setup servers using modern vim.lsp.config API.
+        for server_name, config in pairs(servers) do
+            vim.lsp.config(
+                server_name,
+                {
+                    cmd = config.cmd,
+                    root_markers = config.root_markers or {".git"},
+                    capabilities = capabilities,
+                    settings = config.settings or {},
+                    init_options = config.init_options or {},
+                    filetypes = config.filetypes,
+                    on_attach = on_attach
+                }
+            )
+        end
+
+        -- Enable the configured servers.
+        for server_name, _ in pairs(servers) do
+            vim.lsp.enable(server_name)
+        end
+    end
+}

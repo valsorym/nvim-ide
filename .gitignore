@@ -1,0 +1,5 @@
+lazy-lock.json
+core
+vibe.py
+.vibe/*
+.mypy_cache/*
