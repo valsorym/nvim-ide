@@ -1,0 +1,46 @@
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Editor backups
+*~
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Node modules (if any)
+node_modules/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE specific
+.vscode/
+.idea/
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Build outputs
+build/
+dist/
+target/
+
+# Git
+.git/
+
+# Lazy.nvim data (this will be created on user's machine)
+# Note: These should not be committed as they're user-specific
+# lazy-lock.json will be managed by lazy.nvim automatically
