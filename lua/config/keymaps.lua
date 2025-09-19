@@ -3,6 +3,43 @@
 
 local M = {}
 
+-- Smart tab close function
+local function smart_tab_close()
+    local total_tabs = vim.fn.tabpagenr("$")
+    local current_buf = vim.api.nvim_get_current_buf()
+    local bufname = vim.fn.bufname(current_buf)
+    local filetype = vim.bo[current_buf].filetype
+    local is_modified = vim.bo[current_buf].modified
+
+    -- If it's the last tab
+    if total_tabs == 1 then
+        -- Check if it's Dashboard - only Dashboard should close Neovim
+        if filetype == "dashboard" then
+            -- Close Neovim completely
+            vim.cmd("qa")
+        else
+            -- For any other buffer (files, empty buffers, etc.) - open Dashboard
+            vim.cmd("Dashboard")
+        end
+    else
+        -- Multiple tabs exist - just close current tab
+        vim.cmd("tabclose")
+    end
+end
+
+-- Force close tab (with !)
+local function force_close_tab()
+    local total_tabs = vim.fn.tabpagenr("$")
+
+    if total_tabs == 1 then
+        -- Last tab - open Dashboard regardless of modifications
+        vim.cmd("Dashboard")
+    else
+        -- Multiple tabs - force close current tab
+        vim.cmd("tabclose!")
+    end
+end
+
 function M.setup()
     local map = vim.keymap.set
     local opts = {noremap = true, silent = true}
@@ -94,10 +131,10 @@ function M.setup()
     map("n", "<F5>", ":tabprevious<CR>", {desc = "Previous tab"})
     map("n", "<F6>", ":tabnext<CR>", {desc = "Next tab"})
 
-    -- Updated quit commands - tab management instead of global exit
-    map("n", "<leader>qq", ":tabclose<CR>", {desc = "Close current tab"})
-    map("n", "<leader>qa", ":tabonly | qa<CR>", {desc = "Close all tabs and exit"})
-    map("n", "<leader>qQ", ":tabclose!<CR>", {desc = "Force close current tab"})
+    -- UPDATED: Smart quit commands with new logic
+    map("n", "<leader>qq", smart_tab_close, {desc = "Smart close current tab"})
+    map("n", "<leader>qa", ":qa<CR>", {desc = "Close all tabs and exit"})
+    map("n", "<leader>qQ", force_close_tab, {desc = "Force close current tab"})
     map("n", "<leader>qA", ":qa!<CR>", {desc = "Force close all tabs and exit"})
 
     -- Better window navigation.
@@ -189,6 +226,23 @@ function M.setup()
         end,
         {desc = "Open diagnostic quickfix list"}
     )
+
+    -- Override default Vim quit commands to use smart logic
+    -- Create user commands to replace :q, :wq, etc.
+    vim.api.nvim_create_user_command('Q', smart_tab_close, {bang = true})
+    vim.api.nvim_create_user_command('Wq', function()
+        vim.cmd('write')
+        smart_tab_close()
+    end, {bang = true})
+    vim.api.nvim_create_user_command('WQ', function()
+        vim.cmd('write')
+        smart_tab_close()
+    end, {bang = true})
+
+    -- Create command abbreviations to intercept common quit commands
+    vim.cmd('cabbrev q Q')
+    vim.cmd('cabbrev wq Wq')
+    vim.cmd('cabbrev WQ Wq')
 end
 
 return M
