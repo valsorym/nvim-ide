@@ -25,27 +25,15 @@ return {
             require("mason-lspconfig").setup(
                 {
                     ensure_installed = {
-                        -- Python servers
-                        "pyright", -- Microsoft's Python LSP
-                        -- JavaScript/TypeScript (ts_ls will be installed via mason-tool-installer)
-                        "ts_ls", -- TypeScript Language Server
-                        -- Web technologies
+                        "pyright",
+                        "ts_ls",
                         "html",
                         "cssls",
                         "emmet_ls",
-                        -- Go (use system gopls instead of Mason version)
-                        -- "gopls",        -- Commented out due to installation issues
-
-                        -- C/C++ (use system clangd instead of Mason version)
-                        -- "clangd",       -- Commented out due to installation issues
-
-                        -- DevOps
                         "dockerls",
                         "yamlls",
                         "jsonls",
-                        -- Lua (for Neovim config).
-                        "lua_ls", -- Lua Language Server
-                        -- Bash.
+                        "lua_ls",
                         "bashls"
                     },
                     automatic_installation = true
