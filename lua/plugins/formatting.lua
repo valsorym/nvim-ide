@@ -33,7 +33,7 @@ return {
         null_ls.setup(
             {
                 sources = {
-                    -- Python formatting.
+                    -- Python formatting with consistent line length.
                     null_ls.builtins.formatting.black.with(
                         {
                             command = function()
@@ -44,7 +44,11 @@ return {
                                 end
                                 return "black"
                             end,
-                            extra_args = {"--line-length", "79"}
+                            extra_args = {
+                                "--line-length", "79",
+                                "--target-version", "py38",
+                                "--skip-string-normalization"
+                            }
                         }
                     ),
                     null_ls.builtins.formatting.isort.with(
@@ -57,7 +61,12 @@ return {
                                 end
                                 return "isort"
                             end,
-                            extra_args = {"--profile", "black", "--line-length", "79"}
+                            extra_args = {
+                                "--profile", "black",
+                                "--line-length", "79",
+                                "--multi-line", "3",
+                                "--trailing-comma"
+                            }
                         }
                     ),
                     -- JavaScript/TypeScript/Vue/CSS/HTML.
@@ -78,7 +87,11 @@ return {
                         }
                     ),
                     -- Lua.
-                    null_ls.builtins.formatting.stylua,
+                    null_ls.builtins.formatting.stylua.with(
+                        {
+                            extra_args = {"--column-width", "79"}
+                        }
+                    ),
                     -- Go (goimports includes gofmt functionality).
                     null_ls.builtins.formatting.goimports,
                     -- C/C++.
@@ -148,14 +161,56 @@ return {
                 vim.cmd("write")
                 local python_path = get_python_executable()
                 local isort_cmd = python_path:gsub("/python$", "/isort")
+                local args = "--profile black --line-length 79 --multi-line 3 --trailing-comma"
+
                 if vim.fn.executable(isort_cmd) == 1 then
-                    vim.cmd("!" .. isort_cmd .. " --profile black --line-length 79 %")
+                    vim.cmd("!" .. isort_cmd .. " " .. args .. " %")
                 else
-                    vim.cmd("!isort --profile black --line-length 79 %")
+                    vim.cmd("!isort " .. args .. " %")
                 end
                 vim.cmd("edit!")
             end,
             {desc = "Sort Python imports"}
+        )
+
+        -- Create pyproject.toml configuration reminder command
+        vim.api.nvim_create_user_command(
+            "CreatePyprojectToml",
+            function()
+                local pyproject_content = [[
+[tool.black]
+line-length = 79
+target-version = ['py38']
+skip-string-normalization = true
+
+[tool.isort]
+profile = "black"
+line_length = 79
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+]]
+
+                -- Check if pyproject.toml exists
+                if vim.fn.filereadable("pyproject.toml") == 1 then
+                    print("pyproject.toml already exists. Please check and update manually.")
+                    print("Recommended settings for 79-character line length:")
+                    print(pyproject_content)
+                else
+                    -- Create pyproject.toml
+                    local file = io.open("pyproject.toml", "w")
+                    if file then
+                        file:write(pyproject_content)
+                        file:close()
+                        print("Created pyproject.toml with 79-character line length settings")
+                    else
+                        print("Error: Could not create pyproject.toml")
+                    end
+                end
+            end,
+            {desc = "Create pyproject.toml with 79-char line length settings"}
         )
     end
 }

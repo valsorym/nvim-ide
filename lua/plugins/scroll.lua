@@ -26,7 +26,7 @@ return {
                 hide_if_all_visible = true
             },
 
-            -- Marks on scrollbar (diagnostics, search, etc.)
+            -- Marks on scrollbar (diagnostics only)
             marks = {
                 Cursor = {
                     text = "▒",
@@ -35,14 +35,6 @@ return {
                     color = colors.lavender,
                     color_nr = nil,
                     highlight = "Normal"
-                },
-                Search = {
-                    text = { "-", "-" },
-                    priority = 1,
-                    gui = nil,
-                    color = colors.yellow,
-                    color_nr = nil,
-                    highlight = "Search"
                 },
                 Error = {
                     text = { "-", "-" },
@@ -130,7 +122,7 @@ return {
                 diagnostic = true,
                 gitsigns = false, -- disabled - already shown in sign column
                 handle = true,
-                search = true,
+                search = false, -- disabled - hlslens not installed
                 ale = false
             }
         })
