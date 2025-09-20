@@ -1,5 +1,5 @@
 -- ~/.config/nvim/lua/plugins/lsp.lua
--- Language Server Protocol configuration.
+-- Language Server Protocol configuration with new tab navigation.
 
 return {
     "neovim/nvim-lspconfig",
@@ -37,7 +37,7 @@ return {
         -- Function to show detailed diagnostics in floating window.
         local function show_line_diagnostics()
             local opts = {
-                focusable = false, -- window not focusable for quick dismiss
+                focusable = false,
                 close_events = {"BufLeave", "CursorMoved", "InsertEnter", "FocusLost"},
                 border = "rounded",
                 source = "always",
@@ -47,128 +47,150 @@ return {
             vim.diagnostic.open_float(nil, opts)
         end
 
-        -- Key mappings for LSP.
+        -- Key mappings for LSP with new tab navigation.
         local function on_attach(client, bufnr)
             local opts = {buffer = bufnr, silent = true}
 
-            -- Navigation.
-            vim.keymap.set(
-                "n",
-                "gd",
-                vim.lsp.buf.definition,
-                vim.tbl_extend("force", opts, {desc = "Go to definition"})
-            )
-            vim.keymap.set(
-                "n",
-                "gD",
-                vim.lsp.buf.declaration,
-                vim.tbl_extend("force", opts, {desc = "Go to declaration"})
-            )
-            vim.keymap.set("n", "gr", vim.lsp.buf.references, vim.tbl_extend("force", opts, {desc = "Show references"}))
-            vim.keymap.set(
-                "n",
-                "gi",
-                vim.lsp.buf.implementation,
-                vim.tbl_extend("force", opts, {desc = "Go to implementation"})
-            )
+            -- Custom function for definition in new tab
+            local function go_to_definition_new_tab()
+                local current_buf = vim.api.nvim_get_current_buf()
+                local current_pos = vim.api.nvim_win_get_cursor(0)
 
-            -- Documentation.
-            vim.keymap.set("n", "K", vim.lsp.buf.hover, vim.tbl_extend("force", opts, {desc = "Show hover info"}))
-            vim.keymap.set(
-                "n",
-                "<C-k>",
-                vim.lsp.buf.signature_help,
-                vim.tbl_extend("force", opts, {desc = "Signature help"})
-            )
+                vim.lsp.buf.definition({
+                    on_list = function(options)
+                        if options.items and #options.items > 0 then
+                            local item = options.items[1]
+                            local target_file = item.filename
+                            local current_file = vim.api.nvim_buf_get_name(current_buf)
 
-            -- Code actions.
-            vim.keymap.set(
-                "n",
-                "<leader>ca",
-                vim.lsp.buf.code_action,
-                vim.tbl_extend("force", opts, {desc = "Code action"})
-            )
-            vim.keymap.set(
-                "n",
-                "<leader>rn",
-                vim.lsp.buf.rename,
-                vim.tbl_extend("force", opts, {desc = "Rename symbol"})
-            )
+                            -- If definition is in the same file, just jump there
+                            if target_file == current_file then
+                                vim.api.nvim_win_set_cursor(0, {item.lnum, item.col})
+                                vim.cmd("normal! zz")
+                            else
+                                -- Check if file is already open in any tab
+                                local found_tab = nil
+                                for tab_nr = 1, vim.fn.tabpagenr("$") do
+                                    local buflist = vim.fn.tabpagebuflist(tab_nr)
+                                    for _, buf_nr in ipairs(buflist) do
+                                        if vim.fn.bufname(buf_nr) == target_file then
+                                            found_tab = tab_nr
+                                            break
+                                        end
+                                    end
+                                    if found_tab then break end
+                                end
 
-            -- Diagnostics navigation.
-            vim.keymap.set(
-                "n",
-                "[d",
-                vim.diagnostic.goto_prev,
-                vim.tbl_extend("force", opts, {desc = "Previous diagnostic"})
-            )
-            vim.keymap.set(
-                "n",
-                "]d",
-                vim.diagnostic.goto_next,
-                vim.tbl_extend("force", opts, {desc = "Next diagnostic"})
-            )
+                                if found_tab then
+                                    -- Switch to existing tab
+                                    vim.cmd(found_tab .. "tabnext")
+                                    vim.api.nvim_win_set_cursor(0, {item.lnum, item.col})
+                                    vim.cmd("normal! zz")
+                                else
+                                    -- Open in new tab
+                                    vim.cmd("tabnew " .. vim.fn.fnameescape(target_file))
+                                    vim.api.nvim_win_set_cursor(0, {item.lnum, item.col})
+                                    vim.cmd("normal! zz")
+                                end
+                            end
+                        end
+                    end
+                })
+            end
 
-            -- Show line diagnostics in floating window
-            vim.keymap.set(
-                "n",
-                "<leader>xx",
-                show_line_diagnostics,
-                vim.tbl_extend("force", opts, {desc = "Show line diagnostics"})
-            )
+            -- Custom function for references in quickfix
+            local function show_references()
+                vim.lsp.buf.references(nil, {
+                    on_list = function(options)
+                        vim.fn.setqflist({}, ' ', options)
+                        vim.cmd("copen")
+                        vim.wo.cursorline = true
+                        vim.wo.number = true
+                        vim.wo.relativenumber = false
+                    end
+                })
+            end
 
-            -- Alternative key for quick access to diagnostics.
-            vim.keymap.set(
-                "n",
-                "gl",
-                show_line_diagnostics,
-                vim.tbl_extend("force", opts, {desc = "Show line diagnostics"})
-            )
+            -- Navigation with new tab support
+            vim.keymap.set("n", "gd", go_to_definition_new_tab,
+                vim.tbl_extend("force", opts, {desc = "Go to definition (new tab)"}))
 
-            -- Format.
-            vim.keymap.set(
-                "n",
-                "<leader>f",
-                function()
-                    vim.lsp.buf.format({async = true})
-                end,
-                vim.tbl_extend("force", opts, {desc = "Format buffer"})
-            )
+            vim.keymap.set("n", "gD", function()
+                vim.lsp.buf.declaration()
+            end, vim.tbl_extend("force", opts, {desc = "Go to declaration"}))
+
+            vim.keymap.set("n", "gr", show_references,
+                vim.tbl_extend("force", opts, {desc = "Show references"}))
+
+            vim.keymap.set("n", "gi", function()
+                vim.lsp.buf.implementation()
+            end, vim.tbl_extend("force", opts, {desc = "Go to implementation"}))
+
+            -- Documentation
+            vim.keymap.set("n", "K", vim.lsp.buf.hover,
+                vim.tbl_extend("force", opts, {desc = "Show hover info"}))
+
+            vim.keymap.set("n", "<C-k>", vim.lsp.buf.signature_help,
+                vim.tbl_extend("force", opts, {desc = "Signature help"}))
+
+            -- Code actions (these are also mapped in keymaps.lua for global access)
+            vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action,
+                vim.tbl_extend("force", opts, {desc = "Code action"}))
+
+            vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename,
+                vim.tbl_extend("force", opts, {desc = "Rename symbol"}))
+
+            -- Diagnostics navigation
+            vim.keymap.set("n", "[d", vim.diagnostic.goto_prev,
+                vim.tbl_extend("force", opts, {desc = "Previous diagnostic"}))
+
+            vim.keymap.set("n", "]d", vim.diagnostic.goto_next,
+                vim.tbl_extend("force", opts, {desc = "Next diagnostic"}))
+
+            -- Show line diagnostics
+            vim.keymap.set("n", "<leader>xx", show_line_diagnostics,
+                vim.tbl_extend("force", opts, {desc = "Show line diagnostics"}))
+
+            vim.keymap.set("n", "gl", show_line_diagnostics,
+                vim.tbl_extend("force", opts, {desc = "Show line diagnostics"}))
+
+            -- Format
+            vim.keymap.set("n", "<leader>f", function()
+                vim.lsp.buf.format({async = true})
+            end, vim.tbl_extend("force", opts, {desc = "Format buffer"}))
         end
 
         -- Diagnostic configuration with modern API.
-        vim.diagnostic.config(
-            {
-                -- Disable virtual text (text at end of line).
-                virtual_text = false,
-                -- Show icons in sign column using modern API.
-                signs = {
-                    text = {
-                        [vim.diagnostic.severity.ERROR] = "☣",
-                        [vim.diagnostic.severity.WARN] = "⚠",
-                        [vim.diagnostic.severity.HINT] = "💡",
-                        [vim.diagnostic.severity.INFO] = "ℹ"
-                    }
-                },
-                -- Enable underlines for errors.
-                underline = true,
-                -- Don't update in insert mode for performance.
-                update_in_insert = false,
-                -- Sort by severity
-                severity_sort = true,
-                -- Floating window configuration.
-                float = {
-                    border = "rounded",
-                    source = "always",
-                    header = "",
-                    prefix = "",
-                    -- Compact format.
-                    format = function(diagnostic)
-                        return string.format("%s: %s", diagnostic.source or "LSP", diagnostic.message)
-                    end
+        vim.diagnostic.config({
+            -- Disable virtual text (text at end of line).
+            virtual_text = false,
+            -- Show icons in sign column using modern API.
+            signs = {
+                text = {
+                    [vim.diagnostic.severity.ERROR] = "☣",
+                    [vim.diagnostic.severity.WARN] = "⚠",
+                    [vim.diagnostic.severity.HINT] = "💡",
+                    [vim.diagnostic.severity.INFO] = "ℹ"
                 }
+            },
+            -- Enable underlines for errors.
+            underline = true,
+            -- Don't update in insert mode for performance.
+            update_in_insert = false,
+            -- Sort by severity
+            severity_sort = true,
+            -- Floating window configuration.
+            float = {
+                border = "rounded",
+                source = "always",
+                header = "",
+                prefix = "",
+                -- Compact format.
+                format = function(diagnostic)
+                    return string.format("%s: %s", diagnostic.source or "LSP", diagnostic.message)
+                end
             }
-        )
+        })
 
         -- Debug function to check if diagnostics are working.
         local function debug_diagnostics()
@@ -189,49 +211,30 @@ return {
         vim.api.nvim_create_user_command("DiagnosticsDebug", debug_diagnostics, {desc = "Debug diagnostics"})
 
         -- Force enable signcolumn and refresh diagnostics.
-        vim.api.nvim_create_autocmd(
-            "LspAttach",
-            {
-                callback = function()
-                    vim.wo.signcolumn = "yes"
-                    vim.diagnostic.show()
-                end
-            }
-        )
+        vim.api.nvim_create_autocmd("LspAttach", {
+            callback = function()
+                vim.wo.signcolumn = "yes"
+                vim.diagnostic.show()
+            end
+        })
 
         -- Make virtual text colors more subtle (kept for potential re-enabling).
-        vim.api.nvim_set_hl(
-            0,
-            "DiagnosticVirtualTextError",
-            {
-                fg = "#6c6c6c",
-                italic = true
-            }
-        )
-        vim.api.nvim_set_hl(
-            0,
-            "DiagnosticVirtualTextWarn",
-            {
-                fg = "#6c6c6c",
-                italic = true
-            }
-        )
-        vim.api.nvim_set_hl(
-            0,
-            "DiagnosticVirtualTextInfo",
-            {
-                fg = "#6c6c6c",
-                italic = true
-            }
-        )
-        vim.api.nvim_set_hl(
-            0,
-            "DiagnosticVirtualTextHint",
-            {
-                fg = "#6c6c6c",
-                italic = true
-            }
-        )
+        vim.api.nvim_set_hl(0, "DiagnosticVirtualTextError", {
+            fg = "#6c6c6c",
+            italic = true
+        })
+        vim.api.nvim_set_hl(0, "DiagnosticVirtualTextWarn", {
+            fg = "#6c6c6c",
+            italic = true
+        })
+        vim.api.nvim_set_hl(0, "DiagnosticVirtualTextInfo", {
+            fg = "#6c6c6c",
+            italic = true
+        })
+        vim.api.nvim_set_hl(0, "DiagnosticVirtualTextHint", {
+            fg = "#6c6c6c",
+            italic = true
+        })
 
         -- Server configurations using modern vim.lsp.config API.
         local servers = {

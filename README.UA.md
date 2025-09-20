@@ -32,7 +32,9 @@ sudo apt install -y \
   nodejs \
   npm \
   python3-pip \
-  ripgrep
+  ripgrep \
+  codespell \
+  mypy
 ```
 
 ### 2. Встановлення шрифтів Nerd Fonts

@@ -149,7 +149,12 @@ return {
                     -- UI / THEMES
                     {"<leader>u", group = " UI/Themes"},
                     {"<leader>ut", desc = "• Theme Switcher"},
-                    {"<leader>ub", desc = "• Toggle Background"}
+                    {"<leader>ub", desc = "• Toggle Background"},
+                    -- FUNCTION KEYS
+                    {"<F7>", desc = "• Show Document Symbols"},
+                    -- LSP / CODE
+                    {"<leader>l", group = " LSP/Symbols"},
+                    {"<leader>ls", desc = "• Document Symbols (modal)"},
                 }
             }
         )
