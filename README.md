@@ -9,7 +9,7 @@ A full-featured IDE configuration for Neovim with support for Python + Django, J
 ```bash
 # Update system and install essential tools
 sudo apt update && \
-sudo apt install -y \
+sudo apt install --fix-missing  -y \
   build-essential \
   cmake \
   gettext \
@@ -29,8 +29,6 @@ sudo apt install -y \
   cargo \
   composer \
   xclip \
-  nodejs \
-  npm \
   python3-pip \
   ripgrep \
   codespell \

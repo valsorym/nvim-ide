@@ -47,9 +47,9 @@ return {
             )
         end
     },
-    -- Fuzzy finder.
+    -- Fuzzy finder with tab-based file opening.
     {
-        "nvim-telescope/telescope.nvim",
+    "nvim-telescope/telescope.nvim",
         dependencies = {
             "nvim-lua/plenary.nvim",
             {
@@ -58,73 +58,187 @@ return {
             }
         },
         config = function()
-            require("telescope").setup(
-                {
-                    defaults = {
-                        prompt_prefix = " ",
-                        selection_caret = " ",
-                        path_display = {"truncate"},
-                        file_ignore_patterns = {
-                            "node_modules",
-                            ".git/",
-                            "*.pyc",
-                            "__pycache__",
-                            ".venv",
-                            "venv",
-                            ".env",
-                            "migrations/",
-                            "*.min.js",
-                            "*.min.css",
-                            "static/admin/",
-                            "media/"
+            local telescope = require("telescope")
+            local actions = require("telescope.actions")
+            local tabopen = require("utils.tabopen")
+
+            -- Custom action using unified tab opening
+            local function open_with_tabopen(prompt_bufnr)
+                local entry = require("telescope.actions.state").get_selected_entry()
+                actions.close(prompt_bufnr)
+
+                if entry then
+                    tabopen.open_telescope_entry(entry)
+                end
+            end
+
+            telescope.setup({
+                defaults = {
+                    prompt_prefix = " ",
+                    selection_caret = " ",
+                    path_display = {"truncate"},
+                    file_ignore_patterns = {
+                        "node_modules",
+                        ".git/",
+                        "*.pyc",
+                        "__pycache__",
+                        ".venv",
+                        "venv",
+                        ".env",
+                        "migrations/",
+                        "*.min.js",
+                        "*.min.css",
+                        "static/admin/",
+                        "media/"
+                    },
+                    mappings = {
+                        i = {
+                            ["<CR>"] = open_with_tabopen,
+                            ["<C-t>"] = open_with_tabopen,
+                            ["<C-x>"] = false, -- disable split
+                            ["<C-v>"] = false, -- disable vsplit
+                            ["<C-s>"] = false, -- disable hsplit
+                        },
+                        n = {
+                            ["<CR>"] = open_with_tabopen,
+                            ["<C-t>"] = open_with_tabopen,
+                            ["<C-x>"] = false, -- disable split
+                            ["<C-v>"] = false, -- disable vsplit
+                            ["<C-s>"] = false, -- disable hsplit
+                        }
+                    }
+                },
+                pickers = {
+                    find_files = {
+                        hidden = true,
+                        find_command = {
+                            "rg",
+                            "--files",
+                            "--hidden",
+                            "--glob",
+                            "!**/.git/*",
+                            "--glob",
+                            "!**/__pycache__/*",
+                            "--glob",
+                            "!**/.venv/*"
+                        },
+                        mappings = {
+                            i = {
+                                ["<CR>"] = open_with_tabopen,
+                                ["<C-t>"] = open_with_tabopen,
+                            },
+                            n = {
+                                ["<CR>"] = open_with_tabopen,
+                                ["<C-t>"] = open_with_tabopen,
+                            }
                         }
                     },
-                    pickers = {
-                        find_files = {
-                            hidden = true,
-                            find_command = {
-                                "rg",
-                                "--files",
+                    live_grep = {
+                        additional_args = function()
+                            return {
                                 "--hidden",
                                 "--glob",
                                 "!**/.git/*",
                                 "--glob",
                                 "!**/__pycache__/*",
                                 "--glob",
-                                "!**/.venv/*"
+                                "!**/.venv/*",
+                                "--glob",
+                                "!**/migrations/*"
                             }
-                        },
-                        live_grep = {
-                            additional_args = function()
-                                return {
-                                    "--hidden",
-                                    "--glob",
-                                    "!**/.git/*",
-                                    "--glob",
-                                    "!**/__pycache__/*",
-                                    "--glob",
-                                    "!**/.venv/*",
-                                    "--glob",
-                                    "!**/migrations/*"
-                                }
-                            end
+                        end,
+                        mappings = {
+                            i = {
+                                ["<CR>"] = open_with_tabopen,
+                                ["<C-t>"] = open_with_tabopen,
+                            },
+                            n = {
+                                ["<CR>"] = open_with_tabopen,
+                                ["<C-t>"] = open_with_tabopen,
+                            }
+                        }
+                    },
+                    buffers = {
+                        mappings = {
+                            i = {
+                                ["<CR>"] = open_with_tabopen,
+                                ["<C-t>"] = open_with_tabopen,
+                            },
+                            n = {
+                                ["<CR>"] = open_with_tabopen,
+                                ["<C-t>"] = open_with_tabopen,
+                            }
+                        }
+                    },
+                    lsp_document_symbols = {
+                        mappings = {
+                            i = {
+                                ["<CR>"] = function(prompt_bufnr)
+                                    local entry = require("telescope.actions.state").get_selected_entry()
+                                    actions.close(prompt_bufnr)
+                                    if entry and entry.lnum then
+                                        -- For symbols in same file, just jump
+                                        vim.api.nvim_win_set_cursor(0, {entry.lnum, entry.col or 0})
+                                        vim.cmd("normal! zz")
+                                    end
+                                end,
+                            },
+                            n = {
+                                ["<CR>"] = function(prompt_bufnr)
+                                    local entry = require("telescope.actions.state").get_selected_entry()
+                                    actions.close(prompt_bufnr)
+                                    if entry and entry.lnum then
+                                        -- For symbols in same file, just jump
+                                        vim.api.nvim_win_set_cursor(0, {entry.lnum, entry.col or 0})
+                                        vim.cmd("normal! zz")
+                                    end
+                                end,
+                            }
+                        }
+                    },
+                    lsp_workspace_symbols = {
+                        mappings = {
+                            i = {
+                                ["<CR>"] = open_with_tabopen,
+                                ["<C-t>"] = open_with_tabopen,
+                            },
+                            n = {
+                                ["<CR>"] = open_with_tabopen,
+                                ["<C-t>"] = open_with_tabopen,
+                            }
+                        }
+                    },
+                    oldfiles = {
+                        mappings = {
+                            i = {
+                                ["<CR>"] = open_with_tabopen,
+                                ["<C-t>"] = open_with_tabopen,
+                            },
+                            n = {
+                                ["<CR>"] = open_with_tabopen,
+                                ["<C-t>"] = open_with_tabopen,
+                            }
+                        }
+                    },
+                    help_tags = {
+                        mappings = {
+                            i = {
+                                ["<CR>"] = open_with_tabopen,
+                                ["<C-t>"] = open_with_tabopen,
+                            },
+                            n = {
+                                ["<CR>"] = open_with_tabopen,
+                                ["<C-t>"] = open_with_tabopen,
+                            }
                         }
                     }
                 }
-            )
+            })
 
             require("telescope").load_extension("fzf")
-
-            -- Key mappings
-            local builtin = require("telescope.builtin")
-            vim.keymap.set("n", "<leader>ff", builtin.find_files, {desc = "Find files"})
-            vim.keymap.set("n", "<leader>fg", builtin.live_grep, {desc = "Live grep"})
-            vim.keymap.set("n", "<leader>fb", builtin.buffers, {desc = "Find buffers"})
-            vim.keymap.set("n", "<leader>fh", builtin.help_tags, {desc = "Help tags"})
-            vim.keymap.set("n", "<leader>fs", builtin.lsp_document_symbols, {desc = "Document symbols"})
-            vim.keymap.set("n", "<leader>fw", builtin.lsp_workspace_symbols, {desc = "Workspace symbols"})
         end
     },
+
     -- Git integration.
     {
         "lewis6991/gitsigns.nvim",

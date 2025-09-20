@@ -1,5 +1,5 @@
 -- ~/.config/nvim/lua/plugins/lsp.lua
--- Language Server Protocol configuration with new tab navigation.
+-- Language Server Protocol configuration with unified tab navigation.
 
 return {
     "neovim/nvim-lspconfig",
@@ -10,6 +10,7 @@ return {
     },
     config = function()
         local cmp_nvim_lsp = require("cmp_nvim_lsp")
+        local tabopen = require("utils.tabopen")
 
         -- Enhanced capabilities with autocompletion.
         local capabilities = cmp_nvim_lsp.default_capabilities()
@@ -47,59 +48,34 @@ return {
             vim.diagnostic.open_float(nil, opts)
         end
 
-        -- Key mappings for LSP with new tab navigation.
+        -- Key mappings for LSP with unified tab navigation.
         local function on_attach(client, bufnr)
             local opts = {buffer = bufnr, silent = true}
 
-            -- Custom function for definition in new tab
-            local function go_to_definition_new_tab()
-                local current_buf = vim.api.nvim_get_current_buf()
-                local current_pos = vim.api.nvim_win_get_cursor(0)
-
+            -- Navigation with unified tab support
+            vim.keymap.set("n", "gd", function()
                 vim.lsp.buf.definition({
                     on_list = function(options)
                         if options.items and #options.items > 0 then
                             local item = options.items[1]
-                            local target_file = item.filename
-                            local current_file = vim.api.nvim_buf_get_name(current_buf)
-
-                            -- If definition is in the same file, just jump there
-                            if target_file == current_file then
-                                vim.api.nvim_win_set_cursor(0, {item.lnum, item.col})
-                                vim.cmd("normal! zz")
-                            else
-                                -- Check if file is already open in any tab
-                                local found_tab = nil
-                                for tab_nr = 1, vim.fn.tabpagenr("$") do
-                                    local buflist = vim.fn.tabpagebuflist(tab_nr)
-                                    for _, buf_nr in ipairs(buflist) do
-                                        if vim.fn.bufname(buf_nr) == target_file then
-                                            found_tab = tab_nr
-                                            break
-                                        end
-                                    end
-                                    if found_tab then break end
-                                end
-
-                                if found_tab then
-                                    -- Switch to existing tab
-                                    vim.cmd(found_tab .. "tabnext")
-                                    vim.api.nvim_win_set_cursor(0, {item.lnum, item.col})
-                                    vim.cmd("normal! zz")
-                                else
-                                    -- Open in new tab
-                                    vim.cmd("tabnew " .. vim.fn.fnameescape(target_file))
-                                    vim.api.nvim_win_set_cursor(0, {item.lnum, item.col})
-                                    vim.cmd("normal! zz")
-                                end
-                            end
+                            tabopen.open_lsp_location(item)
                         end
                     end
                 })
-            end
+            end, vim.tbl_extend("force", opts, {desc = "Go to definition (new tab)"}))
 
-            -- Custom function for references in quickfix
-            local function show_references()
+            vim.keymap.set("n", "gD", function()
+                vim.lsp.buf.declaration({
+                    on_list = function(options)
+                        if options.items and #options.items > 0 then
+                            local item = options.items[1]
+                            tabopen.open_lsp_location(item)
+                        end
+                    end
+                })
+            end, vim.tbl_extend("force", opts, {desc = "Go to declaration (new tab)"}))
+
+            vim.keymap.set("n", "gr", function()
                 vim.lsp.buf.references(nil, {
                     on_list = function(options)
                         vim.fn.setqflist({}, ' ', options)
@@ -107,24 +83,34 @@ return {
                         vim.wo.cursorline = true
                         vim.wo.number = true
                         vim.wo.relativenumber = false
+
+                        -- Override quickfix <CR> to open in new tab using unified module
+                        vim.keymap.set("n", "<CR>", function()
+                            local line = vim.fn.getline(".")
+                            local filename = vim.fn.substitute(line, "|.*", "", "")
+                            local lnum = vim.fn.substitute(line, ".*|\\(\\d\\+\\).*", "\\1", "")
+                            local col = vim.fn.substitute(line, ".*|\\d\\+\\s\\+col\\s\\+\\(\\d\\+\\).*", "\\1", "")
+
+                            vim.cmd("cclose")
+
+                            if filename and filename ~= "" then
+                                tabopen.open(filename, tonumber(lnum), tonumber(col))
+                            end
+                        end, {buffer = true, desc = "Open in new tab"})
                     end
                 })
-            end
-
-            -- Navigation with new tab support
-            vim.keymap.set("n", "gd", go_to_definition_new_tab,
-                vim.tbl_extend("force", opts, {desc = "Go to definition (new tab)"}))
-
-            vim.keymap.set("n", "gD", function()
-                vim.lsp.buf.declaration()
-            end, vim.tbl_extend("force", opts, {desc = "Go to declaration"}))
-
-            vim.keymap.set("n", "gr", show_references,
-                vim.tbl_extend("force", opts, {desc = "Show references"}))
+            end, vim.tbl_extend("force", opts, {desc = "Show references"}))
 
             vim.keymap.set("n", "gi", function()
-                vim.lsp.buf.implementation()
-            end, vim.tbl_extend("force", opts, {desc = "Go to implementation"}))
+                vim.lsp.buf.implementation({
+                    on_list = function(options)
+                        if options.items and #options.items > 0 then
+                            local item = options.items[1]
+                            tabopen.open_lsp_location(item)
+                        end
+                    end
+                })
+            end, vim.tbl_extend("force", opts, {desc = "Go to implementation (new tab)"}))
 
             -- Documentation
             vim.keymap.set("n", "K", vim.lsp.buf.hover,

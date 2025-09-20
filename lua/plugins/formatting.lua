@@ -110,20 +110,23 @@ return {
                 }),
 
                 -- JavaScript/TypeScript/Vue/CSS/HTML.
-                null_ls.builtins.formatting.prettier.with({
-                    filetypes = {
-                        "javascript",
-                        "typescript",
-                        "vue",
-                        "css",
-                        "scss",
-                        "html",
-                        "json",
-                        "yaml",
-                        "markdown"
-                    },
-                    extra_args = {"--print-width", "79"}
-                }),
+                -- null_ls.builtins.formatting.prettier.with({
+                --     condition = function()
+                --         return vim.fn.executable("prettier") == 1
+                --     end,
+                --     filetypes = {
+                --         "javascript",
+                --         "typescript",
+                --         "vue",
+                --         "css",
+                --         "scss",
+                --         "html",
+                --         "json",
+                --         "yaml",
+                --         "markdown"
+                --     },
+                --     extra_args = {"--print-width", "79"}
+                -- }),
 
                 -- Lua.
                 null_ls.builtins.formatting.stylua.with({
