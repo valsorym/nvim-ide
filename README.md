@@ -1,13 +1,39 @@
-# NeoVim IDE Configuration
+# Neovim IDE - Tab-Focused Development Environment
 
-A full-featured IDE configuration for Neovim with support for Python + Django, JavaScript/TypeScript, Vue.js, C/C++, Go, and other programming languages.
+## Overview
+
+This Neovim configuration creates a modern IDE experience focused on **tab-based workflow** rather than traditional buffer management. This approach makes it more similar to contemporary IDEs like VSCode, IntelliJ IDEA, or Sublime Text, where each file opens in its own tab for easier navigation and organization.
+
+## Key Philosophy: Tab-Centric Workflow
+
+Unlike traditional Vim workflows that rely heavily on buffers, this configuration prioritizes tabs:
+
+- **Files open in tabs** - Each file gets its own tab automatically
+- **LSP navigation opens in tabs** - Go to definition, references, etc. open in new tabs
+- **Telescope opens in tabs** - File search results open in tabs
+- **Smart tab management** - Orphaned buffers are automatically cleaned up
+- **Visual tab indicators** - Clear tab bar shows all open files
+
+This makes the experience more intuitive for developers coming from modern IDEs while retaining Vim's powerful editing capabilities.
+
+## Core Features
+
+- **Language Server Protocol (LSP)** - Full IDE features for multiple languages
+- **Tab-focused navigation** - All operations work with tabs, not buffers
+- **Smart file explorer** - Modal file tree with tab integration
+- **Advanced search** - Find files and text with tab results
+- **Theme switcher** - Multiple beautiful themes with live preview
+- **Terminal integration** - Built-in terminal with project awareness
+- **Git integration** - Visual git status and operations
+- **Linting/Formatting** - Configurable code quality tools
 
 ## Installation
 
 ### 1. Install Dependencies and Tools
 
+Update system and install essential tools.
+
 ```bash
-# Update system and install essential tools
 sudo apt update && \
 sudo apt install -y \
   build-essential \
@@ -33,14 +59,14 @@ sudo apt install -y \
   npm \
   python3-pip \
   ripgrep \
-  codespell \
-  mypy
+  codespell
 ```
 
 ### 2. Install Nerd Fonts
 
+Download and install popular Nerd Fonts.
+
 ```bash
-# Download and install popular Nerd Fonts
 adwaita="https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/AdwaitaMono.zip"
 anonymous="https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/AnonymousPro.zip"
 jetbrains="https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/JetBrainsMono.zip"
@@ -72,7 +98,7 @@ fc-cache -fv
 
 **⚠️ IMPORTANT**: Set one of the Nerd Font Mono fonts as your terminal's default font for proper icon display.
 
-### 3. Install NeoVim from Source
+### 3. Install Neovim from Source
 
 ```bash
 # Create temporary directory and clone repository
@@ -86,17 +112,23 @@ sudo make install
 
 ### 4. Install Python Tools
 
-```bash
-# Global Python formatter installation
-pip3 install black isort
+Global Python formatter installation.
 
-# Or for specific project with virtual environment
-python3 -m venv .venv
-source .venv/bin/activate
-pip install black isort django  # add other dependencies as needed
+```bash
+pip3 install black isort mypy
 ```
 
-### 5. Install NVim-IDE Configuration
+Or for specific project with virtual environment.
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install black isort django mypy # add other dependencies as needed
+```
+
+### 5. Install Neovim IDE Configuration
+
+Clear cache, and clone this repo.
 
 ```bash
 bash -lc '
@@ -114,11 +146,11 @@ mkdir -p "$config_dir"
 mkdir -p "$data_dir"
 mkdir -p "$state_dir"
 mkdir -p "$cache_dir"
-echo -e "\n\nCloning NVim-IDE..."
-git clone --depth 1 https://github.com/valsorym/nvim-ide "$config_dir"
+echo -e "\n\nCloning Neovim IDE..."
+git clone --depth 1 https://github.com/username/nvim-ide "$config_dir"
 rm -rf "$config_dir/.git"
 nvim --headless "+Lazy! sync" "+qa"
-echo -e "\n\nNVim-IDE installed successfully: $config_dir"
+echo -e "\n\nNeovim IDE installed successfully: $config_dir"
 echo "Plugins will install automatically on first launch..."
 ' && nvim
 ```
@@ -128,234 +160,574 @@ On first launch, Neovim will automatically:
 - Download LSP servers through Mason
 - Configure Treesitter parsers
 
-## Features
+## Language Support
 
 ### Python + Django
-- Automatic virtual environment detection (.venv, venv)
-- Django template support (htmldjango, jinja2)
-- Automatic import sorting with isort
-- Code formatting with Black (79 characters per line)
-- LSP support with Pyright
-- Django management commands through terminal
+- **LSP**: Pyright for type checking and IntelliSense
+- **Formatting**: Black (79 character limit)
+- **Import sorting**: isort (Black-compatible)
+- **Linting**: Optional Codespell for spell checking
+- **Virtual environment**: Automatic detection (.venv, venv)
+- **Django templates**: Support for .htmldjango files
 
-### Web Development
-- Full HTML/CSS/JavaScript/TypeScript support
-- Vue.js with Vue Language Server
-- CSS/JS in `<style>` and `<script>` blocks within HTML files
-- Emmet for rapid HTML/CSS development
-- Prettier for formatting
-- JSON schemas from SchemaStore
+### JavaScript/TypeScript
+- **LSP**: ts_ls for full IDE features
+- **Formatting**: Prettier (79 character limit)
+- **Linting**: ESLint support (configurable)
 
-### Core IDE Features
-- LSP servers for 10+ programming languages
-- Intelligent file manager with file filtering
-- Telescope for fast file and text search
-- Git integration with gitsigns
-- Multi-functional terminal
-- Automatic bracket and pair closing
-- Smart comments for all languages
-- Treesitter for accurate syntax highlighting
-- Which-key for intuitive navigation
-- Automatic formatting on save
+### Vue.js
+- **LSP**: Vue language server with TypeScript support
+- **Formatting**: Prettier for templates and scripts
 
-## Quick Start - Essential Actions
+### HTML/CSS
+- **LSP**: HTML and CSS language servers
+- **Django templates**: Special support for .htmldjango files
+- **Emmet**: Abbreviation expansion for HTML/CSS
 
-### 1. Open File Tree
-```
-F9                    # Open file manager in modal window
-<leader>ee            # Alternative way (<leader> = Space)
+### Other Languages
+- **Go**: gopls with goimports formatting
+- **C/C++**: clangd with LLVM style formatting
+- **Lua**: lua_ls with Neovim-specific configuration
+- **Docker**: Dockerfile language server
+- **JSON/YAML**: Schema validation and formatting
 
-In file manager:
-Enter                 # Open file in new tab or expand folder
-f                     # Start filtering files by name
-F                     # Clear file filter
-q or Esc              # Close file manager
-```
+## Practical Examples
 
-### 2. Open List of Open Buffers/Tabs
-```
-F8                    # Show list of all open tabs
-<leader>et            # Alternative way
-
-F10                   # Show buffers through Telescope
-<leader>eb            # Show buffers through Telescope
-<leader>fb            # Show buffers through Telescope
-
-In tabs list:
-Enter                 # Switch to selected tab
-d                     # Close selected tab
-q or Esc              # Close list
+### 📖 How to find text in current file
+```bash
+# Basic search in current file
+/search_term              # Search forward
+?search_term              # Search backward
+n                         # Next occurrence
+N                         # Previous occurrence
+<leader>h                 # Clear highlighting
 ```
 
-### 3. Navigate Between Tabs
-```
-Alt + Left / F5       # Previous tab
-Alt + Right / F6      # Next tab
-Alt + 1-9             # Go to tab number 1-9
-Alt + h               # Move current tab left
-Alt + l               # Move current tab right
+### 🔍 How to find text in all project files
+```bash
+<leader>fg                # Open Live Grep (search in all files)
+# Type text to search and press Enter
+# Results open in new tabs when pressing Enter
 ```
 
-### 4. Activate Python venv
-```
-<leader>vs            # Select Python virtual environment
-:VenvSelect           # Command for manual venv selection
+### 🎯 Search using regular expressions (Regex)
+```bash
+# In current file
+/\v(pattern1|pattern2)    # Search multiple variants
+/\cText                   # Case insensitive
+/\<word\>                 # Whole words only
+/^\s*function             # Lines starting with "function"
+/\d{3}-\d{2}-\d{4}        # Search phone numbers
 
-Automatic detection:
-1. Checks VIRTUAL_ENV variable
-2. Looks for .venv in current directory
-3. Looks for venv in current directory
-4. Uses system python3
-```
-
-### 5. Move Files in Subdirectory (nvim-tree)
-```
-F9                    # Open nvim-tree
-x                     # Cut file
-Navigate to destination folder
-p                     # Paste file
-
-Alternatively:
-c                     # Copy file
-p                     # Paste copy
+# In all files through Live Grep
+<leader>fg
+# Enter regex: class\s+\w+\(.*\):  # Find all Python classes
 ```
 
-### 6. Close File (and All Files)
+### ✏️ How to replace text in current file
+```bash
+:%s/old_text/new_text/g      # Replace all occurrences
+:%s/old_text/new_text/gc     # Replace with confirmation
+:%s/old_text/new_text/gi     # Ignore case
+
+# In selected range
+:1,10s/old/new/g             # Lines 1-10
+:.,$s/old/new/g              # From current line to end
 ```
-<leader>qq            # Close current tab
-<leader>qa            # Close all tabs and exit nvim
-<leader>qQ            # Force close current tab (without saving)
-<leader>qA            # Force close everything and exit
+
+### 🔄 How to replace text in all files
+```bash
+# Method 1: Through Live Grep
+<leader>fg                   # Find text in all files
+# After getting results:
+:cfdo %s/old/new/g | update  # Replace in all found files
+
+# Method 2: Through specific files
+:args **/*.py                # Select all Python files
+:argdo %s/old/new/g | update # Replace in all selected files
 ```
 
-## Complete Key Bindings Reference
+### 🎨 Replace using regular expressions
+```bash
+# Replace with capture groups
+:%s/\v(\w+)\s+(\w+)/\2 \1/g       # Swap words
+:%s/\v(\d{4})-(\d{2})-(\d{2})/\3.\2.\1/g  # Date: 2024-12-25 → 25.12.2024
 
-### Files and Navigation
+# Complex replacements
+:%s/\v<(class|def)\s+(\w+)/\1 NEW_\2/g    # Add prefix to classes & functions
+:%s/\vfunction\s+(\w+)\(/const \1 = (/g   # JS: function name() → const name = (
+```
 
-| Keys         | Action                             |
-| ------------ | ---------------------------------- |
-| `F9`         | Open/close file manager            |
-| `<leader>ee` | Open file manager                  |
-| `<leader>ff` | Find files (Telescope)             |
-| `<leader>fg` | Search text in project (Live Grep) |
-| `<leader>fb` | List open buffers                  |
-| `<leader>fh` | Help (Help tags)                   |
-| `<leader>fs` | Document symbols                   |
-| `<leader>fw` | Workspace symbols                  |
+### 🌳 How to view file tree (Tree)
+```bash
+F9                        # Open file explorer
+<leader>ee                # Alternative way
 
-### Tabs
+# In file tree:
+hjkl or arrows            # Navigation
+Enter                     # Open file/expand folder
+f                         # Start filtering
+F                         # Clear filter
+H                         # Show/hide hidden files
+r                         # Refresh tree
+q or Esc                  # Close
+```
 
-| Keys                 | Action                   |
-| -------------------- | ------------------------ |
-| `Alt + Left` / `F5`  | Previous tab             |
-| `Alt + Right` / `F6` | Next tab                 |
-| `Alt + 1-9`          | Go to tab 1-9            |
-| `Alt + h`            | Move tab left            |
-| `Alt + l`            | Move tab right           |
-| `F8`                 | List all open tabs       |
-| `<leader>et`         | List all open tabs       |
-| `F10`                | List buffers (Telescope) |
-| `<leader>eb`         | List buffers (Telescope) |
-| `<leader>fb`         | List buffers (Telescope) |
+### 📋 How to view active buffers (Buffers)
+```bash
+F10                       # List buffers through Telescope
+<leader>eb                # Alternative way
+<leader>fb                # Another option
 
-### Terminal
+# In buffer list:
+hjkl or arrows            # Navigation
+Enter                     # Open buffer in new tab
+Ctrl+x                    # Delete buffer
+```
 
-| Keys         | Action                                     |
-| ------------ | ------------------------------------------ |
-| `Ctrl + \`   | Open/close floating terminal               |
-| `<leader>tf` | Floating terminal                          |
-| `<leader>th` | Horizontal terminal                        |
-| `<leader>tv` | Vertical terminal (width 80)               |
-| `<leader>tp` | Python terminal (with virtual environment) |
-| `<leader>td` | Django shell                               |
-| `<leader>tr` | Django runserver                           |
-| `<leader>tn` | Node.js terminal                           |
+### 📑 How to view active tabs (Tabs)
+```bash
+F8                        # Show list of all tabs
+<leader>et                # Alternative way
 
-### LSP (Language Server)
+# In tab list:
+hjkl or arrows            # Navigation
+Enter                     # Switch to tab
+d                         # Close tab
+q or Esc                  # Close list
+```
 
-| Keys         | Action               |
-| ------------ | -------------------- |
-| `gd`         | Go to definition     |
-| `gD`         | Go to declaration    |
-| `gr`         | Show all references  |
-| `gi`         | Go to implementation |
-| `K`          | Show documentation   |
-| `<C-k>`      | Signature help       |
-| `<leader>ca` | Code actions         |
-| `<leader>rn` | Rename symbol        |
+### 🎯 How to navigate code (Code Definitions)
+```bash
+# Main navigation
+gd                        # Go to definition (opens in new tab)
+gD                        # Go to declaration
+gi                        # Go to implementation
+gr                        # Show all references (in quickfix)
+K                         # Show documentation
+Ctrl+k                    # Function signature
 
-### Formatting and Saving
+# Symbol navigation
+F7                        # Show all symbols in file
+<leader>ls                # Alternative way
+<leader>lg                # Grouped symbols (by type)
+<leader>fw                # Symbols in entire project
+```
 
-| Keys         | Action                      |
-| ------------ | --------------------------- |
-| `F2`         | Smart save + formatting     |
-| `<leader>f`  | Format current buffer       |
-| `<leader>F`  | Format document             |
-| `<leader>tf` | Toggle auto-format on save  |
-| `<leader>is` | Sort Python imports (isort) |
+### 📁 File tree operations: create, delete, rename
+```bash
+# Open file tree
+F9
 
-### Diagnostics
+# File and folder operations:
+a                         # Create file (file.txt) or folder (folder/)
+d                         # Delete selected file/folder
+rn                        # Rename file/folder
+c                         # Copy file/folder
+x                         # Cut file/folder
+p                         # Paste file/folder
 
-| Keys        | Action                              |
-| ----------- | ----------------------------------- |
-| `]d`        | Next error/warning                  |
-| `[d`        | Previous error/warning              |
-| `<leader>d` | Show diagnostics in floating window |
-| `<leader>q` | Open error list (quickfix)          |
+# Directory navigation:
+C                         # Change root to current working directory
+R                         # Select new root directory
+P                         # Go to parent directory
+```
 
-### Editing
+### ✂️ How to select text
+```bash
+# Basic selection
+v                         # Character selection
+V                         # Line selection
+Ctrl+v                    # Block (column) selection
 
-| Keys                | Action                                          |
-| ------------------- | ----------------------------------------------- |
-| `gcc`               | Comment/uncomment line                          |
-| `gbc`               | Block comment                                   |
-| `gcO`               | Comment above                                   |
-| `gco`               | Comment below                                   |
-| `gcA`               | Comment at end of line                          |
-| `<` / `>`           | Decrease/increase indent (preserving selection) |
-| `Alt + j/k`         | Move lines up/down                              |
-| `J/K` (visual mode) | Move blocks up/down                             |
+# Object selection
+viw                       # Select word (inner word)
+vaw                       # Select word with spaces (around word)
+vip                       # Select paragraph
+vi"                       # Select text in double quotes
+vi'                       # Select text in single quotes
+vi(, vi[, vi{             # Select text in brackets
+```
 
-### Clipboard
+### 📄 How to select entire file
+```bash
+ggVG                      # Classic Vim way
+<leader>ya                # Copy entire file to system clipboard
+Ctrl+a                    # Select all (in some modes)
+```
 
-| Keys         | Action                                            |
-| ------------ | ------------------------------------------------- |
-| `<leader>ya` | Copy entire buffer to clipboard                   |
-| `<leader>yy` | Copy selection to clipboard (also in visual mode) |
-| `<leader>yp` | Paste from clipboard (also in visual mode)        |
+### 📋 How to copy
+```bash
+# Copy to system clipboard
+<leader>yy                # Copy selected text
+<leader>ya                # Copy entire file
+y                         # Copy to internal Vim buffer
+yy                        # Copy current line
+5yy                       # Copy 5 lines
+```
 
-### Windows
+### 📌 How to paste
+```bash
+# Paste from system clipboard
+<leader>yp                # Paste from system clipboard
+p                         # Paste after cursor (from Vim buffer)
+P                         # Paste before cursor (from Vim buffer)
 
-| Keys             | Action                   |
-| ---------------- | ------------------------ |
-| `<C-h/j/k/l>`    | Navigate between windows |
-| `<C-Up/Down>`    | Change window height     |
-| `<C-Left/Right>` | Change window width      |
+# In visual mode
+# Select text, then <leader>yp - replaces selection
+```
 
-### Git
+### 🚪 How to exit
+```bash
+# Smart exit (recommended)
+<leader>qq                # Close current tab (goes to Dashboard if last)
+<leader>qa                # Close all tabs and exit
+<leader>qQ                # Force close tab without saving
+<leader>qA                # Force close all without saving
 
-| Keys         | Action               |
-| ------------ | -------------------- |
-| `<leader>hs` | Stage hunk           |
-| `<leader>hr` | Reset hunk changes   |
-| `<leader>hp` | Preview hunk         |
-| `<leader>hb` | Show blame for line  |
-| `<leader>tb` | Toggle blame display |
-| `<leader>hd` | Show diff            |
-| `]c`         | Next hunk            |
-| `[c`         | Previous hunk        |
+# Classic Vim commands
+:q                        # Quit (if no changes)
+:q!                       # Quit without saving
+:wq                       # Save and quit
+:x                        # Save and quit (if changes exist)
+```
 
-### System and Others
+### 💡 How to open hints (Which-Key)
+```bash
+<leader>                  # Press space and wait
+# A window will appear with all available commands
 
-| Keys         | Action                            |
-| ------------ | --------------------------------- |
-| `<leader>m`  | Open Mason (LSP manager)          |
-| `<leader>vs` | Select Python virtual environment |
-| `<leader>qq` | Close current tab                 |
-| `<leader>qa` | Close all tabs and exit           |
-| `<leader>qQ` | Force close current tab           |
-| `<leader>qA` | Force close everything and exit   |
-| `<leader>h`  | Clear search highlighting         |
+# Navigate through hints:
+<leader>e                 # Show Explorer commands
+<leader>f                 # Show Find/Search commands
+<leader>g                 # Show Git commands
+<leader>k                 # Show Linter commands
+<leader>t                 # Show Terminal commands
+<leader>u                 # Show UI/Theme commands
+<leader>q                 # Show Quit commands
+```
+
+### 🎨 How to temporarily change theme
+```bash
+<leader>ut                # Open theme switcher
+# Navigate with arrows or type to filter
+# Enter - apply theme temporarily (for current session only)
+# Theme resets on Neovim restart
+```
+
+### 🎯 How to permanently change theme
+```bash
+<leader>us                # Open permanent theme setting menu
+# Navigate and select theme
+# Enter - apply and save theme forever
+# Theme will load on every startup
+
+<leader>ui                # Show current theme information
+```
+
+### 🔧 How to activate/deactivate linters
+```bash
+# Toggle linters
+<leader>kc                # Toggle Codespell (spell checking)
+<leader>kd                # Toggle djlint (Django templates)
+<leader>ke                # Toggle ESLint (JavaScript)
+<leader>kf                # Toggle Flake8 (Python)
+
+# Check status
+:PythonToolsStatus        # Show Python tools status
+:CreatePyprojectToml      # Create Python configuration file
+```
+
+## 20 Additional Useful Examples
+
+### 🚀 Quick Productivity
+1. **Quick save with formatting**: `F2` - saves and formats code immediately
+2. **Reload file**: `:e!` - reload file from disk
+3. **Quick line jump**: `:line_number` or `numberG` - instant jump
+4. **Center screen**: `zz` - center current line on screen
+5. **Quick indent formatting**: In visual mode `=` - auto-indent
+
+### 🔄 Working with tabs and files
+6. **Clone tab**: `:tab split` - duplicate current file in new tab
+7. **Move tabs**: `Alt+h` and `Alt+l` - move tab left/right
+8. **Close all except current**: `:only` - keep only current tab
+9. **Open file in vertical split**: `:vsplit filename`
+10. **Jump to last position**: `Ctrl+o` - return to previous cursor position
+
+### ✨ Text editing
+11. **Move lines**: `Alt+j/k` - move selected lines up/down
+12. **Duplicate line**: `yyp` - copy and paste current line
+13. **Join lines**: `J` - join current line with next
+14. **Replace character under cursor**: `r + new_character` - replace one character
+15. **Delete to end of line**: `D` - delete from cursor to end of line
+
+### 🎮 Advanced features
+16. **Python terminal with venv**: `<leader>tp` - open Python REPL with active virtual environment
+17. **Django shell**: `<leader>td` - launch Django management shell
+18. **Sort Python imports**: `<leader>is` - automatically sort imports according to Black standard
+19. **Navigate errors**: `]d` and `[d` - jump to next/previous diagnostic error
+20. **Quick comment**: `gcc` - comment/uncomment current line
+
+### 🔍 Bonus search tips
+21. **Search word under cursor**: `*` - find next occurrence of word under cursor
+22. **Search backwards**: `#` - find previous occurrence of word
+23. **Incremental search**: `:set incsearch` - show results while typing
+24. **Search in command history**: `:` then `Ctrl+p/n` - navigate command history
+25. **Quick access to last search**: `/<Enter>` - repeat last search
+
+### File and Project Navigation
+
+#### File Tree Operations
+| Action                 | Key                  | Description                         |
+| ---------------------- | -------------------- | ----------------------------------- |
+| **Open file explorer** | `F9` or `<leader>ee` | Open modal file tree                |
+| **Navigate**           | Arrow keys or `hjkl` | Move through files                  |
+| **Open file**          | `Enter`              | Open in new tab                     |
+| **Create file/folder** | `a`                  | Add file (use ./ for folder)        |
+| **Delete**             | `d`                  | Delete selected item                |
+| **Rename**             | `rn`                 | Rename selected item                |
+| **Copy**               | `c`                  | Copy selected item                  |
+| **Cut**                | `x`                  | Cut selected item                   |
+| **Paste**              | `p`                  | Paste item                          |
+| **Change root**        | `C`                  | Change to current working directory |
+| **Pick root**          | `R`                  | Choose custom root directory        |
+| **Go to parent**       | `P`                  | Navigate to parent directory        |
+| **Toggle hidden**      | `H`                  | Show/hide hidden files              |
+| **Filter files**       | `f`                  | Start live filtering                |
+| **Clear filter**       | `F`                  | Clear current filter                |
+| **Refresh**            | `r`                  | Refresh file tree                   |
+| **Close explorer**     | `Esc` or `q`         | Close file tree                     |
+
+#### Active Buffers and Tabs
+| Action                 | Key                         | Description           |
+| ---------------------- | --------------------------- | --------------------- |
+| **Show all buffers**   | `F10` or `<leader>eb`       | List all open buffers |
+| **Show all tabs**      | `F8` or `<leader>et`        | List all open tabs    |
+| **Navigate tabs**      | `Alt+Left/Right` or `F5/F6` | Switch between tabs   |
+| **Go to specific tab** | `Alt+1` through `Alt+9`     | Jump to tab number    |
+| **Move tab position**  | `Alt+h/l`                   | Move tab left/right   |
+| **Create new tab**     | `Ctrl+t` or `<leader>tn`    | Open new empty tab    |
+
+#### Code Navigation and Definitions
+| Action                   | Key                  | Description                               |
+| ------------------------ | -------------------- | ----------------------------------------- |
+| **Go to definition**     | `gd`                 | Jump to definition (opens in new tab)     |
+| **Go to declaration**    | `gD`                 | Jump to declaration (opens in new tab)    |
+| **Go to implementation** | `gi`                 | Jump to implementation (opens in new tab) |
+| **Show references**      | `gr`                 | Show all references (opens in quickfix)   |
+| **Hover information**    | `K`                  | Show documentation popup                  |
+| **Show symbols in file** | `F7` or `<leader>ls` | Browse document symbols                   |
+| **Show symbols grouped** | `<leader>lg`         | Browse symbols by type                    |
+| **Workspace symbols**    | `<leader>fw`         | Search symbols in project                 |
+| **Signature help**       | `Ctrl+k`             | Show function signature                   |
+
+### Text Selection and Clipboard
+
+#### Text Selection
+| Action                     | Key                             | Description           |
+| -------------------------- | ------------------------------- | --------------------- |
+| **Character selection**    | `v` + movement                  | Select characters     |
+| **Line selection**         | `V` + movement                  | Select lines          |
+| **Block selection**        | `Ctrl+v` + movement             | Select columns        |
+| **Select entire file**     | `<leader>ya` or `ggVG`          | Select all content    |
+| **Select word**            | `viw` (inner) or `vaw` (around) | Select word           |
+| **Select paragraph**       | `vip`                           | Select paragraph      |
+| **Select inside quotes**   | `vi"` or `vi'`                  | Select quoted text    |
+| **Select inside brackets** | `vi(`, `vi[`, `vi{`             | Select bracketed text |
+
+#### Copy and Paste Operations
+| Action                   | Key          | Description                      |
+| ------------------------ | ------------ | -------------------------------- |
+| **Copy selection**       | `<leader>yy` | Copy to system clipboard         |
+| **Copy entire file**     | `<leader>ya` | Copy all to system clipboard     |
+| **Paste from clipboard** | `<leader>yp` | Paste from system clipboard      |
+| **Paste in visual mode** | `<leader>yp` | Replace selection with clipboard |
+| **Regular vim yank**     | `y`          | Copy to vim register             |
+| **Regular vim paste**    | `p`          | Paste from vim register          |
+
+### Application Control
+
+#### Exit and Quit Operations
+| Action                     | Key          | Description                           |
+| -------------------------- | ------------ | ------------------------------------- |
+| **Smart quit current tab** | `<leader>qq` | Close tab (goes to Dashboard if last) |
+| **Force quit current tab** | `<leader>qQ` | Force close without saving            |
+| **Quit all tabs**          | `<leader>qa` | Close all and exit                    |
+| **Force quit all**         | `<leader>qA` | Force close all without saving        |
+
+#### Help and Hints
+| Action               | Key                | Description              |
+| -------------------- | ------------------ | ------------------------ |
+| **Open help system** | `<leader>`         | Wait for Which-Key popup |
+| **Help for topic**   | `:help topic_name` | Open help documentation  |
+| **LSP information**  | `:LspInfo`         | Show LSP server status   |
+| **Plugin manager**   | `<leader>m`        | Open Mason (LSP manager) |
+
+### Theme Management
+
+#### Temporary Theme Change
+| Action                  | Key          | Description                     |
+| ----------------------- | ------------ | ------------------------------- |
+| **Open theme switcher** | `<leader>ut` | Browse and preview themes       |
+| **Apply temporarily**   | `Enter`      | Apply theme for current session |
+
+#### Permanent Theme Change
+| Action                  | Key          | Description            |
+| ----------------------- | ------------ | ---------------------- |
+| **Set permanent theme** | `<leader>us` | Choose and save theme  |
+| **Check current theme** | `<leader>ui` | Show theme information |
+
+### Linter Management
+
+#### Toggle Linters
+| Action                   | Key                    | Description                     |
+| ------------------------ | ---------------------- | ------------------------------- |
+| **Toggle Codespell**     | `<leader>kc`           | Spelling checker on/off         |
+| **Toggle djlint**        | `<leader>kd`           | Django template linter on/off   |
+| **Toggle ESLint**        | `<leader>ke`           | JavaScript linter (placeholder) |
+| **Toggle Flake8**        | `<leader>kf`           | Python linter (placeholder)     |
+| **Check tools status**   | `:PythonToolsStatus`   | Show available Python tools     |
+| **Create Python config** | `:CreatePyprojectToml` | Generate pyproject.toml         |
+
+## Complete Key Mappings Reference
+
+### Function Keys
+| Key   | Action                     |
+| ----- | -------------------------- |
+| `F2`  | Save and format file       |
+| `F5`  | Previous tab               |
+| `F6`  | Next tab                   |
+| `F7`  | Document symbols inspector |
+| `F8`  | Tabs list                  |
+| `F9`  | File explorer (modal)      |
+| `F10` | Buffers list               |
+
+### Leader Key Combinations (`<leader>` = Space)
+
+#### Explorer (`<leader>e`)
+| Key  | Action        |
+| ---- | ------------- |
+| `ee` | File explorer |
+| `eb` | Buffers list  |
+| `et` | Tabs list     |
+
+#### Find/Search (`<leader>f`)
+| Key  | Action                      |
+| ---- | --------------------------- |
+| `ff` | Find files                  |
+| `fg` | Live grep (search in files) |
+| `fb` | Find buffers                |
+| `fh` | Help tags                   |
+| `fs` | Document symbols            |
+| `fw` | Workspace symbols           |
+
+#### Yank/Clipboard (`<leader>y`)
+| Key  | Action                 |
+| ---- | ---------------------- |
+| `ya` | Yank all (entire file) |
+| `yy` | Yank selection         |
+| `yp` | Paste from clipboard   |
+
+#### Buffers/Tabs (`<leader>b`)
+| Key  | Action          |
+| ---- | --------------- |
+| `bb` | List buffers    |
+| `bd` | Delete buffer   |
+| `bn` | Next buffer     |
+| `bp` | Previous buffer |
+
+#### Git (`<leader>g`) / Hunk Operations (`<leader>h`)
+| Key  | Action       |
+| ---- | ------------ |
+| `hs` | Stage hunk   |
+| `hr` | Reset hunk   |
+| `hp` | Preview hunk |
+| `hb` | Blame line   |
+| `hd` | Diff this    |
+
+#### Code/LSP (`<leader>c`)
+| Key  | Action        |
+| ---- | ------------- |
+| `ca` | Code action   |
+| `rn` | Rename symbol |
+
+#### Linters (`<leader>k`)
+| Key  | Action           |
+| ---- | ---------------- |
+| `kc` | Toggle Codespell |
+| `kd` | Toggle djlint    |
+| `ke` | Toggle ESLint    |
+| `kf` | Toggle Flake8    |
+
+#### Diagnostics (`<leader>x`)
+| Key  | Action                |
+| ---- | --------------------- |
+| `xx` | Show line diagnostics |
+| `xl` | Open diagnostic list  |
+
+#### Terminal/Tools (`<leader>t`)
+| Key  | Action              |
+| ---- | ------------------- |
+| `tf` | Float terminal      |
+| `th` | Horizontal terminal |
+| `tv` | Vertical terminal   |
+| `tp` | Python terminal     |
+| `td` | Django shell        |
+| `tn` | New tab             |
+
+#### Quit (`<leader>q`)
+| Key  | Action          |
+| ---- | --------------- |
+| `qq` | Smart close tab |
+| `qa` | Close all tabs  |
+| `qQ` | Force close tab |
+| `qA` | Force close all |
+
+#### UI/Themes (`<leader>u`)
+| Key  | Action                     |
+| ---- | -------------------------- |
+| `ut` | Theme switcher (temporary) |
+| `us` | Set permanent theme        |
+| `ui` | Theme info                 |
+
+#### LSP/Symbols (`<leader>l`)
+| Key  | Action                     |
+| ---- | -------------------------- |
+| `ls` | Document symbols           |
+| `lg` | Document symbols (grouped) |
+
+### Alt Key Combinations
+| Key              | Action               |
+| ---------------- | -------------------- |
+| `Alt+Left/Right` | Navigate tabs        |
+| `Alt+1-9`        | Jump to specific tab |
+| `Alt+h/l`        | Move tab left/right  |
+| `Alt+j/k`        | Move lines up/down   |
+
+### Special Keys
+| Key            | Action                    |
+| -------------- | ------------------------- |
+| `Ctrl+t`       | New tab                   |
+| `Ctrl+\`       | Toggle floating terminal  |
+| `Ctrl+h/j/k/l` | Navigate windows          |
+| `Esc`          | Close current modal/popup |
+
+### LSP Navigation
+| Key      | Action               |
+| -------- | -------------------- |
+| `gd`     | Go to definition     |
+| `gD`     | Go to declaration    |
+| `gi`     | Go to implementation |
+| `gr`     | Show references      |
+| `K`      | Hover documentation  |
+| `Ctrl+k` | Signature help       |
+
+### Diagnostics Navigation
+| Key  | Action                |
+| ---- | --------------------- |
+| `]d` | Next diagnostic       |
+| `[d` | Previous diagnostic   |
+| `gl` | Show line diagnostics |
 
 ## Supported Programming Languages
 
@@ -374,62 +746,82 @@ p                     # Paste copy
 | **Docker**                | dockerls   | -             | Dockerfile support               |
 | **Bash**                  | bashls     | -             | Shell scripting                  |
 
-## Project Structure
+## Configuration Structure
 
 ```
 ~/.config/nvim/
-├── init.lua                              # Main configuration file
-├── after/plugin/
-│   └── nvimtree-autoclose.lua           # Auto-close empty tabs
-└── lua/
-    ├── config/
-    │   ├── colorcolumn.lua              # Vertical line at 79 characters
-    │   ├── keymaps.lua                  # Centralized key mappings
-    │   ├── line-numbers.lua             # Smart line numbers
-    │   └── nvim-tabs.lua                # Custom tabs with parent/filename
-    └── plugins/
-        ├── additional.lua               # Treesitter, Telescope, Git, Terminal
-        ├── completion.lua               # nvim-cmp with LuaSnip
-        ├── dashboard.lua                # Start screen
-        ├── formatting.lua               # null-ls for formatting
-        ├── lsp.lua                      # LSP configuration for all languages
-        ├── mason.lua                    # LSP server manager
-        ├── nvim-tree.lua               # File manager
-        ├── tabs-list.lua               # Independent tabs list
-        ├── theme.lua                    # Catppuccin theme
-        └── which-key.lua               # Key bindings helper
+├── lua/
+│   ├── config/
+│   │   ├── colorcolumn.lua    # 79-character guide
+│   │   ├── keymaps.lua        # All key mappings
+│   │   ├── line-numbers.lua   # Hybrid line numbers
+│   │   └── nvim-tabs.lua      # Tab bar configuration
+│   └── plugins/
+│       ├── additional.lua     # Core plugins (Treesitter, Telescope)
+│       ├── code-inspector.lua # Symbol browser
+│       ├── completion.lua     # Autocompletion
+│       ├── dashboard.lua      # Start screen
+│       ├── footer.lua         # Status line
+│       ├── formatting.lua     # Code formatting and linting
+│       ├── lsp.lua           # Language servers
+│       ├── mason.lua         # LSP installer
+│       ├── nvim-tree.lua     # File explorer
+│       ├── scroll.lua        # Scrollbar
+│       ├── tabs-list.lua     # Tab management
+│       ├── theme.lua         # Theme switcher
+│       └── which-key.lua     # Key binding helper
+└── .last_colorscheme         # Saved theme preference
 ```
 
-## Configuration Features
+## Quick Start Guide
 
-### Smart Tabs
-- Show parent/filename for better navigation
-- Auto-close empty tabs with only NvimTree
-- Preserve last tab with new empty file
+### 1. Open File Tree
+```
+F9                    # Open file manager in modal window
+<leader>ee            # Alternative way (<leader> = Space)
 
-### File Manager
-- Modal floating window
-- Live file filtering with `f` key
-- Sync with current file
-- Root directory management
+In file manager:
+Enter                 # Open file in new tab or expand folder
+f                     # Start filtering files by name
+F                     # Clear file filter
+q or Esc              # Close file manager
+```
 
-### Automatic Python Environment Detection
-1. Checks `VIRTUAL_ENV` variable
-2. Looks for `.venv` in current directory
-3. Looks for `venv` in current directory
-4. Uses system `python3`
+### 2. Navigate Between Tabs
+```
+Alt + Left / F5       # Previous tab
+Alt + Right / F6      # Next tab
+Alt + 1-9             # Go to tab number 1-9
+Alt + h               # Move current tab left
+Alt + l               # Move current tab right
+```
 
-### Smart Line Numbers
-- Hybrid in Normal mode (relative + current absolute)
-- Absolute in Insert mode and when losing focus
-- Hidden in special buffers (NvimTree, Dashboard)
+### 3. Search and Replace
+```
+<leader>fg            # Search text in all files
+:%s/old/new/g         # Replace in current file
+:cfdo %s/old/new/g | update  # Replace in all search results
+```
 
-### Optimized Diagnostics
-- Muted colors for virtual text
-- Single warning symbol (⚠) for all types
-- Floating windows with rounded corners
+### 4. Code Navigation
+```
+gd                    # Go to definition (opens in new tab)
+gr                    # Show references
+F7                    # Browse document symbols
+<leader>ca            # Code actions
+<leader>rn            # Rename symbol
+```
 
-## Django Development
+### 5. Python Development
+```
+<leader>vs            # Select virtual environment
+<leader>tp            # Python terminal with venv
+<leader>td            # Django shell
+<leader>is            # Sort Python imports
+F2                    # Save and format with Black
+```
+
+## Django Development Features
 
 ### Templates
 - Automatic recognition of `.html` files as Django templates
@@ -437,22 +829,17 @@ p                     # Paste copy
 - Emmet in Django templates
 
 ### Terminals
-```bash
-<leader>td   # python manage.py shell
-<leader>tr   # python manage.py runserver
+```
+<leader>td            # python manage.py shell
+<leader>tr            # python manage.py runserver
 ```
 
-### Automatic Import Sorting
-```bash
-<leader>is   # isort --profile black --line-length 79
+### Python Tools
 ```
-
-## Vue.js Development
-
-- Full Single File Components support
-- TypeScript in `<script setup lang="ts">`
-- CSS/SCSS in `<style>` blocks
-- Template highlighting and autocompletion
+<leader>is            # isort --profile black --line-length 79
+:PythonToolsStatus    # Check available tools
+:CreatePyprojectToml  # Create configuration file
+```
 
 ## Troubleshooting
 
@@ -464,8 +851,8 @@ p                     # Paste copy
 
 ### Python Environment Not Found
 ```bash
-:VenvSelect  # Manually select venv
-<leader>vs   # Alternative way
+:VenvSelect           # Manually select venv
+<leader>vs            # Alternative way
 ```
 
 ### Formatting Not Working
@@ -475,58 +862,40 @@ pip install black isort
 
 # Check status
 :lua print(vim.g.format_on_save)
-<leader>tf  # Enable auto-formatting
+<leader>tf            # Toggle auto-formatting
 ```
 
 ### Telescope Can't Find Files
 ```bash
 # Install ripgrep
-sudo apt install ripgrep  # Ubuntu/Debian
-brew install ripgrep      # macOS
+sudo apt install ripgrep     # Ubuntu/Debian
+brew install ripgrep         # macOS
 ```
 
 ### Fonts Not Displaying Correctly
 - Ensure Nerd Font is installed
-- Set one of the Nerd Font Mono fonts as terminal default
+- Set Nerd Font Mono as terminal default
 - Recommended: JetBrains Mono Nerd Font, Fira Code Nerd Font
 
-### Slow which-key Performance
-Configuration is optimized with:
-- `delay = 100ms`
-- `timeoutlen = 300ms`
-- Disabled notifications
-
-## Customization
-
-### Change Theme
-In `lua/plugins/theme.lua` modify:
-```lua
-flavour = "mocha", -- latte, frappe, macchiato, mocha
-```
-
-### Add New Languages
-In `lua/plugins/lsp.lua` add new server:
-```lua
-new_server = {
-  settings = { ... },
-  root_markers = { ".git" },
-}
-```
-
-### Configure Key Mappings
-In `lua/config/keymaps.lua` add new mappings:
-```lua
-map("n", "<leader>xx", ":YourCommand<CR>", { desc = "Your description" })
-```
-
-### Change Tab Format
-In `lua/config/nvim-tabs.lua` modify style in `tab_name()` function.
-
-## Performance
+## Performance Optimizations
 
 - Lazy loading of plugins for fast startup
-- Optimized autocmd groups
-- Minimal interface delays
-- Efficient memory usage
+- Optimized autocmd groups to prevent conflicts
+- Minimal interface delays (100ms which-key, 300ms timeout)
+- Efficient memory usage with smart buffer cleanup
+- Tab-focused workflow reduces buffer overhead
 
-This configuration is designed for maximum productivity while maintaining all necessary IDE functionality.
+## Tips and Best Practices
+
+1. **Embrace the tab workflow** - Let files open in tabs naturally
+2. **Use Which-Key** - Press `<leader>` and explore available options
+3. **Master F-keys** - F7-F10 provide instant access to panels
+4. **Leverage LSP navigation** - Use `gd`, `gr`, `gi` for code exploration
+5. **Experiment with themes** - Use `<leader>ut` to find your preference
+6. **Configure linters gradually** - Enable tools as needed for projects
+7. **Use modal file explorer** - `F9` for quick operations, `Esc` to close
+8. **Combine search tools** - Use Telescope + quickfix for mass replacements
+9. **Utilize terminal integration** - `Ctrl+\` for quick access
+10. **Keep workspace clean** - Use `<leader>qq` for smart tab management
+
+This configuration transforms Neovim into a powerful, modern IDE while maintaining the efficiency and flexibility that makes Vim exceptional. The tab-centric approach bridges the gap between traditional Vim workflows and contemporary IDE expectations.
