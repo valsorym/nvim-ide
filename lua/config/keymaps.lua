@@ -570,7 +570,11 @@ function M.setup()
 
     -- Force LSP tab behavior for mouse clicks (global fallback)
     map("n", "<C-LeftMouse>", function()
-        vim.lsp.buf.definition()
+        if _G.LspDefinitionInTab then
+            _G.LspDefinitionInTab()
+        else
+            vim.lsp.buf.definition()
+        end
     end, {desc = "Go to definition (mouse)"})
 end
 

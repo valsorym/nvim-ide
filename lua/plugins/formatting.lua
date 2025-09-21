@@ -1,5 +1,5 @@
 -- ~/.config/nvim/lua/plugins/formatting.lua
--- Formatting and linting configuration.
+-- Formatting and linting configuration (safe toggles).
 
 return {
     "nvimtools/none-ls.nvim",
@@ -16,24 +16,21 @@ return {
         "PythonToolsStatus",
         "CreatePyprojectToml",
     },
+    init = function()
+        if vim.g.enable_mypy == nil     then vim.g.enable_mypy = false end
+        if vim.g.enable_djlint == nil   then vim.g.enable_djlint = false end
+        if vim.g.enable_codespell == nil then vim.g.enable_codespell = true end
+        if vim.g.enable_eslint == nil   then vim.g.enable_eslint = false end
+        if vim.g.enable_flake8 == nil   then vim.g.enable_flake8 = false end
+    end,
     config = function()
         local null_ls = require("null-ls")
 
-        -- Runtime toggles defaults
-        if vim.g.enable_mypy == nil then vim.g.enable_mypy = false end
-        if vim.g.enable_djlint == nil then vim.g.enable_djlint = false end
-        if vim.g.enable_codespell == nil then vim.g.enable_codespell = true end
-        if vim.g.enable_eslint == nil then vim.g.enable_eslint = false end
-        if vim.g.enable_flake8 == nil then vim.g.enable_flake8 = false end
-
-        -- We keep provider flag for future, but do not register flake8/ruff
-        vim.g._flake8_provider = nil
-
-        -- Detect python executable within venvs
+        -- Detect python executable in venv
         local function get_python_executable()
-            local venv_path = vim.fn.getenv("VIRTUAL_ENV")
-            if venv_path ~= vim.NIL and venv_path ~= "" then
-                return venv_path .. "/bin/python"
+            local venv = vim.fn.getenv("VIRTUAL_ENV")
+            if venv ~= vim.NIL and venv ~= "" then
+                return venv .. "/bin/python"
             end
             if vim.fn.isdirectory(".venv") == 1 then
                 return vim.fn.getcwd() .. "/.venv/bin/python"
@@ -44,7 +41,7 @@ return {
             return "python3"
         end
 
-        -- Base sources (safe only)
+        -- ---------- Base sources (safe, always loaded) ----------
         local sources = {
             -- Python formatting
             null_ls.builtins.formatting.black.with({
@@ -60,7 +57,6 @@ return {
                     "--skip-string-normalization"
                 }
             }),
-
             null_ls.builtins.formatting.isort.with({
                 command = function()
                     local py = get_python_executable()
@@ -101,55 +97,126 @@ return {
             }),
         }
 
-        -- Codespell (safe by default)
+        -- Codespell: safe default ON, runtime toggled by global
         table.insert(sources, null_ls.builtins.diagnostics.codespell.with({
-            condition = function() return vim.fn.executable("codespell") == 1 end,
-            runtime_condition = function(_) return vim.g.enable_codespell end
-        }))
-
-        -- MyPy (runtime toggle)
-        table.insert(sources, null_ls.builtins.diagnostics.mypy.with({
             condition = function()
-                local py = get_python_executable()
-                local exe = py:gsub("/python$", "/mypy")
-                local ok = (vim.fn.executable("mypy") == 1) or
-                        (vim.fn.executable(exe) == 1)
-                if not ok and vim.fn.filereadable("pyproject.toml") == 1 and
-                not vim.g.mypy_warning_shown then
-                    vim.g.mypy_warning_shown = true
-                    vim.notify(
-                        "MyPy not found. Install: pip install mypy",
-                        vim.log.levels.WARN
-                    )
-                end
-                return ok
+                return vim.fn.executable("codespell") == 1
             end,
-            runtime_condition = function(_) return vim.g.enable_mypy end,
-            command = function()
-                local py = get_python_executable()
-                local exe = py:gsub("/python$", "/mypy")
-                if vim.fn.executable(exe) == 1 then return exe end
-                return "mypy"
-            end,
-            extra_args = {
-                "--exclude",
-                "(^%.venv/|site%-packages/|typing_extensions%.py$|" ..
-                "mypy_extensions%.py$)"
-            },
+            runtime_condition = function(_)
+                return vim.g.enable_codespell == true
+            end
         }))
 
-        -- djlint (runtime toggle)
-        table.insert(sources, null_ls.builtins.diagnostics.djlint.with({
-            condition = function() return vim.fn.executable("djlint") == 1 end,
-            runtime_condition = function(_) return vim.g.enable_djlint end,
-            filetypes = {"htmldjango","html","jinja","jinja2"},
-            extra_args = {"--profile=django"},
-        }))
+        -- ---------- Defer registering mypy/djlint until toggled ON ----------
+        local mypy_registered = false
+        local djlint_registered = false
 
-        -- NOTE: ESLint and Flake8/Ruff are NOT registered here to avoid
-        -- "failed to load builtin ..." errors on older none-ls versions.
-        -- We keep toggles/which-key, and print status to the user.
+        local function get_project_root(bufnr)
+            for _, c in ipairs(vim.lsp.get_clients({bufnr = bufnr})) do
+                local rd = c.config and (c.config.root_dir or c.root_dir)
+                if rd and rd ~= "" then return rd end
+            end
+            local ok, out = pcall(vim.fn.systemlist,
+                "git rev-parse --show-toplevel 2>/dev/null")
+            if ok and type(out) == "table" and out[1] and out[1] ~= "" then
+                return out[1]
+            end
+            return vim.fn.getcwd()
+        end
 
+        local function build_mypy()
+            return null_ls.builtins.diagnostics.mypy.with({
+                condition = function()
+                    -- Only register if tool exists at all
+                    local py = get_python_executable()
+                    local exe = py:gsub("/python$", "/mypy")
+                    local ok = (vim.fn.executable("mypy") == 1) or
+                            (vim.fn.executable(exe) == 1)
+                    if not ok and vim.fn.filereadable("pyproject.toml") == 1
+                    and not vim.g.mypy_warning_shown then
+                        vim.g.mypy_warning_shown = true
+                        vim.notify(
+                            "MyPy not found. Install: pip install mypy",
+                            vim.log.levels.WARN
+                        )
+                    end
+                    return ok
+                end,
+                -- Per-run guard: OFF flag, and skip vendor/venv files
+                runtime_condition = function(params)
+                    if vim.g.enable_mypy ~= true then return false end
+                    local bufnr = params.bufnr or 0
+                    local name = vim.api.nvim_buf_get_name(bufnr)
+                    if name == nil or name == "" then return false end
+
+                    -- Skip all virtual environment and package files
+                    if name:match("/site%-packages/") then return false end
+                    if name:match("/%.venv/") then return false end
+                    if name:match("/venv/") then return false end
+                    if name:match("/lib/python") then return false end
+                    if name:match("typing_extensions%.py") then return false end
+                    if name:match("mypy_extensions%.py") then return false end
+
+                    -- Only process files in project directory
+                    local cwd = vim.fn.getcwd()
+                    if not name:match("^" .. vim.pesc(cwd)) then
+                        return false
+                    end
+
+                    return true
+                end,
+                -- Run from project root to respect local config
+                cwd = function(params)
+                    return get_project_root(params.bufnr or 0)
+                end,
+                command = function()
+                    local py = get_python_executable()
+                    local exe = py:gsub("/python$", "/mypy")
+                    if vim.fn.executable(exe) == 1 then return exe end
+                    return "mypy"
+                end,
+                extra_args = {
+                    "--exclude",
+                    "(^%.venv/|^venv/|site%-packages/|" ..
+                    "lib/python.*/|typing_extensions%.py$|" ..
+                    "mypy_extensions%.py$)"
+                },
+            })
+        end
+
+        local function build_djlint()
+            return null_ls.builtins.diagnostics.djlint.with({
+                condition = function()
+                    return vim.fn.executable("djlint") == 1
+                end,
+                runtime_condition = function(_)
+                    return vim.g.enable_djlint == true
+                end,
+                filetypes = {"htmldjango","html","jinja","jinja2"},
+                extra_args = {"--profile=django"},
+            })
+        end
+
+        -- Helpers to register/disable by name
+        local function ensure_mypy_registered()
+            if not mypy_registered then
+                null_ls.register(build_mypy())
+                mypy_registered = true
+            end
+        end
+        local function ensure_djlint_registered()
+            if not djlint_registered then
+                null_ls.register(build_djlint())
+                djlint_registered = true
+            end
+        end
+        local function safe_disable(name)
+            if null_ls.disable then
+                pcall(null_ls.disable, { name = name })
+            end
+        end
+
+        -- Initial setup: do NOT add mypy/djlint unless enabled
         null_ls.setup({
             sources = sources,
             on_attach = function(client, bufnr)
@@ -157,7 +224,9 @@ return {
                     local grp = vim.api.nvim_create_augroup(
                         "LspFormatting", {clear = false}
                     )
-                    vim.api.nvim_clear_autocmds({group = grp, buffer = bufnr})
+                    vim.api.nvim_clear_autocmds({
+                        group = grp, buffer = bufnr
+                    })
                     vim.api.nvim_create_autocmd("BufWritePre", {
                         group = grp,
                         buffer = bufnr,
@@ -176,6 +245,9 @@ return {
             end
         })
 
+        -- ВАЖЛИВО: НЕ реєструємо mypy автоматично при старті!
+        -- Тільки коли користувач явно увімкне через команду
+
         -- Manual format
         vim.keymap.set(
             "n", "<leader>F",
@@ -189,10 +261,8 @@ return {
             "n", "<leader>tf",
             function()
                 vim.g.format_on_save = not vim.g.format_on_save
-                print(
-                    "Format on save: " ..
-                    (vim.g.format_on_save and "ON" or "OFF")
-                )
+                print("Format on save: " ..
+                    (vim.g.format_on_save and "ON" or "OFF"))
             end,
             {desc = "Toggle format on save"}
         )
@@ -218,7 +288,7 @@ return {
             {desc = "Sort Python imports"}
         )
 
-        -- Create pyproject.toml (unchanged)
+        -- Create pyproject.toml
         vim.api.nvim_create_user_command(
             "CreatePyprojectToml",
             function()
@@ -243,8 +313,8 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
 check_untyped_defs = true
-exclude = "(^\\.venv/|site-packages/|typing_extensions\\.py$|" ..
-"mypy_extensions\\.py$)"
+exclude = "(^\\.venv/|site-packages/|typing_extensions\\.py$|"
+.. "mypy_extensions\\.py$)"
 ]]
                 if vim.fn.filereadable("pyproject.toml") == 1 then
                     print("pyproject.toml already exists.")
@@ -274,18 +344,17 @@ exclude = "(^\\.venv/|site-packages/|typing_extensions\\.py$|" ..
                 for _, t in ipairs(tools) do
                     local exe = py:gsub("/python$", "/" .. t)
                     local ok = (vim.fn.executable(t) == 1) or
-                            (vim.fn.executable(exe) == 1)
-                    print(t .. ": " .. (ok and "✓ available" or "✗ not found"))
+                               (vim.fn.executable(exe) == 1)
+                    print(t .. ": " ..
+                        (ok and "✓ available" or "✗ not found"))
                 end
-                local has_pp = vim.fn.filereadable("pyproject.toml") == 1
+                local has_pp = (vim.fn.filereadable("pyproject.toml")==1)
                 print("pyproject.toml: " .. (has_pp and "✓ exists" or "✗"))
-                local prov = vim.g._flake8_provider or "none"
-                print("flake8 provider: " .. prov)
             end,
             {desc = "Check status of Python tools"}
         )
 
-        -- Runtime toggles (no-op for flake8/eslint until provider added)
+        -- Runtime toggles with dynamic register/disable
         local function refresh_diags()
             pcall(vim.diagnostic.reset, nil, 0)
             vim.defer_fn(function()
@@ -296,9 +365,16 @@ exclude = "(^\\.venv/|site-packages/|typing_extensions\\.py$|" ..
         vim.api.nvim_create_user_command(
             "ToggleMyPy",
             function()
+                local sources_mod = require("null-ls.sources")
                 vim.g.enable_mypy = not vim.g.enable_mypy
+                if vim.g.enable_mypy then
+                    ensure_mypy_registered()
+                else
+                    pcall(sources_mod.disable, { name = "mypy" })
+                    mypy_registered = false
+                end
                 print("mypy: " .. (vim.g.enable_mypy and "ON" or "OFF"))
-                refresh_diags()
+                pcall(vim.diagnostic.reset, nil, 0)
             end,
             {desc = "Toggle null-ls mypy diagnostics"}
         )
@@ -307,7 +383,13 @@ exclude = "(^\\.venv/|site-packages/|typing_extensions\\.py$|" ..
             "ToggleDjlint",
             function()
                 vim.g.enable_djlint = not vim.g.enable_djlint
-                print("djlint: " .. (vim.g.enable_djlint and "ON" or "OFF"))
+                if vim.g.enable_djlint then
+                    ensure_djlint_registered()
+                else
+                    safe_disable("djlint")
+                end
+                print("djlint: " ..
+                    (vim.g.enable_djlint and "ON" or "OFF"))
                 refresh_diags()
             end,
             {desc = "Toggle null-ls djlint diagnostics"}
@@ -317,34 +399,34 @@ exclude = "(^\\.venv/|site-packages/|typing_extensions\\.py$|" ..
             "ToggleCodespell",
             function()
                 vim.g.enable_codespell = not vim.g.enable_codespell
-                print(
-                    "codespell: " ..
-                    (vim.g.enable_codespell and "ON" or "OFF")
-                )
+                print("codespell: " ..
+                    (vim.g.enable_codespell and "ON" or "OFF"))
                 refresh_diags()
             end,
             {desc = "Toggle null-ls codespell diagnostics"}
         )
 
+        -- ESLint/Flake8 placeholders (no builtin registered here)
         vim.api.nvim_create_user_command(
             "ToggleESLint",
             function()
                 vim.g.enable_eslint = not vim.g.enable_eslint
-                local s = (vim.g.enable_eslint and "ON" or "OFF")
-                print("eslint: " .. s .. " (no provider registered)")
+                print("eslint: " ..
+                    (vim.g.enable_eslint and "ON" or "OFF") ..
+                    " (no provider registered)")
             end,
-            {desc = "Toggle null-ls ESLint diagnostics (no-op if none)"}
+            {desc = "Toggle ESLint diagnostics (placeholder)"}
         )
 
         vim.api.nvim_create_user_command(
             "ToggleFlake8",
             function()
                 vim.g.enable_flake8 = not vim.g.enable_flake8
-                local s = (vim.g.enable_flake8 and "ON" or "OFF")
-                local prov = vim.g._flake8_provider or "none"
-                print("flake8: " .. s .. " (provider: " .. prov .. ")")
+                print("flake8: " ..
+                    (vim.g.enable_flake8 and "ON" or "OFF") ..
+                    " (no provider registered)")
             end,
-            {desc = "Toggle Flake8/Ruff diagnostics (no-op if none)"}
+            {desc = "Toggle Flake8/Ruff diagnostics (placeholder)"}
         )
     end
 }

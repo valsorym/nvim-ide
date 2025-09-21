@@ -34,7 +34,7 @@ return {
             return "python3"
         end
 
-        -- NEW: open location in a tab (reuse tab if file is already open)
+        -- Open location in a tab (reuse tab if file is already open).
         local function open_lsp_location_in_tab(loc)
             -- Location can be Location or LocationLink
             local uri = loc.uri or loc.targetUri
@@ -76,7 +76,7 @@ return {
             vim.cmd("normal! zz")
         end
 
-        -- NEW: generic handler for LSP locations -> open in tabs
+        -- Generic handler for LSP locations -> open in tabs.
         local function handle_locations_in_tabs(err, result, ctx, _)
             if err then
                 vim.notify("LSP error: " .. (err.message or ""), vim.log.levels.ERROR)
@@ -100,7 +100,30 @@ return {
             open_lsp_location_in_tab(loc)
         end
 
-        -- NEW: enforce tab behavior for these LSP requests
+        -- Pick correct offset encoding for make_position_params
+        local function make_pos_params(bufnr)
+            bufnr = bufnr or vim.api.nvim_get_current_buf()
+            local clients = vim.lsp.get_clients({ bufnr = bufnr })
+            local encoding = "utf-16"  -- default fallback
+
+            -- Use encoding from first available client
+            if clients and #clients > 0 then
+                encoding = clients[1].offset_encoding or "utf-16"
+            end
+
+            -- Get current cursor position
+            local row, col = unpack(vim.api.nvim_win_get_cursor(0))
+
+            return {
+                textDocument = vim.lsp.util.make_text_document_params(bufnr),
+                position = {
+                    line = row - 1,  -- LSP uses 0-based indexing
+                    character = col
+                }
+            }
+        end
+
+        -- Enforce tab behavior for these LSP requests.
         vim.lsp.handlers["textDocument/definition"] = handle_locations_in_tabs
         vim.lsp.handlers["textDocument/declaration"] = handle_locations_in_tabs
         vim.lsp.handlers["textDocument/typeDefinition"] = handle_locations_in_tabs
@@ -125,55 +148,61 @@ return {
 
             -- Custom LSP functions that force tab behavior
             local function definition_in_tab()
-                local params = vim.lsp.util.make_position_params()
-                vim.lsp.buf_request(0, "textDocument/definition", params, function(err, result)
-                    if err then
-                        vim.notify("LSP error: " .. (err.message or ""), vim.log.levels.ERROR)
-                        return
-                    end
-                    if not result or vim.tbl_isempty(result) then
-                        vim.notify("No definition found", vim.log.levels.INFO)
-                        return
-                    end
-
-                    local location = result[1] or result
-                    open_lsp_location_in_tab(location)
-                end)
+                local params = make_pos_params()
+                vim.lsp.buf_request(0, "textDocument/definition", params,
+                    function(err, result)
+                        if err then
+                            vim.notify("LSP error: " .. (err.message or ""),
+                                vim.log.levels.ERROR)
+                            return
+                        end
+                        if not result or vim.tbl_isempty(result) then
+                            vim.notify("No definition found", vim.log.levels.INFO)
+                            return
+                        end
+                        local location = result[1] or result
+                        open_lsp_location_in_tab(location)
+                    end)
             end
 
             local function declaration_in_tab()
-                local params = vim.lsp.util.make_position_params()
-                vim.lsp.buf_request(0, "textDocument/declaration", params, function(err, result)
-                    if err then
-                        vim.notify("LSP error: " .. (err.message or ""), vim.log.levels.ERROR)
-                        return
-                    end
-                    if not result or vim.tbl_isempty(result) then
-                        vim.notify("No declaration found", vim.log.levels.INFO)
-                        return
-                    end
-
-                    local location = result[1] or result
-                    open_lsp_location_in_tab(location)
-                end)
+                local params = make_pos_params()
+                vim.lsp.buf_request(0, "textDocument/declaration", params,
+                    function(err, result)
+                        if err then
+                            vim.notify("LSP error: " .. (err.message or ""),
+                                vim.log.levels.ERROR)
+                            return
+                        end
+                        if not result or vim.tbl_isempty(result) then
+                            vim.notify("No declaration found", vim.log.levels.INFO)
+                            return
+                        end
+                        local location = result[1] or result
+                        open_lsp_location_in_tab(location)
+                    end)
             end
 
             local function implementation_in_tab()
-                local params = vim.lsp.util.make_position_params()
-                vim.lsp.buf_request(0, "textDocument/implementation", params, function(err, result)
-                    if err then
-                        vim.notify("LSP error: " .. (err.message or ""), vim.log.levels.ERROR)
-                        return
-                    end
-                    if not result or vim.tbl_isempty(result) then
-                        vim.notify("No implementation found", vim.log.levels.INFO)
-                        return
-                    end
-
-                    local location = result[1] or result
-                    open_lsp_location_in_tab(location)
-                end)
+                local params = make_pos_params()
+                vim.lsp.buf_request(0, "textDocument/implementation", params,
+                    function(err, result)
+                        if err then
+                            vim.notify("LSP error: " .. (err.message or ""),
+                                vim.log.levels.ERROR)
+                            return
+                        end
+                        if not result or vim.tbl_isempty(result) then
+                            vim.notify("No implementation found",
+                                vim.log.levels.INFO)
+                            return
+                        end
+                        local location = result[1] or result
+                        open_lsp_location_in_tab(location)
+                    end)
             end
+
+            _G.LspDefinitionInTab = definition_in_tab
 
             -- Navigation with explicit tab functions
             vim.keymap.set("n", "gd", definition_in_tab,
