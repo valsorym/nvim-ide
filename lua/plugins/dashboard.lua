@@ -60,7 +60,7 @@ return {
                     footer = {
                         "",
                         " Press F9 to open File Explorer.",
-                        "Version: 0.0.1",
+                        "Version: 0.0.2",
                     }
                 }
             }

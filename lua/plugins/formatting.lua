@@ -52,6 +52,11 @@ return {
         local sources = {
             -- Python formatting
             null_ls.builtins.formatting.black.with({
+                condition = function()
+                    local py = get_python_executable()
+                    local exe = py:gsub("/python$", "/black")
+                    return vim.fn.executable("black") == 1 or vim.fn.executable(exe) == 1
+                end,
                 command = function()
                     local py = get_python_executable()
                     local exe = py:gsub("/python$", "/black")
@@ -64,7 +69,13 @@ return {
                     "--skip-string-normalization"
                 }
             }),
+
             null_ls.builtins.formatting.isort.with({
+                condition = function()
+                    local py = get_python_executable()
+                    local exe = py:gsub("/python$", "/isort")
+                    return vim.fn.executable("isort") == 1 or vim.fn.executable(exe) == 1
+                end,
                 command = function()
                     local py = get_python_executable()
                     local exe = py:gsub("/python$", "/isort")
@@ -81,6 +92,9 @@ return {
 
             -- JS/TS/Vue/CSS/HTML
             null_ls.builtins.formatting.prettier.with({
+                condition = function()
+                    return vim.fn.executable("prettier") == 1
+                end,
                 filetypes = {
                     "javascript","typescript","vue","css","scss",
                     "html","json","yaml","markdown"
@@ -90,14 +104,24 @@ return {
 
             -- Lua
             null_ls.builtins.formatting.stylua.with({
+                condition = function()
+                    return vim.fn.executable("stylua") == 1
+                end,
                 extra_args = {"--column-width", "79"}
             }),
 
             -- Go
-            null_ls.builtins.formatting.goimports,
+            null_ls.builtins.formatting.goimports.with({
+                condition = function()
+                    return vim.fn.executable("goimports") == 1
+                end
+            }),
 
             -- C/C++
             null_ls.builtins.formatting.clang_format.with({
+                condition = function()
+                    return vim.fn.executable("clang-format") == 1
+                end,
                 extra_args = {
                     "-style='{BasedOnStyle: llvm, ColumnLimit: 79}'"
                 }
@@ -454,6 +478,20 @@ exclude = "(^\\.venv/|site-packages/|typing_extensions\\.py$|"
                     " (no provider registered)")
             end,
             {desc = "Toggle Flake8/Ruff diagnostics (placeholder)"}
+        )
+
+        -- Checking the status of formatters.
+        vim.api.nvim_create_user_command(
+            "CheckFormatters",
+            function()
+                local tools = {"black", "isort", "prettier", "stylua", "goimports", "clang-format"}
+                print("Formatter status:")
+                for _, tool in ipairs(tools) do
+                    local available = vim.fn.executable(tool) == 1
+                    print(tool .. ": " .. (available and "✓ available" or "✗ not found"))
+                end
+            end,
+            {desc = "Check status of formatting tools"}
         )
     end
 }

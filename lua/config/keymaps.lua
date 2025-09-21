@@ -352,33 +352,36 @@ function M.setup()
     map("n", "<leader>h", ":nohlsearch<CR>", {desc = "Clear highlights"})
 
     -- F2 for smart save and format.
-    map(
-        "n",
-        "<F2>",
-        function()
-            vim.cmd("write")
-            if vim.g.format_on_save ~= false then
-                vim.lsp.buf.format({async = false, timeout_ms = 2000})
-            end
-            print("File saved and formatted")
-        end,
-        {desc = "Save and format file"}
-    )
+    map("n", "<F2>", function()
+        if vim.bo.readonly then
+            vim.notify("File is readonly. Use :w! to force save", vim.log.levels.WARN)
+            return
+        end
 
-    map(
-        "i",
-        "<F2>",
-        function()
-            vim.cmd("stopinsert")
-            vim.cmd("write")
-            if vim.g.format_on_save ~= false then
-                vim.lsp.buf.format({async = false, timeout_ms = 2000})
-            end
+        -- Format first, then save.
+        if vim.g.format_on_save ~= false then
+            vim.lsp.buf.format({async = false, timeout_ms = 2000})
+        end
+        vim.cmd("write")
+        print("File saved and formatted")
+    end, {desc = "Save and format file"})
+
+    map("i", "<F2>", function()
+        vim.cmd("stopinsert")
+        if vim.bo.readonly then
+            vim.notify("File is readonly. Use :w! to force save", vim.log.levels.WARN)
             vim.cmd("startinsert")
-            print("File saved and formatted")
-        end,
-        {desc = "Save and format file"}
-    )
+            return
+        end
+
+        -- Format first, then save.
+        if vim.g.format_on_save ~= false then
+            vim.lsp.buf.format({async = false, timeout_ms = 2000})
+        end
+        vim.cmd("write")
+        vim.cmd("startinsert")
+        print("File saved and formatted")
+    end, {desc = "Save and format file"})
 
     -- Mason.
     map("n", "<leader>m", ":Mason<CR>", {desc = "Open Mason"})
@@ -584,6 +587,14 @@ function M.setup()
             vim.lsp.buf.definition()
         end
     end, {desc = "Go to definition (mouse)"})
+
+    -- Reassigning ZZ for smart behavior.
+    map("n", "ZZ", function()
+        if vim.bo.modified then
+            vim.cmd("write")
+        end
+        smart_tab_close()
+    end, {desc = "Save and smart close tab"})
 end
 
 return M
