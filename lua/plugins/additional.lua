@@ -47,7 +47,7 @@ return {
             )
         end
     },
-    -- Fuzzy finder.
+    -- Fuzzy finder with tab-focused workflow.
     {
         "nvim-telescope/telescope.nvim",
         dependencies = {
@@ -57,73 +57,138 @@ return {
                 build = "make"
             }
         },
-        config = function()
-            require("telescope").setup(
-                {
-                    defaults = {
-                        prompt_prefix = " ",
-                        selection_caret = " ",
-                        path_display = {"truncate"},
-                        file_ignore_patterns = {
-                            "node_modules",
-                            ".git/",
-                            "*.pyc",
-                            "__pycache__",
-                            ".venv",
-                            "venv",
-                            ".env",
-                            "migrations/",
-                            "*.min.js",
-                            "*.min.css",
-                            "static/admin/",
-                            "media/"
-                        }
-                    },
-                    pickers = {
-                        find_files = {
-                            hidden = true,
-                            find_command = {
-                                "rg",
-                                "--files",
-                                "--hidden",
-                                "--glob",
-                                "!**/.git/*",
-                                "--glob",
-                                "!**/__pycache__/*",
-                                "--glob",
-                                "!**/.venv/*"
-                            }
-                        },
-                        live_grep = {
-                            additional_args = function()
-                                return {
-                                    "--hidden",
-                                    "--glob",
-                                    "!**/.git/*",
-                                    "--glob",
-                                    "!**/__pycache__/*",
-                                    "--glob",
-                                    "!**/.venv/*",
-                                    "--glob",
-                                    "!**/migrations/*"
-                                }
-                            end
-                        }
-                    }
-                }
-            )
+       -- telescope.nvim config: open selections in tabs, focus existing tab
+config = function()
+  local telescope = require("telescope")
+  local actions = require("telescope.actions")
+  local action_state = require("telescope.actions.state")
 
-            require("telescope").load_extension("fzf")
+  -- Normalize absolute path
+  local function abspath(p)
+    return vim.fn.fnamemodify(p or "", ":p")
+  end
 
-            -- Key mappings
-            local builtin = require("telescope.builtin")
-            vim.keymap.set("n", "<leader>ff", builtin.find_files, {desc = "Find files"})
-            vim.keymap.set("n", "<leader>fg", builtin.live_grep, {desc = "Live grep"})
-            vim.keymap.set("n", "<leader>fb", builtin.buffers, {desc = "Find buffers"})
-            vim.keymap.set("n", "<leader>fh", builtin.help_tags, {desc = "Help tags"})
-            vim.keymap.set("n", "<leader>fs", builtin.lsp_document_symbols, {desc = "Document symbols"})
-            vim.keymap.set("n", "<leader>fw", builtin.lsp_workspace_symbols, {desc = "Workspace symbols"})
+  -- Try to focus a tab that already shows given file
+  local function focus_tab_with_file(file)
+    local target = abspath(file)
+    local tabs = vim.api.nvim_list_tabpages()
+    for idx, tab in ipairs(tabs) do
+      local wins = vim.api.nvim_tabpage_list_wins(tab)
+      for _, win in ipairs(wins) do
+        local buf = vim.api.nvim_win_get_buf(win)
+        local name = abspath(vim.fn.bufname(buf))
+        if name == target then
+          vim.cmd(idx .. "tabnext")
+          vim.api.nvim_set_current_win(win)
+          return true
         end
+      end
+    end
+    return false
+  end
+
+  -- Open file in a new tab or focus existing tab
+  local function open_in_tab_or_focus(file, lnum, col)
+    if not file or file == "" then
+      return
+    end
+    if focus_tab_with_file(file) then
+      local c = math.max((col or 1) - 1, 0)
+      vim.api.nvim_win_set_cursor(0, {lnum or 1, c})
+      vim.cmd("normal! zz")
+      return
+    end
+    vim.cmd("tabnew " .. vim.fn.fnameescape(file))
+    local c = math.max((col or 1) - 1, 0)
+    vim.api.nvim_win_set_cursor(0, {lnum or 1, c})
+    vim.cmd("normal! zz")
+  end
+
+  -- Unified <CR> handler for all pickers
+  local function select_in_tab(prompt_bufnr)
+    local entry = action_state.get_selected_entry()
+    if not entry then
+      return
+    end
+    actions.close(prompt_bufnr)
+
+    -- Resolve filename for different pickers
+    local file = entry.path or entry.filename or entry.value
+    if (not file or file == "") and entry.bufnr then
+      file = vim.api.nvim_buf_get_name(entry.bufnr)
+    end
+    file = abspath(file)
+
+    local lnum = entry.lnum or 1
+    local col = entry.col or 1
+    open_in_tab_or_focus(file, lnum, col)
+  end
+
+  telescope.setup({
+    defaults = {
+      prompt_prefix = " ",
+      selection_caret = " ",
+      path_display = { "truncate" },
+      file_ignore_patterns = {
+        "node_modules", ".git/", "%.pyc", "__pycache__", ".venv", "venv",
+        ".env", "migrations/", "%.min%.js", "%.min%.css", "static/admin/",
+        "media/",
+      },
+      mappings = {
+        i = {
+          ["<CR>"] = select_in_tab,
+        },
+        n = {
+          ["<CR>"] = select_in_tab,
+        },
+      },
+    },
+    pickers = {
+      find_files = {
+        hidden = true,
+        find_command = {
+          "rg", "--files", "--hidden",
+          "--glob", "!**/.git/*",
+          "--glob", "!**/__pycache__/*",
+          "--glob", "!**/.venv/*",
+        },
+      },
+      live_grep = {
+        additional_args = function()
+          return {
+            "--hidden",
+            "--glob", "!**/.git/*",
+            "--glob", "!**/__pycache__/*",
+            "--glob", "!**/.venv/*",
+            "--glob", "!**/migrations/*",
+          }
+        end,
+      },
+      buffers = {
+        sort_mru = true,
+        ignore_current_buffer = false,
+      },
+    },
+  })
+
+  telescope.load_extension("fzf")
+
+  -- Builtin mappings (unchanged)
+  local builtin = require("telescope.builtin")
+  vim.keymap.set("n", "<leader>ff", builtin.find_files,
+    { desc = "Find files" })
+  vim.keymap.set("n", "<leader>fg", builtin.live_grep,
+    { desc = "Live grep" })
+  vim.keymap.set("n", "<leader>fb", builtin.buffers,
+    { desc = "Find buffers" })
+  vim.keymap.set("n", "<leader>fh", builtin.help_tags,
+    { desc = "Help tags" })
+  vim.keymap.set("n", "<leader>fs", builtin.lsp_document_symbols,
+    { desc = "Document symbols" })
+  vim.keymap.set("n", "<leader>fw", builtin.lsp_workspace_symbols,
+    { desc = "Workspace symbols" })
+end
+
     },
     -- Git integration.
     {
@@ -218,7 +283,8 @@ return {
                             end,
                             {desc = "Blame line"}
                         )
-                        map("n", "<leader>tb", gs.toggle_current_line_blame, {desc = "Toggle blame"})
+                        map("n", "<leader>tb", gs.toggle_current_line_blame,
+                            {desc = "Toggle blame"})
                         map("n", "<leader>hd", gs.diffthis, {desc = "Diff this"})
                     end
                 }
@@ -325,7 +391,8 @@ return {
             end
 
             -- Key mappings.
-            vim.keymap.set("n", "<leader>tf", "<cmd>ToggleTerm direction=float<cr>", {desc = "Float terminal"})
+            vim.keymap.set("n", "<leader>tf", "<cmd>ToggleTerm direction=float<cr>",
+                {desc = "Float terminal"})
             vim.keymap.set(
                 "n",
                 "<leader>th",
@@ -338,10 +405,14 @@ return {
                 "<cmd>ToggleTerm direction=vertical size=80<cr>",
                 {desc = "Vertical terminal"}
             )
-            vim.keymap.set("n", "<leader>tp", "<cmd>lua _PYTHON_TOGGLE()<CR>", {desc = "Python terminal"})
-            vim.keymap.set("n", "<leader>td", "<cmd>lua _DJANGO_SHELL_TOGGLE()<CR>", {desc = "Django shell"})
-            vim.keymap.set("n", "<leader>tr", "<cmd>lua _DJANGO_RUNSERVER()<CR>", {desc = "Django runserver"})
-            vim.keymap.set("n", "<leader>tn", "<cmd>lua _NODE_TOGGLE()<CR>", {desc = "Node terminal"})
+            vim.keymap.set("n", "<leader>tp", "<cmd>lua _PYTHON_TOGGLE()<CR>",
+                {desc = "Python terminal"})
+            vim.keymap.set("n", "<leader>td", "<cmd>lua _DJANGO_SHELL_TOGGLE()<CR>",
+                {desc = "Django shell"})
+            vim.keymap.set("n", "<leader>tr", "<cmd>lua _DJANGO_RUNSERVER()<CR>",
+                {desc = "Django runserver"})
+            vim.keymap.set("n", "<leader>tn", "<cmd>lua _NODE_TOGGLE()<CR>",
+                {desc = "Node terminal"})
         end
     },
     -- Auto pairs.
@@ -427,7 +498,8 @@ return {
                     auto_refresh = true
                 }
             )
-            vim.keymap.set("n", "<leader>vs", "<cmd>VenvSelect<cr>", {desc = "• Python venv"})
+            vim.keymap.set("n", "<leader>vs", "<cmd>VenvSelect<cr>",
+                {desc = "• Python venv"})
         end
     }
 }
