@@ -3,27 +3,75 @@
 
 local M = {}
 
+-- Delete buffers that are not visible in any tab.
+local function cleanup_orphan_buffers(force)
+    force = force or false
+
+    -- Collect all buffers visible across tabs.
+    local visible = {}
+    for tab = 1, vim.fn.tabpagenr("$") do
+        local bufs = vim.fn.tabpagebuflist(tab)
+        for _, b in ipairs(bufs) do
+            visible[b] = true
+        end
+    end
+
+    for _, b in ipairs(vim.api.nvim_list_bufs()) do
+        if vim.fn.buflisted(b) == 1 and not visible[b] then
+            local name = vim.fn.bufname(b)
+            local bt = vim.bo[b].buftype
+            local ft = vim.bo[b].filetype
+
+            -- Skip special/utility buffers.
+            local skip = bt ~= "" or name == ""
+            skip = skip or ft == "dashboard" or ft == "help"
+            skip = skip or ft == "NvimTree" or ft == "neo-tree" or ft == "oil"
+            skip = skip or name:match("toggleterm") or name:match("^term://")
+
+            if not skip then
+                if not vim.bo[b].modified or force then
+                    pcall(vim.api.nvim_buf_delete, b, {force = force})
+                end
+            end
+        end
+    end
+end
+
+-- Autoclean orphan buffers whenever a tab is closed.
+local orphan_clean_group = vim.api.nvim_create_augroup(
+    "OrphanBufferCleanup",
+    { clear = true }
+)
+
+vim.api.nvim_create_autocmd(
+    "TabClosed",
+    {
+        group = orphan_clean_group,
+        callback = function()
+            -- Defer to ensure tab state is updated before cleaning.
+            vim.schedule(function()
+                pcall(cleanup_orphan_buffers, false)
+            end)
+        end
+    }
+)
+
 -- Smart tab close function with Dashboard support.
 local function smart_tab_close()
     local total_tabs = vim.fn.tabpagenr("$")
     local current_buf = vim.api.nvim_get_current_buf()
-    local bufname = vim.fn.bufname(current_buf)
     local filetype = vim.bo[current_buf].filetype
-    local is_modified = vim.bo[current_buf].modified
 
-    -- If it's the last tab
     if total_tabs == 1 then
-        -- Check if it's Dashboard - only Dashboard should close Neovim.
         if filetype == "dashboard" then
-            -- Close Neovim completely.
             vim.cmd("qa")
         else
-            -- For any other buffer (files, empty buffers, etc.) - open Dashboard.
             vim.cmd("Dashboard")
+            cleanup_orphan_buffers(false)
         end
     else
-        -- Multiple tabs exist - just close current tab.
         vim.cmd("tabclose")
+        cleanup_orphan_buffers(false)
     end
 end
 
@@ -32,11 +80,11 @@ local function force_close_tab()
     local total_tabs = vim.fn.tabpagenr("$")
 
     if total_tabs == 1 then
-        -- Last tab - open Dashboard regardless of modifications.
         vim.cmd("Dashboard")
+        cleanup_orphan_buffers(true)
     else
-        -- Multiple tabs - force close current tab.
         vim.cmd("tabclose!")
+        cleanup_orphan_buffers(true)
     end
 end
 
@@ -63,6 +111,8 @@ local function setup_conditional_abbreviations()
         }
     )
 end
+
+
 
 function M.setup()
     local map = vim.keymap.set

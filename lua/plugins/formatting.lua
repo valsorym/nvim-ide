@@ -10,148 +10,153 @@ return {
     config = function()
         local null_ls = require("null-ls")
 
-        -- Python virtual environment detection.
+        -- Defaults for runtime toggles
+        if vim.g.enable_mypy == nil then vim.g.enable_mypy = true end
+        if vim.g.enable_djlint == nil then vim.g.enable_djlint = false end
+
+        -- Python virtual environment detection
         local function get_python_executable()
             local venv_path = vim.fn.getenv("VIRTUAL_ENV")
             if venv_path ~= vim.NIL and venv_path ~= "" then
                 return venv_path .. "/bin/python"
             end
-
-            -- Check for .venv directory.
             if vim.fn.isdirectory(".venv") == 1 then
                 return vim.fn.getcwd() .. "/.venv/bin/python"
             end
-
-            -- Check for venv directory.
             if vim.fn.isdirectory("venv") == 1 then
                 return vim.fn.getcwd() .. "/venv/bin/python"
             end
-
             return "python3"
         end
 
-        null_ls.setup({
-            sources = {
-                -- Python formatting with consistent line length.
-                null_ls.builtins.formatting.black.with({
-                    command = function()
-                        local python_path = get_python_executable()
-                        local black_cmd = python_path:gsub("/python$", "/black")
-                        if vim.fn.executable(black_cmd) == 1 then
-                            return black_cmd
-                        end
-                        return "black"
-                    end,
-                    extra_args = {
-                        "--line-length", "79",
-                        "--target-version", "py38",
-                        "--skip-string-normalization"
-                    }
-                }),
+        -- Sources
+        local sources = {
+            -- Python formatting
+            null_ls.builtins.formatting.black.with({
+                command = function()
+                    local py = get_python_executable()
+                    local exe = py:gsub("/python$", "/black")
+                    if vim.fn.executable(exe) == 1 then return exe end
+                    return "black"
+                end,
+                extra_args = {
+                    "--line-length", "79",
+                    "--target-version", "py38",
+                    "--skip-string-normalization"
+                }
+            }),
 
-                null_ls.builtins.formatting.isort.with({
-                    command = function()
-                        local python_path = get_python_executable()
-                        local isort_cmd = python_path:gsub("/python$", "/isort")
-                        if vim.fn.executable(isort_cmd) == 1 then
-                            return isort_cmd
-                        end
-                        return "isort"
-                    end,
-                    extra_args = {
-                        "--profile", "black",
-                        "--line-length", "79",
-                        "--multi-line", "3",
-                        "--trailing-comma"
-                    }
-                }),
+            null_ls.builtins.formatting.isort.with({
+                command = function()
+                    local py = get_python_executable()
+                    local exe = py:gsub("/python$", "/isort")
+                    if vim.fn.executable(exe) == 1 then return exe end
+                    return "isort"
+                end,
+                extra_args = {
+                    "--profile", "black",
+                    "--line-length", "79",
+                    "--multi-line", "3",
+                    "--trailing-comma"
+                }
+            }),
 
-                -- MyPy with conditional loading
-                null_ls.builtins.diagnostics.mypy.with({
-                    -- Global toggle via vim.g.enable_mypy
-                    condition = function()
-                        if vim.g.enable_mypy == false then return false end
+            -- JS/TS/Vue/CSS/HTML
+            null_ls.builtins.formatting.prettier.with({
+                filetypes = {
+                    "javascript","typescript","vue","css","scss",
+                    "html","json","yaml","markdown"
+                },
+                extra_args = {"--print-width", "79"}
+            }),
 
-                        local python = get_python_executable()
-                        local mypy_cmd = python:gsub("/python$", "/mypy")
-                        local ok = (vim.fn.executable("mypy") == 1) or
-                                (vim.fn.executable(mypy_cmd) == 1)
+            -- Lua
+            null_ls.builtins.formatting.stylua.with({
+                extra_args = {"--column-width", "79"}
+            }),
 
-                        if not ok and vim.fn.filereadable("pyproject.toml") == 1 and
-                        not vim.g.mypy_warning_shown then
-                            vim.g.mypy_warning_shown = true
-                            vim.notify(
-                                "MyPy not found. Install: pip install mypy",
-                                vim.log.levels.WARN
-                            )
-                        end
-                        return ok
-                    end,
-                    command = function()
-                        local python = get_python_executable()
-                        local mypy_cmd = python:gsub("/python$", "/mypy")
-                        if vim.fn.executable(mypy_cmd) == 1 then
-                            return mypy_cmd
-                        end
-                        return "mypy"
-                    end,
-                    -- Do not scan venv and that specific file
-                    extra_args = {
-                        "--exclude", "(^%.venv/|typing_extensions%.py$)"
-                    },
-                }),
+            -- Go
+            null_ls.builtins.formatting.goimports,
 
-                -- Codespell with conditional loading
-                null_ls.builtins.diagnostics.codespell.with({
-                    condition = function()
-                        return vim.fn.executable("codespell") == 1
-                    end,
-                }),
+            -- C/C++
+            null_ls.builtins.formatting.clang_format.with({
+                extra_args = {
+                    "-style='{BasedOnStyle: llvm, ColumnLimit: 79}'"
+                }
+            }),
 
-                -- JavaScript/TypeScript/Vue/CSS/HTML.
-                null_ls.builtins.formatting.prettier.with({
-                    filetypes = {
-                        "javascript",
-                        "typescript",
-                        "vue",
-                        "css",
-                        "scss",
-                        "html",
-                        "json",
-                        "yaml",
-                        "markdown"
-                    },
-                    extra_args = {"--print-width", "79"}
-                }),
+            -- Codespell (optional)
+            null_ls.builtins.diagnostics.codespell.with({
+                condition = function()
+                    return vim.fn.executable("codespell") == 1
+                end,
+            }),
+        }
 
-                -- Lua.
-                null_ls.builtins.formatting.stylua.with({
-                    extra_args = {"--column-width", "79"}
-                }),
-
-                -- Go (goimports includes gofmt functionality).
-                null_ls.builtins.formatting.goimports,
-
-                -- C/C++.
-                null_ls.builtins.formatting.clang_format.with({
-                    extra_args = {"-style='{BasedOnStyle: llvm, ColumnLimit: 79}'"}
-                })
+        -- MyPy diagnostics with runtime toggle and extended exclude
+        table.insert(sources, null_ls.builtins.diagnostics.mypy.with({
+            condition = function()
+                local py = get_python_executable()
+                local exe = py:gsub("/python$", "/mypy")
+                local ok = (vim.fn.executable("mypy") == 1) or
+                        (vim.fn.executable(exe) == 1)
+                if not ok and vim.fn.filereadable("pyproject.toml") == 1 and
+                not vim.g.mypy_warning_shown then
+                    vim.g.mypy_warning_shown = true
+                    vim.notify(
+                        "MyPy not found. Install: pip install mypy",
+                        vim.log.levels.WARN
+                    )
+                end
+                return ok
+            end,
+            runtime_condition = function(_)
+                return vim.g.enable_mypy ~= false
+            end,
+            command = function()
+                local py = get_python_executable()
+                local exe = py:gsub("/python$", "/mypy")
+                if vim.fn.executable(exe) == 1 then return exe end
+                return "mypy"
+            end,
+            extra_args = {
+                "--exclude",
+                "(^%.venv/|site%-packages/|typing_extensions%.py$|" ..
+                "mypy_extensions%.py$)"
             },
+        }))
 
-            -- Format on save.
+        -- djlint diagnostics (Django/Jinja) with runtime toggle
+        table.insert(sources, null_ls.builtins.diagnostics.djlint.with({
+            condition = function()
+                return vim.fn.executable("djlint") == 1
+            end,
+            runtime_condition = function(_)
+                return vim.g.enable_djlint == true
+            end,
+            filetypes = {"htmldjango","html","jinja","jinja2"},
+            extra_args = {"--profile=django"},
+        }))
+
+        null_ls.setup({
+            sources = sources,
+
             on_attach = function(client, bufnr)
                 if client:supports_method("textDocument/formatting") then
-                    local augroup = vim.api.nvim_create_augroup("LspFormatting", {clear = false})
-                    vim.api.nvim_clear_autocmds({group = augroup, buffer = bufnr})
+                    local grp = vim.api.nvim_create_augroup(
+                        "LspFormatting", {clear = false}
+                    )
+                    vim.api.nvim_clear_autocmds(
+                        {group = grp, buffer = bufnr}
+                    )
                     vim.api.nvim_create_autocmd("BufWritePre", {
-                        group = augroup,
+                        group = grp,
                         buffer = bufnr,
                         callback = function()
                             if vim.g.format_on_save then
                                 vim.lsp.buf.format({
-                                    filter = function(client)
-                                        -- Use null-ls for formatting when available
-                                        return client.name == "null-ls"
+                                    filter = function(c)
+                                        return c.name == "null-ls"
                                     end,
                                     bufnr = bufnr
                                 })
@@ -162,36 +167,53 @@ return {
             end
         })
 
-        -- Manual format command.
-        vim.keymap.set("n", "<leader>F", function()
-            vim.lsp.buf.format({async = true})
-        end, {desc = "Format document"})
+        -- Manual format
+        vim.keymap.set(
+            "n", "<leader>F",
+            function() vim.lsp.buf.format({async = true}) end,
+            {desc = "Format document"}
+        )
 
-        -- Toggle format on save.
+        -- Toggle format on save
         vim.g.format_on_save = true
-        vim.keymap.set("n", "<leader>tf", function()
-            vim.g.format_on_save = not vim.g.format_on_save
-            print("Format on save: " .. (vim.g.format_on_save and "ON" or "OFF"))
-        end, {desc = "Toggle format on save"})
+        vim.keymap.set(
+            "n", "<leader>tf",
+            function()
+                vim.g.format_on_save = not vim.g.format_on_save
+                print(
+                    "Format on save: " ..
+                    (vim.g.format_on_save and "ON" or "OFF")
+                )
+            end,
+            {desc = "Toggle format on save"}
+        )
 
-        -- Sort Python imports manually
-        vim.keymap.set("n", "<leader>is", function()
-            vim.cmd("write")
-            local python_path = get_python_executable()
-            local isort_cmd = python_path:gsub("/python$", "/isort")
-            local args = "--profile black --line-length 79 --multi-line 3 --trailing-comma"
+        -- Sort Python imports
+        vim.keymap.set(
+            "n", "<leader>is",
+            function()
+                vim.cmd("write")
+                local py = get_python_executable()
+                local exe = py:gsub("/python$", "/isort")
+                local args = table.concat({
+                    "--profile","black","--line-length","79",
+                    "--multi-line","3","--trailing-comma"
+                }, " ")
+                if vim.fn.executable(exe) == 1 then
+                    vim.cmd("!" .. exe .. " " .. args .. " %")
+                else
+                    vim.cmd("!isort " .. args .. " %")
+                end
+                vim.cmd("edit!")
+            end,
+            {desc = "Sort Python imports"}
+        )
 
-            if vim.fn.executable(isort_cmd) == 1 then
-                vim.cmd("!" .. isort_cmd .. " " .. args .. " %")
-            else
-                vim.cmd("!isort " .. args .. " %")
-            end
-            vim.cmd("edit!")
-        end, {desc = "Sort Python imports"})
-
-        -- Create pyproject.toml configuration command
-        vim.api.nvim_create_user_command("CreatePyprojectToml", function()
-            local pyproject_content = [[
+        -- Create pyproject.toml
+        vim.api.nvim_create_user_command(
+            "CreatePyprojectToml",
+            function()
+                local txt = [[
 [tool.black]
 line-length = 79
 target-version = ['py38']
@@ -207,47 +229,78 @@ use_parentheses = true
 ensure_newline_before_comments = true
 
 [tool.mypy]
-exclude = "(^\\.venv/|typing_extensions\\.py$)"
 python_version = "3.8"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
 check_untyped_defs = true
+exclude = "(^\\.venv/|site-packages/|typing_extensions\\.py$|mypy_extensions\\.py$)"
 ]]
-
-            -- Check if pyproject.toml exists
-            if vim.fn.filereadable("pyproject.toml") == 1 then
-                print("pyproject.toml already exists. Please check and update manually.")
-                print("Recommended settings for 79-character line length:")
-                print(pyproject_content)
-            else
-                -- Create pyproject.toml
-                local file = io.open("pyproject.toml", "w")
-                if file then
-                    file:write(pyproject_content)
-                    file:close()
-                    print("Created pyproject.toml with 79-character line length settings")
-                    print("To use mypy: pip install mypy")
+                if vim.fn.filereadable("pyproject.toml") == 1 then
+                    print("pyproject.toml already exists.")
+                    print("Recommended settings:")
+                    print(txt)
                 else
-                    print("Error: Could not create pyproject.toml")
+                    local f = io.open("pyproject.toml", "w")
+                    if f then
+                        f:write(txt)
+                        f:close()
+                        print("Created pyproject.toml")
+                    else
+                        print("Error: Could not create pyproject.toml")
+                    end
                 end
-            end
-        end, {desc = "Create pyproject.toml with 79-char line length settings"})
+            end,
+            {desc = "Create pyproject.toml with 79-char settings"}
+        )
 
-        -- Command to check Python tools status
-        vim.api.nvim_create_user_command("PythonToolsStatus", function()
-            local python_path = get_python_executable()
-            print("Python executable: " .. python_path)
+        -- Tools status
+        vim.api.nvim_create_user_command(
+            "PythonToolsStatus",
+            function()
+                local py = get_python_executable()
+                print("Python executable: " .. py)
+                local tools = {"black","isort","mypy","codespell","djlint"}
+                for _, t in ipairs(tools) do
+                    local exe = py:gsub("/python$", "/" .. t)
+                    local ok = (vim.fn.executable(t) == 1) or
+                            (vim.fn.executable(exe) == 1)
+                    print(t .. ": " .. (ok and "✓ available" or "✗ not found"))
+                end
+                local has_pp = vim.fn.filereadable("pyproject.toml") == 1
+                print("pyproject.toml: " .. (has_pp and "✓ exists" or "✗"))
+            end,
+            {desc = "Check status of Python tools"}
+        )
 
-            local tools = {"black", "isort", "mypy", "codespell"}
-            for _, tool in ipairs(tools) do
-                local cmd = python_path:gsub("/python$", "/" .. tool)
-                local available = vim.fn.executable(tool) == 1 or vim.fn.executable(cmd) == 1
-                print(tool .. ": " .. (available and "✓ available" or "✗ not found"))
-            end
+        -- Runtime toggles
+        local function refresh_diags()
+            pcall(vim.diagnostic.reset, nil, 0)
+            vim.defer_fn(function()
+                pcall(vim.lsp.buf.clear_references)
+            end, 10)
+        end
 
-            local pyproject_exists = vim.fn.filereadable("pyproject.toml") == 1
-            print("pyproject.toml: " .. (pyproject_exists and "✓ exists" or "✗ not found"))
-        end, {desc = "Check status of Python development tools"})
+        vim.api.nvim_create_user_command(
+            "ToggleMyPy",
+            function()
+                vim.g.enable_mypy = not vim.g.enable_mypy
+                print("mypy: " .. (vim.g.enable_mypy and "ON" or "OFF"))
+                refresh_diags()
+            end,
+            {desc = "Toggle null-ls mypy diagnostics"}
+        )
+
+        vim.api.nvim_create_user_command(
+            "ToggleDjlint",
+            function()
+                vim.g.enable_djlint = not vim.g.enable_djlint
+                print("djlint: " .. (vim.g.enable_djlint and "ON" or "OFF"))
+                refresh_diags()
+            end,
+            {desc = "Toggle null-ls djlint diagnostics"}
+        )
     end
+
+
 }

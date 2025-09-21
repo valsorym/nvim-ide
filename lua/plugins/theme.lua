@@ -9,68 +9,88 @@ return {
         lazy = false,
         priority = 1000,
         config = function()
-            require("catppuccin").setup(
-                {
-                    flavour = "mocha", -- latte, frappe, macchiato, mocha
-                    background = {
-                        light = "latte",
-                        dark = "mocha"
-                    },
-                    transparent_background = false,
-                    show_end_of_buffer = false,
-                    term_colors = true,
-                    dim_inactive = {
+            local catppuccin = require("catppuccin")
+
+            catppuccin.setup({
+                flavour = "mocha",
+                background = { light = "latte", dark = "mocha" },
+                transparent_background = false,
+                show_end_of_buffer = false,
+                term_colors = true,
+                dim_inactive = { enabled = true, shade = "dark", percentage = 0.15 },
+                no_italic = false,
+                no_bold = false,
+                no_underline = false,
+                styles = {
+                    comments = {"italic"},
+                    conditionals = {"italic"},
+                    loops = {},
+                    functions = {},
+                    keywords = {},
+                    strings = {},
+                    variables = {},
+                    numbers = {},
+                    booleans = {},
+                    properties = {},
+                    types = {},
+                    operators = {}
+                },
+                integrations = {
+                    cmp = true,
+                    gitsigns = true,
+                    nvimtree = true,
+                    treesitter = true,
+                    telescope = { enabled = true },
+                    which_key = true,
+                    mason = true,
+                    markdown = true,
+                    native_lsp = {
                         enabled = true,
-                        shade = "dark",
-                        percentage = 0.15
-                    },
-                    no_italic = false,
-                    no_bold = false,
-                    no_underline = false,
-                    styles = {
-                        comments = {"italic"},
-                        conditionals = {"italic"},
-                        loops = {},
-                        functions = {},
-                        keywords = {},
-                        strings = {},
-                        variables = {},
-                        numbers = {},
-                        booleans = {},
-                        properties = {},
-                        types = {},
-                        operators = {}
-                    },
-                    integrations = {
-                        cmp = true,
-                        gitsigns = true,
-                        nvimtree = true,
-                        treesitter = true,
-                        telescope = {enabled = true},
-                        which_key = true,
-                        mason = true,
-                        markdown = true,
-                        dashboard = true,
-                        native_lsp = {
-                            enabled = true,
-                            virtual_text = {
-                                errors = {"italic"},
-                                hints = {"italic"},
-                                warnings = {"italic"},
-                                information = {"italic"}
-                            },
-                            underlines = {
-                                errors = {"underline"},
-                                hints = {"underline"},
-                                warnings = {"underline"},
-                                information = {"underline"}
-                            },
-                            inlay_hints = {background = true}
-                        }
+                        -- Do not style text for diagnostics at all.
+                        virtual_text = {
+                            errors = {},
+                            hints = {},
+                            warnings = {},
+                            information = {}
+                        },
+                        underlines = {
+                            errors = {},
+                            hints = {},
+                            warnings = {},
+                            information = {}
+                        },
+                        inlay_hints = { background = true }
                     }
                 }
-            )
+            })
+
+            -- Enforce "signs only": no underline/undercurl/italic on text.
+            local function enforce_signs_only()
+                -- Turn off diagnostic underlines globally.
+                vim.diagnostic.config({ underline = false })
+                -- Neutralize underline highlight groups (any colorscheme).
+                local groups = {
+                    "DiagnosticUnderlineError",
+                    "DiagnosticUnderlineWarn",
+                    "DiagnosticUnderlineInfo",
+                    "DiagnosticUnderlineHint",
+                }
+                for _, g in ipairs(groups) do
+                    pcall(vim.api.nvim_set_hl, 0, g, {
+                        underline = false,
+                        undercurl = false,
+                        italic = false,
+                        sp = "NONE"
+                    })
+                end
+            end
+
+            enforce_signs_only()
+            vim.api.nvim_create_autocmd("ColorScheme", {
+                callback = enforce_signs_only
+            })
         end
+
     },
     -- Tokyo Night theme
     {

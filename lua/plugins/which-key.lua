@@ -10,11 +10,11 @@ return {
         wk.setup(
             {
                 preset = "modern",
-                delay = 100, -- faster popup
+                delay = 100,
                 expand = 1,
-                notify = false, -- disable notifications for speed
+                notify = false,
                 icons = {
-                    mappings = false, -- disable icons in submenus
+                    mappings = false,
                     keys = {
                         Up = " ",
                         Down = " ",
@@ -35,41 +35,39 @@ return {
                 },
                 win = {
                     no_overlap = true,
-                    padding = {3, 3}, -- compact padding
+                    padding = {3, 3},
                     title = true,
                     title_pos = "center",
                     zindex = 1000,
                     wo = {winblend = 10}
                 },
                 layout = {
-                    width = {min = 20}, -- minimum menu width
-                    spacing = 3 -- spacing between items
+                    width = {min = 20},
+                    spacing = 3
                 },
                 triggers = {
                     {"<leader>", mode = {"n", "v"}},
                     {"g", mode = {"n", "v"}},
                     {"]", mode = "n"},
                     {"[", mode = "n"},
-                    {"z", mode = "n"} -- folds
+                    {"z", mode = "n"}
                 },
                 spec = {
-                    -- EXPLORER - New group for file management
+                    -- EXPLORER
                     {"<leader>e", group = " Explorer"},
                     {
                         "<leader>ee",
                         function()
-                            vim.defer_fn(
-                                function()
-                                    _G.NvimTreeModal()
-                                end,
-                                100
-                            )
+                            vim.defer_fn(function()
+                                _G.NvimTreeModal()
+                            end, 100)
                         end,
                         desc = "• Open File Explorer"
                     },
                     {"<leader>et", desc = "• Show Tabs List"},
                     {"<leader>eb", desc = "• Show Buffers List"},
-                    -- FILES & SEARCH - Fixed section
+
+                    -- FIND / SEARCH
                     {"<leader>f", group = " Find/Search"},
                     {"<leader>ff", desc = "• Find Files"},
                     {"<leader>fg", desc = "• Live Grep (search in files)"},
@@ -77,15 +75,18 @@ return {
                     {"<leader>fh", desc = "• Help Tags"},
                     {"<leader>fs", desc = "• Document Symbols (LSP)"},
                     {"<leader>fw", desc = "• Workspace Symbols (LSP)"},
-                    -- YANK / CLIPBOARD (Normal mode)
+
+                    -- YANK / CLIPBOARD (Normal)
                     {"<leader>y", group = " Yank/Clipboard", mode = "n"},
-                    {"<leader>ya", desc = "• Yank entire buffer to clipboard", mode = "n"},
-                    {"<leader>yy", desc = "• Yank selection to clipboard", mode = "n"},
+                    {"<leader>ya", desc = "• Yank entire buffer", mode = "n"},
+                    {"<leader>yy", desc = "• Yank selection", mode = "n"},
                     {"<leader>yp", desc = "• Paste from clipboard", mode = "n"},
-                    -- YANK / CLIPBOARD (Visual mode)
+
+                    -- YANK / CLIPBOARD (Visual)
                     {"<leader>y", group = " Yank/Clipboard", mode = "v"},
-                    {"<leader>yy", desc = "• Yank selection to clipboard", mode = "v"},
+                    {"<leader>yy", desc = "• Yank selection", mode = "v"},
                     {"<leader>yp", desc = "• Paste from clipboard", mode = "v"},
+
                     -- BUFFERS / TABS
                     {"<leader>b", group = " Buffers/Tabs"},
                     {"<leader>bb", desc = "• List Buffers"},
@@ -97,6 +98,7 @@ return {
                     {"<A-Right>", desc = "• Next Tab", mode = "n"},
                     {"<A-h>", desc = "• Move Tab Left", mode = "n"},
                     {"<A-l>", desc = "• Move Tab Right", mode = "n"},
+
                     -- GIT
                     {"<leader>g", group = " Git"},
                     {"<leader>gs", desc = "• Stage Hunk"},
@@ -104,7 +106,8 @@ return {
                     {"<leader>gp", desc = "• Preview Hunk"},
                     {"<leader>gb", desc = "• Blame Line"},
                     {"<leader>gd", desc = "• Diff This"},
-                    -- LSP / CODE
+
+                    -- CODE / LSP
                     {"<leader>c", group = " Code/LSP"},
                     {"<leader>ca", desc = "• Code Action"},
                     {"<leader>rn", desc = "• Rename Symbol"},
@@ -115,6 +118,14 @@ return {
                     {"gi", desc = "• Implementation"},
                     {"gr", desc = "• References"},
                     {"K", desc = "• Hover Info"},
+
+                    -- LINTERS (new submenu)
+                    {"<leader>k", group = " Linters"},
+                    {"<leader>km", "<cmd>ToggleMyPy<cr>",
+                        desc = "• Toggle MyPy"},
+                    {"<leader>kd", "<cmd>ToggleDjlint<cr>",
+                        desc = "• Toggle djlint (Django)"},
+
                     -- DIAGNOSTICS
                     {"<leader>x", group = " Diagnostics"},
                     {"<leader>xx", desc = "• Show Line Diagnostics"},
@@ -122,6 +133,7 @@ return {
                     {"gl", desc = "• Show Line Diagnostics"},
                     {"]d", desc = "• Next Diagnostic"},
                     {"[d", desc = "• Previous Diagnostic"},
+
                     -- TERMINAL / TOOLS
                     {"<leader>t", group = " Terminal/Tools"},
                     {"<leader>tf", desc = "• Float Terminal"},
@@ -131,28 +143,32 @@ return {
                     {"<leader>tn", desc = "• New Tab"},
                     {"<leader>m", desc = "• Mason"},
                     {"<leader>vs", desc = "• Select Python Venv"},
+
                     -- OPTIONS
                     {"<leader>h", desc = "• Clear Search Highlights"},
+
                     -- QUIT / TABS
                     {"<leader>q", group = " Quit/Tabs"},
                     {"<leader>qq", desc = "• Smart Close Current Tab"},
                     {"<leader>qa", desc = "• Close All Tabs & Exit"},
                     {"<leader>qQ", desc = "• Force Close Current Tab"},
                     {"<leader>qA", desc = "• Force Close All Tabs & Exit"},
+
                     -- FUNCTION KEYS
                     {"<F2>", desc = "• Save & Format"},
                     {"<F5>", desc = "• Previous Tab"},
                     {"<F6>", desc = "• Next Tab"},
+                    {"<F7>", desc = "• Show Document Symbols"},
                     {"<F8>", desc = "• Show Tabs List"},
                     {"<F9>", desc = "• Open File Explorer"},
                     {"<F10>", desc = "• Show Buffers List"},
+
                     -- UI / THEMES
                     {"<leader>u", group = " UI/Themes"},
                     {"<leader>ut", desc = "• Theme Switcher"},
                     {"<leader>ub", desc = "• Toggle Background"},
-                    -- FUNCTION KEYS
-                    {"<F7>", desc = "• Show Document Symbols"},
-                    -- LSP / CODE
+
+                    -- LSP / SYMBOLS
                     {"<leader>l", group = " LSP/Symbols"},
                     {"<leader>ls", desc = "• Document Symbols (modal)"},
                 }

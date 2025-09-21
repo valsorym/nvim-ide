@@ -36,6 +36,9 @@ vim.opt.ignorecase = true
 vim.opt.smartcase = true
 vim.opt.termguicolors = true
 
+-- Set linter toggles before plugins load.
+vim.g.enable_mypy = false    -- start with mypy OFF
+vim.g.enable_djlint = false  -- start with djlint OFF
 
 -- Local configs.
 require("config.nvim-tabs").setup()
