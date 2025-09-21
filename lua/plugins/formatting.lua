@@ -8,7 +8,7 @@ return {
         "jay-babu/mason-null-ls.nvim"
     },
     cmd = {
-        "ToggleMyPy",
+        -- "ToggleMyPy",  -- COMMENTED OUT
         "ToggleDjlint",
         "ToggleCodespell",
         "ToggleESLint",
@@ -17,16 +17,24 @@ return {
         "CreatePyprojectToml",
     },
     init = function()
-        if vim.g.enable_mypy == nil     then vim.g.enable_mypy = false end
-        if vim.g.enable_djlint == nil   then vim.g.enable_djlint = false end
-        if vim.g.enable_codespell == nil then vim.g.enable_codespell = true end
-        if vim.g.enable_eslint == nil   then vim.g.enable_eslint = false end
-        if vim.g.enable_flake8 == nil   then vim.g.enable_flake8 = false end
+        -- Set defaults silently without debug output.
+        vim.g.enable_mypy = false
+        vim.g.enable_djlint = false
+        vim.g.enable_codespell = true
+        vim.g.enable_eslint = false
+        vim.g.enable_flake8 = false
     end,
     config = function()
         local null_ls = require("null-ls")
 
-        -- Detect python executable in venv
+        -- FORCE DISABLE MYPY BUILTIN COMPLETELY
+        if null_ls.builtins.diagnostics.mypy then
+            null_ls.builtins.diagnostics.mypy = function()
+                return nil  -- return nothing to disable completely
+            end
+        end
+
+        -- Detect python executable in venv.
         local function get_python_executable()
             local venv = vim.fn.getenv("VIRTUAL_ENV")
             if venv ~= vim.NIL and venv ~= "" then
@@ -41,7 +49,6 @@ return {
             return "python3"
         end
 
-        -- ---------- Base sources (safe, always loaded) ----------
         local sources = {
             -- Python formatting
             null_ls.builtins.formatting.black.with({
@@ -97,7 +104,7 @@ return {
             }),
         }
 
-        -- Codespell: safe default ON, runtime toggled by global
+        -- Codespell: safe default ON, runtime toggled by global.
         table.insert(sources, null_ls.builtins.diagnostics.codespell.with({
             condition = function()
                 return vim.fn.executable("codespell") == 1
@@ -107,8 +114,7 @@ return {
             end
         }))
 
-        -- ---------- Defer registering mypy/djlint until toggled ON ----------
-        local mypy_registered = false
+        -- Local mypy_registered = false.
         local djlint_registered = false
 
         local function get_project_root(bufnr)
@@ -124,6 +130,8 @@ return {
             return vim.fn.getcwd()
         end
 
+        -- COMMENTED OUT: MyPy functionality completely disabled.
+        --[[
         local function build_mypy()
             return null_ls.builtins.diagnostics.mypy.with({
                 condition = function()
@@ -183,6 +191,7 @@ return {
                 },
             })
         end
+        --]]
 
         local function build_djlint()
             return null_ls.builtins.diagnostics.djlint.with({
@@ -197,13 +206,15 @@ return {
             })
         end
 
-        -- Helpers to register/disable by name
+        -- Helpers to register/disable by name.
+        --[[
         local function ensure_mypy_registered()
             if not mypy_registered then
                 null_ls.register(build_mypy())
                 mypy_registered = true
             end
         end
+        --]]
         local function ensure_djlint_registered()
             if not djlint_registered then
                 null_ls.register(build_djlint())
@@ -216,7 +227,7 @@ return {
             end
         end
 
-        -- Initial setup: do NOT add mypy/djlint unless enabled
+        -- Initial setup: do NOT add mypy/djlint unless enabled.
         null_ls.setup({
             sources = sources,
             on_attach = function(client, bufnr)
@@ -245,17 +256,24 @@ return {
             end
         })
 
-        -- ВАЖЛИВО: НЕ реєструємо mypy автоматично при старті!
-        -- Тільки коли користувач явно увімкне через команду
+        -- IMPORTANT: DO NOT register mypy automatically at startup!
+        -- Check that mypy is really disabled.
+        --[[
+        if vim.g.enable_mypy == true then
+            vim.notify("WARNING: MyPy enabled at startup - disabling",
+                vim.log.levels.WARN)
+            vim.g.enable_mypy = false
+        end
+        --]]
 
-        -- Manual format
+        -- Manual format.
         vim.keymap.set(
             "n", "<leader>F",
             function() vim.lsp.buf.format({async = true}) end,
             {desc = "Format document"}
         )
 
-        -- Toggle format on save
+        -- Toggle format on save.
         vim.g.format_on_save = true
         vim.keymap.set(
             "n", "<leader>tf",
@@ -267,7 +285,7 @@ return {
             {desc = "Toggle format on save"}
         )
 
-        -- Sort Python imports
+        -- Sort Python imports.
         vim.keymap.set(
             "n", "<leader>is",
             function()
@@ -285,10 +303,10 @@ return {
                 end
                 vim.cmd("edit!")
             end,
-            {desc = "Sort Python imports"}
+            {desc = "  Sort Python Imports"}
         )
 
-        -- Create pyproject.toml
+        -- Create pyproject.toml.
         vim.api.nvim_create_user_command(
             "CreatePyprojectToml",
             function()
@@ -334,7 +352,7 @@ exclude = "(^\\.venv/|site-packages/|typing_extensions\\.py$|"
             {desc = "Create pyproject.toml with 79-char settings"}
         )
 
-        -- Tools status
+        -- Tools status.
         vim.api.nvim_create_user_command(
             "PythonToolsStatus",
             function()
@@ -354,7 +372,7 @@ exclude = "(^\\.venv/|site-packages/|typing_extensions\\.py$|"
             {desc = "Check status of Python tools"}
         )
 
-        -- Runtime toggles with dynamic register/disable
+        -- Runtime toggles with dynamic register/disable.
         local function refresh_diags()
             pcall(vim.diagnostic.reset, nil, 0)
             vim.defer_fn(function()
@@ -362,14 +380,22 @@ exclude = "(^\\.venv/|site-packages/|typing_extensions\\.py$|"
             end, 10)
         end
 
+        -- COMMENTED OUT: MyPy toggle command completely disabled
+        --[[
         vim.api.nvim_create_user_command(
             "ToggleMyPy",
             function()
                 local sources_mod = require("null-ls.sources")
+
+                -- Debug info
+                print("Current mypy state before toggle:", vim.g.enable_mypy)
+
                 vim.g.enable_mypy = not vim.g.enable_mypy
                 if vim.g.enable_mypy then
+                    print("Registering mypy...")
                     ensure_mypy_registered()
                 else
+                    print("Disabling mypy...")
                     pcall(sources_mod.disable, { name = "mypy" })
                     mypy_registered = false
                 end
@@ -378,6 +404,7 @@ exclude = "(^\\.venv/|site-packages/|typing_extensions\\.py$|"
             end,
             {desc = "Toggle null-ls mypy diagnostics"}
         )
+        --]]
 
         vim.api.nvim_create_user_command(
             "ToggleDjlint",
@@ -406,7 +433,7 @@ exclude = "(^\\.venv/|site-packages/|typing_extensions\\.py$|"
             {desc = "Toggle null-ls codespell diagnostics"}
         )
 
-        -- ESLint/Flake8 placeholders (no builtin registered here)
+        -- ESLint/Flake8 placeholders (no builtin registered here).
         vim.api.nvim_create_user_command(
             "ToggleESLint",
             function()

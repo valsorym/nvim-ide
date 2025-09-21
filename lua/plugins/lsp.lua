@@ -36,7 +36,7 @@ return {
 
         -- Open location in a tab (reuse tab if file is already open).
         local function open_lsp_location_in_tab(loc)
-            -- Location can be Location or LocationLink
+            -- Location can be Location or LocationLink.
             local uri = loc.uri or loc.targetUri
             local range = loc.range or loc.targetSelectionRange or loc.targetRange
             if not (uri and range) then
@@ -50,14 +50,14 @@ return {
             local cur = vim.api.nvim_get_current_buf()
             local cur_name = vim.api.nvim_buf_get_name(cur)
 
-            -- Same file: just jump
+            -- Same file: just jump.
             if cur_name == fname then
                 pcall(vim.api.nvim_win_set_cursor, 0, {lnum, col})
                 vim.cmd("normal! zz")
                 return
             end
 
-            -- Look for an existing tab showing this file
+            -- Look for an existing tab showing this file.
             for tab_nr = 1, vim.fn.tabpagenr("$") do
                 local buflist = vim.fn.tabpagebuflist(tab_nr)
                 for _, b in ipairs(buflist) do
@@ -70,7 +70,7 @@ return {
                 end
             end
 
-            -- Not open: open in a new tab
+            -- Open in a new tab.
             vim.cmd("tab drop " .. vim.fn.fnameescape(fname))
             pcall(vim.api.nvim_win_set_cursor, 0, {lnum, col})
             vim.cmd("normal! zz")
@@ -87,7 +87,7 @@ return {
                 return
             end
 
-            -- Result can be a single location or a list
+            -- Result can be a single location or a list.
             local loc = result
             if vim.tbl_islist(result) then
                 loc = result[1]
@@ -100,18 +100,18 @@ return {
             open_lsp_location_in_tab(loc)
         end
 
-        -- Pick correct offset encoding for make_position_params
+        -- Pick correct offset encoding for make_position_params.
         local function make_pos_params(bufnr)
             bufnr = bufnr or vim.api.nvim_get_current_buf()
             local clients = vim.lsp.get_clients({ bufnr = bufnr })
             local encoding = "utf-16"  -- default fallback
 
-            -- Use encoding from first available client
+            -- Use encoding from first available client.
             if clients and #clients > 0 then
                 encoding = clients[1].offset_encoding or "utf-16"
             end
 
-            -- Get current cursor position
+            -- Get current cursor position.
             local row, col = unpack(vim.api.nvim_win_get_cursor(0))
 
             return {
@@ -133,7 +133,7 @@ return {
         local function on_attach(client, bufnr)
             local opts = {buffer = bufnr, silent = true}
 
-            -- References in quickfix (залишив як було)
+            -- References in quickfix.
             local function show_references()
                 vim.lsp.buf.references(nil, {
                     on_list = function(options)
@@ -146,7 +146,7 @@ return {
                 })
             end
 
-            -- Custom LSP functions that force tab behavior
+            -- Custom LSP functions that force tab behavior.
             local function definition_in_tab()
                 local params = make_pos_params()
                 vim.lsp.buf_request(0, "textDocument/definition", params,
@@ -204,7 +204,7 @@ return {
 
             _G.LspDefinitionInTab = definition_in_tab
 
-            -- Navigation with explicit tab functions
+            -- Navigation with explicit tab functions.
             vim.keymap.set("n", "gd", definition_in_tab,
                 vim.tbl_extend("force", opts, {desc = "Go to definition (tab)"}))
 
@@ -217,32 +217,32 @@ return {
             vim.keymap.set("n", "gr", show_references,
                 vim.tbl_extend("force", opts, {desc = "Show references"}))
 
-            -- Override Ctrl+LeftMouse for this buffer
+            -- Override Ctrl+LeftMouse for this buffer.
             vim.keymap.set("n", "<C-LeftMouse>", definition_in_tab,
                 vim.tbl_extend("force", opts, {desc = "Go to definition (mouse)"}))
 
-            -- Documentation
+            -- Documentation.
             vim.keymap.set("n", "K", vim.lsp.buf.hover,
                 vim.tbl_extend("force", opts, {desc = "Show hover info"}))
 
             vim.keymap.set("n", "<C-k>", vim.lsp.buf.signature_help,
                 vim.tbl_extend("force", opts, {desc = "Signature help"}))
 
-            -- Code actions (these are also mapped in keymaps.lua for global access)
+            -- Code actions (these are also mapped in keymaps.lua for global access).
             vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action,
                 vim.tbl_extend("force", opts, {desc = "Code action"}))
 
             vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename,
                 vim.tbl_extend("force", opts, {desc = "Rename symbol"}))
 
-            -- Diagnostics navigation
+            -- Diagnostics navigation.
             vim.keymap.set("n", "[d", vim.diagnostic.goto_prev,
                 vim.tbl_extend("force", opts, {desc = "Previous diagnostic"}))
 
             vim.keymap.set("n", "]d", vim.diagnostic.goto_next,
                 vim.tbl_extend("force", opts, {desc = "Next diagnostic"}))
 
-            -- Show line diagnostics
+            -- Show line diagnostics.
             vim.keymap.set("n", "<leader>xx", function()
                 local diagnostic_opts = {
                     focusable = false,
@@ -267,7 +267,7 @@ return {
                 vim.diagnostic.open_float(nil, diagnostic_opts)
             end, vim.tbl_extend("force", opts, {desc = "Show line diagnostics"}))
 
-            -- Format
+            -- Format.
             vim.keymap.set("n", "<leader>f", function()
                 vim.lsp.buf.format({async = true})
             end, vim.tbl_extend("force", opts, {desc = "Format buffer"}))
@@ -312,7 +312,7 @@ return {
             print("Signcolumn setting:", vim.wo.signcolumn)
             print("Testing icons: ☣ ⚠ 💡 ℹ")
 
-            -- Force refresh signs
+            -- Force refresh signs.
             vim.diagnostic.show(0, 0, diagnostics)
 
             for i, diag in ipairs(diagnostics) do
@@ -394,19 +394,19 @@ return {
                 },
                 root_markers = {"package.json", "tsconfig.json", ".git"}
             },
-            -- Vue.js (using vue_ls - modern replacement for volar)
+            -- Vue.js (using vue_ls - modern replacement for volar).
             vue_ls = {
                 filetypes = {"vue"},
                 init_options = {
                     typescript = {
-                        -- Path to typescript that Mason installs with vue-language-server
+                        -- Path to typescript that Mason installs with vue-language-server.
                         tsdk = vim.fn.stdpath("data") ..
                             "/mason/packages/vue-language-server/node_modules/typescript/lib"
                     }
                 },
                 root_markers = {"package.json", "vue.config.js", ".git"}
             },
-            -- HTML with Django template support
+            -- HTML with Django template support.
             html = {
                 filetypes = {"html", "htmldjango"},
                 settings = {
@@ -560,10 +560,10 @@ return {
             vim.lsp.enable(server_name)
         end
 
-        -- Force set handlers after LSP is loaded (double insurance)
+        -- Force set handlers after LSP is loaded (double insurance).
         vim.api.nvim_create_autocmd("LspAttach", {
             callback = function()
-                -- Re-apply our custom handlers to ensure they're not overridden
+                -- Re-apply our custom handlers to ensure they're not overridden.
                 vim.lsp.handlers["textDocument/definition"] = handle_locations_in_tabs
                 vim.lsp.handlers["textDocument/declaration"] = handle_locations_in_tabs
                 vim.lsp.handlers["textDocument/typeDefinition"] = handle_locations_in_tabs
