@@ -68,6 +68,10 @@ function M.setup()
     local map = vim.keymap.set
     local opts = {noremap = true, silent = true}
 
+    -- Enable mouse support for LSP navigation
+    vim.opt.mouse = "a"
+    vim.opt.mousemodel = "extend"
+
     -- Patch Telescope builtins to open results in tabs.
     local function patch_telescope_tabdrop()
         local ok, builtin = pcall(require, "telescope.builtin")
@@ -510,7 +514,11 @@ function M.setup()
 
     -- Override :new to create new tab instead of split.
     vim.cmd("cabbrev new tabnew")
-end
 
+    -- Force LSP tab behavior for mouse clicks (global fallback)
+    map("n", "<C-LeftMouse>", function()
+        vim.lsp.buf.definition()
+    end, {desc = "Go to definition (mouse)"})
+end
 
 return M

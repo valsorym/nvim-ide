@@ -34,75 +34,87 @@ return {
             return "python3"
         end
 
-        -- Function to show detailed diagnostics in floating window.
-        local function show_line_diagnostics()
-            local opts = {
-                focusable = false,
-                close_events = {"BufLeave", "CursorMoved", "InsertEnter", "FocusLost"},
-                border = "rounded",
-                source = "always",
-                prefix = " ",
-                scope = "line"
-            }
-            vim.diagnostic.open_float(nil, opts)
+        -- NEW: open location in a tab (reuse tab if file is already open)
+        local function open_lsp_location_in_tab(loc)
+            -- Location can be Location or LocationLink
+            local uri = loc.uri or loc.targetUri
+            local range = loc.range or loc.targetSelectionRange or loc.targetRange
+            if not (uri and range) then
+                return
+            end
+
+            local fname = vim.uri_to_fname(uri)
+            local lnum = (range.start and range.start.line or 0) + 1
+            local col = (range.start and range.start.character or 0)
+
+            local cur = vim.api.nvim_get_current_buf()
+            local cur_name = vim.api.nvim_buf_get_name(cur)
+
+            -- Same file: just jump
+            if cur_name == fname then
+                pcall(vim.api.nvim_win_set_cursor, 0, {lnum, col})
+                vim.cmd("normal! zz")
+                return
+            end
+
+            -- Look for an existing tab showing this file
+            for tab_nr = 1, vim.fn.tabpagenr("$") do
+                local buflist = vim.fn.tabpagebuflist(tab_nr)
+                for _, b in ipairs(buflist) do
+                    if vim.fn.bufname(b) == fname then
+                        vim.cmd(tab_nr .. "tabnext")
+                        pcall(vim.api.nvim_win_set_cursor, 0, {lnum, col})
+                        vim.cmd("normal! zz")
+                        return
+                    end
+                end
+            end
+
+            -- Not open: open in a new tab
+            vim.cmd("tab drop " .. vim.fn.fnameescape(fname))
+            pcall(vim.api.nvim_win_set_cursor, 0, {lnum, col})
+            vim.cmd("normal! zz")
         end
 
-        -- Key mappings for LSP with new tab navigation.
+        -- NEW: generic handler for LSP locations -> open in tabs
+        local function handle_locations_in_tabs(err, result, ctx, _)
+            if err then
+                vim.notify("LSP error: " .. (err.message or ""), vim.log.levels.ERROR)
+                return
+            end
+            if not result or (type(result) == "table" and vim.tbl_isempty(result)) then
+                vim.notify("No locations found", vim.log.levels.INFO)
+                return
+            end
+
+            -- Result can be a single location or a list
+            local loc = result
+            if vim.tbl_islist(result) then
+                loc = result[1]
+            end
+            if not loc then
+                vim.notify("No locations found", vim.log.levels.INFO)
+                return
+            end
+
+            open_lsp_location_in_tab(loc)
+        end
+
+        -- NEW: enforce tab behavior for these LSP requests
+        vim.lsp.handlers["textDocument/definition"] = handle_locations_in_tabs
+        vim.lsp.handlers["textDocument/declaration"] = handle_locations_in_tabs
+        vim.lsp.handlers["textDocument/typeDefinition"] = handle_locations_in_tabs
+        vim.lsp.handlers["textDocument/implementation"] = handle_locations_in_tabs
+
+        -- Key mappings for LSP with tab navigation.
         local function on_attach(client, bufnr)
             local opts = {buffer = bufnr, silent = true}
 
-            -- Custom function for definition in new tab
-            local function go_to_definition_new_tab()
-                local current_buf = vim.api.nvim_get_current_buf()
-                local current_pos = vim.api.nvim_win_get_cursor(0)
-
-                vim.lsp.buf.definition({
-                    on_list = function(options)
-                        if options.items and #options.items > 0 then
-                            local item = options.items[1]
-                            local target_file = item.filename
-                            local current_file = vim.api.nvim_buf_get_name(current_buf)
-
-                            -- If definition is in the same file, just jump there
-                            if target_file == current_file then
-                                vim.api.nvim_win_set_cursor(0, {item.lnum, item.col})
-                                vim.cmd("normal! zz")
-                            else
-                                -- Check if file is already open in any tab
-                                local found_tab = nil
-                                for tab_nr = 1, vim.fn.tabpagenr("$") do
-                                    local buflist = vim.fn.tabpagebuflist(tab_nr)
-                                    for _, buf_nr in ipairs(buflist) do
-                                        if vim.fn.bufname(buf_nr) == target_file then
-                                            found_tab = tab_nr
-                                            break
-                                        end
-                                    end
-                                    if found_tab then break end
-                                end
-
-                                if found_tab then
-                                    -- Switch to existing tab
-                                    vim.cmd(found_tab .. "tabnext")
-                                    vim.api.nvim_win_set_cursor(0, {item.lnum, item.col})
-                                    vim.cmd("normal! zz")
-                                else
-                                    -- Open in new tab
-                                    vim.cmd("tabnew " .. vim.fn.fnameescape(target_file))
-                                    vim.api.nvim_win_set_cursor(0, {item.lnum, item.col})
-                                    vim.cmd("normal! zz")
-                                end
-                            end
-                        end
-                    end
-                })
-            end
-
-            -- Custom function for references in quickfix
+            -- References in quickfix (залишив як було)
             local function show_references()
                 vim.lsp.buf.references(nil, {
                     on_list = function(options)
-                        vim.fn.setqflist({}, ' ', options)
+                        vim.fn.setqflist({}, " ", options)
                         vim.cmd("copen")
                         vim.wo.cursorline = true
                         vim.wo.number = true
@@ -111,20 +123,74 @@ return {
                 })
             end
 
-            -- Navigation with new tab support
-            vim.keymap.set("n", "gd", go_to_definition_new_tab,
-                vim.tbl_extend("force", opts, {desc = "Go to definition (new tab)"}))
+            -- Custom LSP functions that force tab behavior
+            local function definition_in_tab()
+                local params = vim.lsp.util.make_position_params()
+                vim.lsp.buf_request(0, "textDocument/definition", params, function(err, result)
+                    if err then
+                        vim.notify("LSP error: " .. (err.message or ""), vim.log.levels.ERROR)
+                        return
+                    end
+                    if not result or vim.tbl_isempty(result) then
+                        vim.notify("No definition found", vim.log.levels.INFO)
+                        return
+                    end
 
-            vim.keymap.set("n", "gD", function()
-                vim.lsp.buf.declaration()
-            end, vim.tbl_extend("force", opts, {desc = "Go to declaration"}))
+                    local location = result[1] or result
+                    open_lsp_location_in_tab(location)
+                end)
+            end
+
+            local function declaration_in_tab()
+                local params = vim.lsp.util.make_position_params()
+                vim.lsp.buf_request(0, "textDocument/declaration", params, function(err, result)
+                    if err then
+                        vim.notify("LSP error: " .. (err.message or ""), vim.log.levels.ERROR)
+                        return
+                    end
+                    if not result or vim.tbl_isempty(result) then
+                        vim.notify("No declaration found", vim.log.levels.INFO)
+                        return
+                    end
+
+                    local location = result[1] or result
+                    open_lsp_location_in_tab(location)
+                end)
+            end
+
+            local function implementation_in_tab()
+                local params = vim.lsp.util.make_position_params()
+                vim.lsp.buf_request(0, "textDocument/implementation", params, function(err, result)
+                    if err then
+                        vim.notify("LSP error: " .. (err.message or ""), vim.log.levels.ERROR)
+                        return
+                    end
+                    if not result or vim.tbl_isempty(result) then
+                        vim.notify("No implementation found", vim.log.levels.INFO)
+                        return
+                    end
+
+                    local location = result[1] or result
+                    open_lsp_location_in_tab(location)
+                end)
+            end
+
+            -- Navigation with explicit tab functions
+            vim.keymap.set("n", "gd", definition_in_tab,
+                vim.tbl_extend("force", opts, {desc = "Go to definition (tab)"}))
+
+            vim.keymap.set("n", "gD", declaration_in_tab,
+                vim.tbl_extend("force", opts, {desc = "Go to declaration (tab)"}))
+
+            vim.keymap.set("n", "gi", implementation_in_tab,
+                vim.tbl_extend("force", opts, {desc = "Go to implementation (tab)"}))
 
             vim.keymap.set("n", "gr", show_references,
                 vim.tbl_extend("force", opts, {desc = "Show references"}))
 
-            vim.keymap.set("n", "gi", function()
-                vim.lsp.buf.implementation()
-            end, vim.tbl_extend("force", opts, {desc = "Go to implementation"}))
+            -- Override Ctrl+LeftMouse for this buffer
+            vim.keymap.set("n", "<C-LeftMouse>", definition_in_tab,
+                vim.tbl_extend("force", opts, {desc = "Go to definition (mouse)"}))
 
             -- Documentation
             vim.keymap.set("n", "K", vim.lsp.buf.hover,
@@ -148,11 +214,29 @@ return {
                 vim.tbl_extend("force", opts, {desc = "Next diagnostic"}))
 
             -- Show line diagnostics
-            vim.keymap.set("n", "<leader>xx", show_line_diagnostics,
-                vim.tbl_extend("force", opts, {desc = "Show line diagnostics"}))
+            vim.keymap.set("n", "<leader>xx", function()
+                local diagnostic_opts = {
+                    focusable = false,
+                    close_events = {"BufLeave", "CursorMoved", "InsertEnter", "FocusLost"},
+                    border = "rounded",
+                    source = "always",
+                    prefix = " ",
+                    scope = "line"
+                }
+                vim.diagnostic.open_float(nil, diagnostic_opts)
+            end, vim.tbl_extend("force", opts, {desc = "Show line diagnostics"}))
 
-            vim.keymap.set("n", "gl", show_line_diagnostics,
-                vim.tbl_extend("force", opts, {desc = "Show line diagnostics"}))
+            vim.keymap.set("n", "gl", function()
+                local diagnostic_opts = {
+                    focusable = false,
+                    close_events = {"BufLeave", "CursorMoved", "InsertEnter", "FocusLost"},
+                    border = "rounded",
+                    source = "always",
+                    prefix = " ",
+                    scope = "line"
+                }
+                vim.diagnostic.open_float(nil, diagnostic_opts)
+            end, vim.tbl_extend("force", opts, {desc = "Show line diagnostics"}))
 
             -- Format
             vim.keymap.set("n", "<leader>f", function()
@@ -446,5 +530,16 @@ return {
         for server_name, _ in pairs(servers) do
             vim.lsp.enable(server_name)
         end
+
+        -- Force set handlers after LSP is loaded (double insurance)
+        vim.api.nvim_create_autocmd("LspAttach", {
+            callback = function()
+                -- Re-apply our custom handlers to ensure they're not overridden
+                vim.lsp.handlers["textDocument/definition"] = handle_locations_in_tabs
+                vim.lsp.handlers["textDocument/declaration"] = handle_locations_in_tabs
+                vim.lsp.handlers["textDocument/typeDefinition"] = handle_locations_in_tabs
+                vim.lsp.handlers["textDocument/implementation"] = handle_locations_in_tabs
+            end
+        })
     end
 }
