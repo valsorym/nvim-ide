@@ -47,9 +47,9 @@ return {
             )
         end
     },
-    -- Fuzzy finder with tab-based file opening.
+    -- Fuzzy finder with vim-way behavior.
     {
-    "nvim-telescope/telescope.nvim",
+        "nvim-telescope/telescope.nvim",
         dependencies = {
             "nvim-lua/plenary.nvim",
             {
@@ -60,185 +60,272 @@ return {
         config = function()
             local telescope = require("telescope")
             local actions = require("telescope.actions")
-            local tabopen = require("utils.tabopen")
 
-            -- Custom action using unified tab opening
-            local function open_with_tabopen(prompt_bufnr)
-                local entry = require("telescope.actions.state").get_selected_entry()
-                actions.close(prompt_bufnr)
-
-                if entry then
-                    tabopen.open_telescope_entry(entry)
-                end
-            end
-
-            telescope.setup({
-                defaults = {
-                    prompt_prefix = " ",
-                    selection_caret = " ",
-                    path_display = {"truncate"},
-                    file_ignore_patterns = {
-                        "node_modules",
-                        ".git/",
-                        "*.pyc",
-                        "__pycache__",
-                        ".venv",
-                        "venv",
-                        ".env",
-                        "migrations/",
-                        "*.min.js",
-                        "*.min.css",
-                        "static/admin/",
-                        "media/"
-                    },
-                    mappings = {
-                        i = {
-                            ["<CR>"] = open_with_tabopen,
-                            ["<C-t>"] = open_with_tabopen,
-                            ["<C-x>"] = false, -- disable split
-                            ["<C-v>"] = false, -- disable vsplit
-                            ["<C-s>"] = false, -- disable hsplit
-                        },
-                        n = {
-                            ["<CR>"] = open_with_tabopen,
-                            ["<C-t>"] = open_with_tabopen,
-                            ["<C-x>"] = false, -- disable split
-                            ["<C-v>"] = false, -- disable vsplit
-                            ["<C-s>"] = false, -- disable hsplit
-                        }
-                    }
-                },
-                pickers = {
-                    find_files = {
-                        hidden = true,
-                        find_command = {
-                            "rg",
-                            "--files",
-                            "--hidden",
-                            "--glob",
-                            "!**/.git/*",
-                            "--glob",
-                            "!**/__pycache__/*",
-                            "--glob",
-                            "!**/.venv/*"
+            telescope.setup(
+                {
+                    defaults = {
+                        prompt_prefix = " ",
+                        selection_caret = " ",
+                        path_display = {"truncate"},
+                        file_ignore_patterns = {
+                            "node_modules",
+                            ".git/",
+                            "*.pyc",
+                            "__pycache__",
+                            ".venv",
+                            "venv",
+                            ".env",
+                            "migrations/",
+                            "*.min.js",
+                            "*.min.css",
+                            "static/admin/",
+                            "media/"
                         },
                         mappings = {
                             i = {
-                                ["<CR>"] = open_with_tabopen,
-                                ["<C-t>"] = open_with_tabopen,
+                                ["<C-t>"] = actions.select_tab,
+                                ["<C-x>"] = actions.select_horizontal,
+                                ["<C-v>"] = actions.select_vertical,
+                                -- <CR> opens in current window (vim default)
                             },
                             n = {
-                                ["<CR>"] = open_with_tabopen,
-                                ["<C-t>"] = open_with_tabopen,
+                                ["<C-t>"] = actions.select_tab,
+                                ["<C-x>"] = actions.select_horizontal,
+                                ["<C-v>"] = actions.select_vertical,
+                                -- <CR> opens in current window (vim default)
                             }
                         }
                     },
-                    live_grep = {
-                        additional_args = function()
-                            return {
+                    pickers = {
+                        find_files = {
+                            hidden = true,
+                            find_command = {
+                                "rg",
+                                "--files",
                                 "--hidden",
                                 "--glob",
                                 "!**/.git/*",
                                 "--glob",
                                 "!**/__pycache__/*",
                                 "--glob",
-                                "!**/.venv/*",
-                                "--glob",
-                                "!**/migrations/*"
+                                "!**/.venv/*"
                             }
-                        end,
-                        mappings = {
-                            i = {
-                                ["<CR>"] = open_with_tabopen,
-                                ["<C-t>"] = open_with_tabopen,
-                            },
-                            n = {
-                                ["<CR>"] = open_with_tabopen,
-                                ["<C-t>"] = open_with_tabopen,
-                            }
-                        }
-                    },
-                    buffers = {
-                        mappings = {
-                            i = {
-                                ["<CR>"] = open_with_tabopen,
-                                ["<C-t>"] = open_with_tabopen,
-                            },
-                            n = {
-                                ["<CR>"] = open_with_tabopen,
-                                ["<C-t>"] = open_with_tabopen,
-                            }
-                        }
-                    },
-                    lsp_document_symbols = {
-                        mappings = {
-                            i = {
-                                ["<CR>"] = function(prompt_bufnr)
-                                    local entry = require("telescope.actions.state").get_selected_entry()
-                                    actions.close(prompt_bufnr)
-                                    if entry and entry.lnum then
-                                        -- For symbols in same file, just jump
-                                        vim.api.nvim_win_set_cursor(0, {entry.lnum, entry.col or 0})
-                                        vim.cmd("normal! zz")
-                                    end
-                                end,
-                            },
-                            n = {
-                                ["<CR>"] = function(prompt_bufnr)
-                                    local entry = require("telescope.actions.state").get_selected_entry()
-                                    actions.close(prompt_bufnr)
-                                    if entry and entry.lnum then
-                                        -- For symbols in same file, just jump
-                                        vim.api.nvim_win_set_cursor(0, {entry.lnum, entry.col or 0})
-                                        vim.cmd("normal! zz")
-                                    end
-                                end,
-                            }
-                        }
-                    },
-                    lsp_workspace_symbols = {
-                        mappings = {
-                            i = {
-                                ["<CR>"] = open_with_tabopen,
-                                ["<C-t>"] = open_with_tabopen,
-                            },
-                            n = {
-                                ["<CR>"] = open_with_tabopen,
-                                ["<C-t>"] = open_with_tabopen,
-                            }
-                        }
-                    },
-                    oldfiles = {
-                        mappings = {
-                            i = {
-                                ["<CR>"] = open_with_tabopen,
-                                ["<C-t>"] = open_with_tabopen,
-                            },
-                            n = {
-                                ["<CR>"] = open_with_tabopen,
-                                ["<C-t>"] = open_with_tabopen,
-                            }
-                        }
-                    },
-                    help_tags = {
-                        mappings = {
-                            i = {
-                                ["<CR>"] = open_with_tabopen,
-                                ["<C-t>"] = open_with_tabopen,
-                            },
-                            n = {
-                                ["<CR>"] = open_with_tabopen,
-                                ["<C-t>"] = open_with_tabopen,
-                            }
+                        },
+                        live_grep = {
+                            additional_args = function()
+                                return {
+                                    "--hidden",
+                                    "--glob",
+                                    "!**/.git/*",
+                                    "--glob",
+                                    "!**/__pycache__/*",
+                                    "--glob",
+                                    "!**/.venv/*",
+                                    "--glob",
+                                    "!**/migrations/*"
+                                }
+                            end
                         }
                     }
                 }
-            })
+            )
 
             require("telescope").load_extension("fzf")
+
+            -- Enhanced contextual buffer picker
+            local function contextual_buffers()
+                local pickers = require("telescope.pickers")
+                local finders = require("telescope.finders")
+                local conf = require("telescope.config").values
+                local action_state = require("telescope.actions.state")
+
+                -- Get current tab info
+                local current_tab = vim.fn.tabpagenr()
+                local current_tab_buffers = vim.fn.tabpagebuflist(current_tab)
+
+                -- Create set for quick lookup
+                local current_tab_buf_set = {}
+                for _, buf in ipairs(current_tab_buffers) do
+                    current_tab_buf_set[buf] = true
+                end
+
+                -- Get all buffers
+                local all_buffers = vim.api.nvim_list_bufs()
+
+                -- Separate current tab buffers and others
+                local current_entries = {}
+                local other_entries = {}
+
+                -- Map buffer to tab for other buffers
+                local buf_to_tab = {}
+                for tab_nr = 1, vim.fn.tabpagenr("$") do
+                    if tab_nr ~= current_tab then
+                        local tab_buflist = vim.fn.tabpagebuflist(tab_nr)
+                        for _, buf in ipairs(tab_buflist) do
+                            buf_to_tab[buf] = tab_nr
+                        end
+                    end
+                end
+
+                -- Get tab names if available
+                local function get_tab_name(tab_nr)
+                    if _G.tab_names and _G.tab_names[tab_nr] then
+                        return _G.tab_names[tab_nr]
+                    end
+                    -- Fallback to file name
+                    local tab_buflist = vim.fn.tabpagebuflist(tab_nr)
+                    local main_buf = tab_buflist[vim.fn.tabpagewinnr(tab_nr)]
+                    local tab_file = vim.fn.bufname(main_buf)
+                    return tab_file ~= "" and vim.fn.fnamemodify(tab_file, ":t") or ("Tab " .. tab_nr)
+                end
+
+                for _, buf in ipairs(all_buffers) do
+                    -- Skip invalid and hidden buffers
+                    if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buflisted then
+                        local bufname = vim.api.nvim_buf_get_name(buf)
+                        local filename = vim.fn.fnamemodify(bufname, ":t")
+
+                        -- Skip empty names and special buffers
+                        if filename ~= "" and
+                           not bufname:match("NvimTree") and
+                           not bufname:match("dashboard") and
+                           not bufname:match("toggleterm") then
+
+                            local is_modified = vim.bo[buf].modified
+                            local display_name = filename .. (is_modified and " [+]" or "")
+
+                            local entry = {
+                                bufnr = buf,
+                                filename = bufname,
+                                display = display_name,
+                                ordinal = filename,
+                            }
+
+                            if current_tab_buf_set[buf] then
+                                -- Buffer is in current tab
+                                entry.display = "● " .. display_name
+                                table.insert(current_entries, entry)
+                            elseif buf_to_tab[buf] then
+                                -- Buffer is in another tab
+                                local tab_nr = buf_to_tab[buf]
+                                local tab_name = get_tab_name(tab_nr)
+                                entry.display = "○ " .. display_name .. " (" .. tab_name .. ")"
+                                table.insert(other_entries, entry)
+                            else
+                                -- Hidden buffer (not visible in any tab)
+                                entry.display = "◦ " .. display_name .. " (hidden)"
+                                table.insert(other_entries, entry)
+                            end
+                        end
+                    end
+                end
+
+                -- Combine entries: current tab first, then others
+                local all_entries = {}
+
+                -- Add section header if we have current tab buffers
+                if #current_entries > 0 then
+                    table.insert(all_entries, {
+                        display = "── Current Tab ──",
+                        ordinal = "",
+                        is_header = true,
+                    })
+                    vim.list_extend(all_entries, current_entries)
+                end
+
+                -- Add other buffers if any
+                if #other_entries > 0 then
+                    table.insert(all_entries, {
+                        display = "── Other Tabs/Hidden ──",
+                        ordinal = "",
+                        is_header = true,
+                    })
+                    vim.list_extend(all_entries, other_entries)
+                end
+
+                if #all_entries == 0 then
+                    vim.notify("No buffers found", vim.log.levels.INFO)
+                    return
+                end
+
+                pickers.new({}, {
+                    prompt_title = "Contextual Buffers",
+                    finder = finders.new_table({
+                        results = all_entries,
+                        entry_maker = function(entry)
+                            return {
+                                value = entry,
+                                display = entry.display,
+                                ordinal = entry.ordinal,
+                                bufnr = entry.bufnr,
+                                filename = entry.filename,
+                                is_header = entry.is_header,
+                            }
+                        end,
+                    }),
+                    sorter = conf.generic_sorter({}),
+                    attach_mappings = function(prompt_bufnr, map)
+                        local function select_buffer()
+                            local selection = action_state.get_selected_entry()
+                            actions.close(prompt_bufnr)
+
+                            if selection and selection.value and not selection.is_header then
+                                -- Standard vim behavior - switch to buffer in current window
+                                vim.api.nvim_set_current_buf(selection.bufnr)
+                            end
+                        end
+
+                        local function select_buffer_tab()
+                            local selection = action_state.get_selected_entry()
+                            actions.close(prompt_bufnr)
+
+                            if selection and selection.value and not selection.is_header then
+                                -- Open in new tab
+                                vim.cmd("tabnew")
+                                vim.api.nvim_set_current_buf(selection.bufnr)
+                            end
+                        end
+
+                        map("i", "<CR>", select_buffer)
+                        map("n", "<CR>", select_buffer)
+                        map("i", "<C-t>", select_buffer_tab)
+                        map("n", "<C-t>", select_buffer_tab)
+
+                        -- Delete buffer
+                        map("i", "<C-d>", function()
+                            local selection = action_state.get_selected_entry()
+                            if selection and selection.bufnr and not selection.is_header then
+                                vim.api.nvim_buf_delete(selection.bufnr, {})
+                                -- Refresh the picker
+                                actions.close(prompt_bufnr)
+                                vim.defer_fn(contextual_buffers, 100)
+                            end
+                        end)
+
+                        return true
+                    end,
+                }):find()
+            end
+
+            -- Set up keymaps
+            local builtin = require("telescope.builtin")
+
+            vim.keymap.set("n", "<leader>ff", builtin.find_files, {desc = "Find files"})
+            vim.keymap.set("n", "<leader>fg", builtin.live_grep, {desc = "Live grep"})
+            vim.keymap.set("n", "<leader>fb", contextual_buffers, {desc = "Find buffers (contextual)"})
+            vim.keymap.set("n", "<leader>fh", builtin.help_tags, {desc = "Help tags"})
+            vim.keymap.set("n", "<leader>fs", builtin.lsp_document_symbols, {desc = "Document symbols"})
+            vim.keymap.set("n", "<leader>fw", builtin.lsp_workspace_symbols, {desc = "Workspace symbols"})
+            vim.keymap.set("n", "<leader>fr", builtin.oldfiles, {desc = "Recent files"})
+
+            -- Buffer management keymaps - make global functions
+            _G.ContextualBuffers = contextual_buffers
+
+            vim.keymap.set("n", "<leader>bb", contextual_buffers, {desc = "List buffers (contextual)"})
+            vim.keymap.set("n", "<leader>eb", contextual_buffers, {desc = "Show buffers list (contextual)"})
+            vim.keymap.set("n", "<F10>", contextual_buffers, {desc = "Show buffers list (contextual)"})
         end
     },
-
     -- Git integration.
     {
         "lewis6991/gitsigns.nvim",

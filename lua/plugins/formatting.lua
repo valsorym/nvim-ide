@@ -1,5 +1,5 @@
 -- ~/.config/nvim/lua/plugins/formatting.lua
--- Formatting and linting configuration.
+-- Formatting and linting configuration with MyPy fix.
 
 return {
     "nvimtools/none-ls.nvim",
@@ -34,6 +34,9 @@ return {
             sources = {
                 -- Python formatting with consistent line length.
                 null_ls.builtins.formatting.black.with({
+                    condition = function()
+                        return vim.fn.executable("black") == 1
+                    end,
                     command = function()
                         local python_path = get_python_executable()
                         local black_cmd = python_path:gsub("/python$", "/black")
@@ -50,6 +53,9 @@ return {
                 }),
 
                 null_ls.builtins.formatting.isort.with({
+                    condition = function()
+                        return vim.fn.executable("isort") == 1
+                    end,
                     command = function()
                         local python_path = get_python_executable()
                         local isort_cmd = python_path:gsub("/python$", "/isort")
@@ -66,7 +72,7 @@ return {
                     }
                 }),
 
-                -- MyPy with conditional loading
+                -- MyPy with cache clearing and conditional loading
                 null_ls.builtins.diagnostics.mypy.with({
                     condition = function()
                         -- Check if mypy is installed
@@ -74,23 +80,19 @@ return {
                         local mypy_cmd = python_path:gsub("/python$", "/mypy")
                         local mypy_available = vim.fn.executable("mypy") == 1 or vim.fn.executable(mypy_cmd) == 1
 
-                        if mypy_available then
-                            return true
-                        end
-
-                        -- If mypy not available but pyproject.toml exists - show warning once
-                        if vim.fn.filereadable("pyproject.toml") == 1 then
-                            -- Use a flag to show warning only once per session
-                            if not vim.g.mypy_warning_shown then
-                                vim.g.mypy_warning_shown = true
-                                vim.notify("MyPy not found but pyproject.toml exists. Install: pip install mypy",
-                                    vim.log.levels.WARN)
+                        if not mypy_available then
+                            -- Check if pyproject.toml exists but mypy not available
+                            if vim.fn.filereadable("pyproject.toml") == 1 then
+                                if not vim.g.mypy_warning_shown then
+                                    vim.g.mypy_warning_shown = true
+                                    vim.notify("MyPy not found but pyproject.toml exists. Install: pip install mypy",
+                                        vim.log.levels.WARN)
+                                end
                             end
                             return false
                         end
 
-                        -- No mypy and no pyproject.toml - silently ignore
-                        return false
+                        return true
                     end,
                     command = function()
                         local python_path = get_python_executable()
@@ -100,6 +102,13 @@ return {
                         end
                         return "mypy"
                     end,
+                    extra_args = {
+                        "--no-error-summary",
+                        "--show-column-numbers",
+                        "--show-error-codes",
+                        "--cache-dir=/tmp/mypy_cache", -- Use temp cache
+                    },
+                    timeout = 10000, -- Increased timeout
                 }),
 
                 -- Codespell with conditional loading
@@ -109,35 +118,26 @@ return {
                     end,
                 }),
 
-                -- JavaScript/TypeScript/Vue/CSS/HTML.
-                -- null_ls.builtins.formatting.prettier.with({
-                --     condition = function()
-                --         return vim.fn.executable("prettier") == 1
-                --     end,
-                --     filetypes = {
-                --         "javascript",
-                --         "typescript",
-                --         "vue",
-                --         "css",
-                --         "scss",
-                --         "html",
-                --         "json",
-                --         "yaml",
-                --         "markdown"
-                --     },
-                --     extra_args = {"--print-width", "79"}
-                -- }),
-
-                -- Lua.
+                -- Lua formatting
                 null_ls.builtins.formatting.stylua.with({
+                    condition = function()
+                        return vim.fn.executable("stylua") == 1
+                    end,
                     extra_args = {"--column-width", "79"}
                 }),
 
-                -- Go (goimports includes gofmt functionality).
-                null_ls.builtins.formatting.goimports,
+                -- Go formatting
+                null_ls.builtins.formatting.goimports.with({
+                    condition = function()
+                        return vim.fn.executable("goimports") == 1
+                    end,
+                }),
 
-                -- C/C++.
+                -- C/C++ formatting
                 null_ls.builtins.formatting.clang_format.with({
+                    condition = function()
+                        return vim.fn.executable("clang-format") == 1
+                    end,
                     extra_args = {"-style='{BasedOnStyle: llvm, ColumnLimit: 79}'"}
                 })
             },
@@ -193,6 +193,24 @@ return {
             vim.cmd("edit!")
         end, {desc = "Sort Python imports"})
 
+        -- Clear MyPy cache command
+        vim.api.nvim_create_user_command("MypyClearCache", function()
+            local cache_dirs = {
+                ".mypy_cache",
+                "/tmp/mypy_cache",
+                vim.fn.expand("~/.cache/mypy")
+            }
+
+            for _, dir in ipairs(cache_dirs) do
+                if vim.fn.isdirectory(dir) == 1 then
+                    vim.fn.system("rm -rf " .. dir)
+                    print("Cleared: " .. dir)
+                end
+            end
+
+            print("MyPy cache cleared. Restart Neovim to take effect.")
+        end, {desc = "Clear MyPy cache directories"})
+
         -- Create pyproject.toml configuration command
         vim.api.nvim_create_user_command("CreatePyprojectToml", function()
             local pyproject_content = [[
@@ -216,6 +234,7 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
 check_untyped_defs = true
+cache_dir = ".mypy_cache"
 ]]
 
             -- Check if pyproject.toml exists

@@ -1,5 +1,5 @@
 -- ~/.config/nvim/lua/plugins/code-inspector.lua
--- Enhanced Code Inspector with custom sorting, grouping, and tab navigation
+-- Enhanced Code Inspector with custom sorting, grouping, and standard navigation
 
 return {
     "nvim-telescope/telescope.nvim",
@@ -13,7 +13,6 @@ return {
         local action_state = require("telescope.actions.state")
         local previewers = require("telescope.previewers")
         local themes = require("telescope.themes")
-        local tabopen = require("utils.tabopen")
 
         -- Symbol priority for sorting
         local symbol_priority = {
@@ -304,12 +303,12 @@ return {
                 }),
 
                 attach_mappings = function(prompt_bufnr, map)
-                    -- Enhanced selection handler with tab navigation
+                    -- Standard vim navigation - jump to symbol in current window
                     map("i", "<CR>", function()
                         local selection = action_state.get_selected_entry()
                         if selection and selection.value and not selection.is_header and not selection.is_spacer then
                             actions.close(prompt_bufnr)
-                            -- For symbols in the current file, just jump to location
+                            -- Jump to location in current window
                             vim.api.nvim_win_set_cursor(0, {selection.lnum, selection.col})
                             vim.cmd("normal! zz")
                             -- Brief highlight
@@ -317,6 +316,17 @@ return {
                             vim.defer_fn(function()
                                 vim.cmd("normal! <Esc>")
                             end, 300)
+                        end
+                    end)
+
+                    -- Open in new tab
+                    map("i", "<C-t>", function()
+                        local selection = action_state.get_selected_entry()
+                        if selection and selection.value and not selection.is_header and not selection.is_spacer then
+                            actions.close(prompt_bufnr)
+                            vim.cmd("tabnew")
+                            vim.api.nvim_win_set_cursor(0, {selection.lnum, selection.col})
+                            vim.cmd("normal! zz")
                         end
                     end)
 
@@ -381,15 +391,30 @@ return {
         _G.CodeInspector = show_simple_inspector
         _G.CodeInspectorGrouped = show_grouped_inspector
 
-        -- Key mappings
-        vim.keymap.set("n", "<F7>", show_simple_inspector,
-            {desc = "Code Inspector", silent = true})
+        -- Workspace Inspector with standard navigation
+        local function show_workspace_inspector()
+            local clients = vim.lsp.get_clients({bufnr = 0})
+            if #clients == 0 then
+                vim.notify("Workspace Inspector: No LSP client attached", vim.log.levels.WARN)
+                return
+            end
 
-        vim.keymap.set("n", "<leader>ls", show_simple_inspector,
-            {desc = "Document symbols", silent = true})
+            local builtin = require("telescope.builtin")
+            builtin.lsp_workspace_symbols(themes.get_dropdown({
+                winblend = 10,
+                previewer = true,
+                layout_config = { width = 0.9, height = 0.8 },
+                prompt_title = " Workspace Inspector ",
+                results_title = " All Symbols ",
+            }))
+        end
 
-        vim.keymap.set("n", "<leader>lg", show_grouped_inspector,
-            {desc = "Document symbols (grouped)", silent = true})
+        _G.WorkspaceInspector = show_workspace_inspector
+
+        -- Set up highlight groups for symbol colors
+        for kind, color in pairs(symbol_colors) do
+            vim.api.nvim_set_hl(0, "TelescopeSymbol" .. kind, {fg = color})
+        end
 
         -- User commands
         vim.api.nvim_create_user_command("CodeInspector",
@@ -399,57 +424,5 @@ return {
         vim.api.nvim_create_user_command("CodeInspectorGrouped",
             show_grouped_inspector,
             {desc = "Open Code Inspector (grouped by type)"})
-
-        -- Set up highlight groups for symbol colors
-        for kind, color in pairs(symbol_colors) do
-            vim.api.nvim_set_hl(0, "TelescopeSymbol" .. kind, {fg = color})
-        end
-
-        -- Workspace Inspector with tab navigation
-        local function show_workspace_inspector()
-            local clients = vim.lsp.get_clients({bufnr = 0})
-            if #clients == 0 then
-                vim.notify("Workspace Inspector: No LSP client attached", vim.log.levels.WARN)
-                return
-            end
-
-            local builtin = require("telescope.builtin")
-
-            -- Override the default action for workspace symbols
-            builtin.lsp_workspace_symbols(themes.get_dropdown({
-                winblend = 10,
-                previewer = true,
-                layout_config = { width = 0.9, height = 0.8 },
-                prompt_title = " Workspace Inspector ",
-                results_title = " All Symbols ",
-                attach_mappings = function(prompt_bufnr, map)
-                    map("i", "<CR>", function()
-                        local entry = action_state.get_selected_entry()
-                        actions.close(prompt_bufnr)
-
-                        if entry then
-                            tabopen.open_telescope_entry(entry)
-                        end
-                    end)
-
-                    map("n", "<CR>", function()
-                        local entry = action_state.get_selected_entry()
-                        actions.close(prompt_bufnr)
-
-                        if entry then
-                            tabopen.open_telescope_entry(entry)
-                        end
-                    end)
-
-                    return true
-                end
-            }))
-        end
-
-        _G.WorkspaceInspector = show_workspace_inspector
-
-        -- Add workspace inspector keymap
-        vim.keymap.set("n", "<leader>lw", show_workspace_inspector,
-            {desc = "Workspace symbols", silent = true})
     end
 }

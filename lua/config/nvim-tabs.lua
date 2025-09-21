@@ -1,10 +1,16 @@
 -- ~/.config/nvim/lua/config/nvim-tabs.lua
--- Smart tabs configuration with dashboard support.
+-- Smart tabs configuration with custom naming support.
 
 local M = {}
 
--- Tab label generator.
+-- Tab label generator with custom naming support.
 local function tab_label(n, style)
+    -- Check for custom tab name first
+    if _G.tab_names and _G.tab_names[n] then
+        return string.format(" %d. %s ", n, _G.tab_names[n])
+    end
+
+    -- Original logic for unnamed tabs
     local buflist = vim.fn.tabpagebuflist(n)
     local winnr = vim.fn.tabpagewinnr(n)
     local buf = buflist[winnr]
@@ -60,7 +66,7 @@ local function tab_name(style)
     local should_show = true
     if tabs == 1 then
         local buf = vim.fn.tabpagebuflist(1)[1]
-        if vim.bo[buf].filetype == "Dashboard" then
+        if vim.bo[buf].filetype == "dashboard" then
             should_show = false
         end
     end
@@ -69,7 +75,7 @@ local function tab_name(style)
         local current_buf = vim.api.nvim_get_current_buf()
         local filetype = vim.bo[current_buf].filetype
         local bufname = vim.fn.bufname(current_buf)
-        should_show = filetype ~= "Dashboard" or bufname ~= ""
+        should_show = filetype ~= "dashboard" or bufname ~= ""
     end
 
     if should_show then
@@ -95,6 +101,11 @@ end
 
 function M.render()
     return tab_name(1) -- style 1: parent/filename
+end
+
+-- Export tab_label function for external use (keymaps.lua)
+function M.tab_label(n, style)
+    return tab_label(n, style)
 end
 
 return M

@@ -1,5 +1,5 @@
 -- ~/.config/nvim/lua/plugins/nvim-tree.lua
--- Modal file explorer - always opens as floating window.
+-- Modal file explorer with vim-way buffer handling.
 
 return {
     "nvim-tree/nvim-tree.lua",
@@ -121,7 +121,7 @@ return {
                     open_file = {
                         quit_on_open = true, -- close tree after opening file
                         window_picker = {
-                            enable = false -- always open in new tab
+                            enable = true -- allow window picker for splits
                         }
                     },
                     change_dir = {
@@ -190,14 +190,14 @@ return {
                             bookmark = "",
                             modified = "●",
                             folder = {
-                                arrow_closed = "", -- ►
-                                arrow_open = "", -- ▼
-                                default = "", -- closed folder
-                                open = "", -- open folder
-                                empty = "", -- "🗀",  -- empty closed
-                                empty_open = "", -- "🗁",  -- empty open
-                                symlink = "", -- symlink folder
-                                symlink_open = "" -- symlink open
+                                arrow_closed = "", -- ►
+                                arrow_open = "", -- ▼
+                                default = "", -- closed folder
+                                open = "", -- open folder
+                                empty = "", -- empty closed
+                                empty_open = "", -- empty open
+                                symlink = "", -- symlink folder
+                                symlink_open = "" -- symlink open
                             },
                             git = {
                                 unstaged = "✗",
@@ -218,7 +218,7 @@ return {
                     -- Clear default mappings
                     api.config.mappings.default_on_attach(bufnr)
 
-                    -- Enter -> expand folder or open file in new tab
+                    -- Enter -> expand folder or open file in current window (vim-way)
                     vim.keymap.set(
                         "n",
                         "<CR>",
@@ -233,50 +233,77 @@ return {
                                 api.node.open.edit()
                             elseif node.type == "file" then
                                 local file_path = node.absolute_path
-                                local found = false
-                                local replace_current = false
 
-                                -- Check if file is already open in any tab
-                                for tab_nr = 1, vim.fn.tabpagenr("$") do
-                                    local buflist = vim.fn.tabpagebuflist(tab_nr)
-                                    for _, buf_nr in ipairs(buflist) do
-                                        if vim.fn.bufname(buf_nr) == file_path then
-                                            api.tree.close()
-                                            vim.cmd(tab_nr .. "tabnext")
-                                            found = true
-                                            break
-                                        end
-                                    end
-                                    if found then
-                                        break
-                                    end
-                                end
+                                -- Close tree
+                                api.tree.close()
 
-                                if not found then
-                                    api.tree.close()
-
-                                    -- Check if current tab is dashboard or empty
-                                    local curbuf = vim.api.nvim_get_current_buf()
-                                    if
-                                        vim.bo[curbuf].filetype == "dashboard" or
-                                            (vim.fn.bufname(curbuf) == "" and not vim.bo[curbuf].modified)
-                                     then
-                                        replace_current = true
-                                    end
-
-                                    if replace_current then
-                                        -- Replace current tab with the file
-                                        vim.cmd("edit " .. vim.fn.fnameescape(file_path))
-                                    else
-                                        -- Open in new tab
-                                        vim.cmd("tabnew " .. vim.fn.fnameescape(file_path))
-                                    end
-                                end
+                                -- Open in current window (vim default behavior)
+                                vim.cmd("edit " .. vim.fn.fnameescape(file_path))
                             end
                         end,
                         {
                             buffer = bufnr,
-                            desc = "Expand folder or open file in new tab"
+                            desc = "Expand folder or open file"
+                        }
+                    )
+
+                    -- t -> open file in new tab
+                    vim.keymap.set(
+                        "n",
+                        "t",
+                        function()
+                            local node = api.tree.get_node_under_cursor()
+                            if not node or node.type ~= "file" then
+                                return
+                            end
+
+                            local file_path = node.absolute_path
+                            api.tree.close()
+                            vim.cmd("tabnew " .. vim.fn.fnameescape(file_path))
+                        end,
+                        {
+                            buffer = bufnr,
+                            desc = "Open file in new tab"
+                        }
+                    )
+
+                    -- s -> open file in horizontal split
+                    vim.keymap.set(
+                        "n",
+                        "s",
+                        function()
+                            local node = api.tree.get_node_under_cursor()
+                            if not node or node.type ~= "file" then
+                                return
+                            end
+
+                            local file_path = node.absolute_path
+                            api.tree.close()
+                            vim.cmd("split " .. vim.fn.fnameescape(file_path))
+                        end,
+                        {
+                            buffer = bufnr,
+                            desc = "Open file in horizontal split"
+                        }
+                    )
+
+                    -- v -> open file in vertical split
+                    vim.keymap.set(
+                        "n",
+                        "v",
+                        function()
+                            local node = api.tree.get_node_under_cursor()
+                            if not node or node.type ~= "file" then
+                                return
+                            end
+
+                            local file_path = node.absolute_path
+                            api.tree.close()
+                            vim.cmd("vsplit " .. vim.fn.fnameescape(file_path))
+                        end,
+                        {
+                            buffer = bufnr,
+                            desc = "Open file in vertical split"
                         }
                     )
 

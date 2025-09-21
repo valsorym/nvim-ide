@@ -41,3 +41,12 @@ require("config.nvim-tabs").setup()
 require("config.keymaps").setup()
 require("config.line-numbers").setup()
 require("config.colorcolumn").setup()
+
+-- Setup contextual buffers
+local contextual_buffers = require("config.nvim-buffers")
+_G.ContextualBuffers = contextual_buffers.show
+
+-- Set up keymaps for contextual buffers
+vim.keymap.set("n", "<leader>eb", _G.ContextualBuffers, {desc = "Show contextual buffers"})
+vim.keymap.set("n", "<leader>bb", _G.ContextualBuffers, {desc = "List contextual buffers"})
+vim.keymap.set("n", "<F10>", _G.ContextualBuffers, {desc = "Show contextual buffers"})

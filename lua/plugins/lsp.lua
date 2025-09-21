@@ -1,5 +1,5 @@
 -- ~/.config/nvim/lua/plugins/lsp.lua
--- Language Server Protocol configuration with unified tab navigation.
+-- Language Server Protocol configuration with standard vim navigation.
 
 return {
     "neovim/nvim-lspconfig",
@@ -10,7 +10,6 @@ return {
     },
     config = function()
         local cmp_nvim_lsp = require("cmp_nvim_lsp")
-        local tabopen = require("utils.tabopen")
 
         -- Enhanced capabilities with autocompletion.
         local capabilities = cmp_nvim_lsp.default_capabilities()
@@ -48,34 +47,41 @@ return {
             vim.diagnostic.open_float(nil, opts)
         end
 
-        -- Key mappings for LSP with unified tab navigation.
+        -- Key mappings for LSP with standard vim navigation.
         local function on_attach(client, bufnr)
             local opts = {buffer = bufnr, silent = true}
 
-            -- Navigation with unified tab support
-            vim.keymap.set("n", "gd", function()
-                vim.lsp.buf.definition({
-                    on_list = function(options)
-                        if options.items and #options.items > 0 then
-                            local item = options.items[1]
-                            tabopen.open_lsp_location(item)
-                        end
-                    end
-                })
+            -- Navigation - standard vim behavior (opens in current window)
+            vim.keymap.set("n", "gd", vim.lsp.buf.definition,
+                vim.tbl_extend("force", opts, {desc = "Go to definition"}))
+
+            vim.keymap.set("n", "gD", vim.lsp.buf.declaration,
+                vim.tbl_extend("force", opts, {desc = "Go to declaration"}))
+
+            vim.keymap.set("n", "gr", vim.lsp.buf.references,
+                vim.tbl_extend("force", opts, {desc = "Show references"}))
+
+            vim.keymap.set("n", "gi", vim.lsp.buf.implementation,
+                vim.tbl_extend("force", opts, {desc = "Go to implementation"}))
+
+            -- Alternative mappings for tab/split navigation
+            vim.keymap.set("n", "<C-w>gd", function()
+                vim.cmd("tab split")
+                vim.lsp.buf.definition()
             end, vim.tbl_extend("force", opts, {desc = "Go to definition (new tab)"}))
 
-            vim.keymap.set("n", "gD", function()
-                vim.lsp.buf.declaration({
-                    on_list = function(options)
-                        if options.items and #options.items > 0 then
-                            local item = options.items[1]
-                            tabopen.open_lsp_location(item)
-                        end
-                    end
-                })
+            vim.keymap.set("n", "<C-w>gD", function()
+                vim.cmd("tab split")
+                vim.lsp.buf.declaration()
             end, vim.tbl_extend("force", opts, {desc = "Go to declaration (new tab)"}))
 
-            vim.keymap.set("n", "gr", function()
+            vim.keymap.set("n", "<C-w>gi", function()
+                vim.cmd("tab split")
+                vim.lsp.buf.implementation()
+            end, vim.tbl_extend("force", opts, {desc = "Go to implementation (new tab)"}))
+
+            -- Enhanced references with better quickfix
+            vim.keymap.set("n", "<leader>gr", function()
                 vim.lsp.buf.references(nil, {
                     on_list = function(options)
                         vim.fn.setqflist({}, ' ', options)
@@ -83,34 +89,9 @@ return {
                         vim.wo.cursorline = true
                         vim.wo.number = true
                         vim.wo.relativenumber = false
-
-                        -- Override quickfix <CR> to open in new tab using unified module
-                        vim.keymap.set("n", "<CR>", function()
-                            local line = vim.fn.getline(".")
-                            local filename = vim.fn.substitute(line, "|.*", "", "")
-                            local lnum = vim.fn.substitute(line, ".*|\\(\\d\\+\\).*", "\\1", "")
-                            local col = vim.fn.substitute(line, ".*|\\d\\+\\s\\+col\\s\\+\\(\\d\\+\\).*", "\\1", "")
-
-                            vim.cmd("cclose")
-
-                            if filename and filename ~= "" then
-                                tabopen.open(filename, tonumber(lnum), tonumber(col))
-                            end
-                        end, {buffer = true, desc = "Open in new tab"})
                     end
                 })
-            end, vim.tbl_extend("force", opts, {desc = "Show references"}))
-
-            vim.keymap.set("n", "gi", function()
-                vim.lsp.buf.implementation({
-                    on_list = function(options)
-                        if options.items and #options.items > 0 then
-                            local item = options.items[1]
-                            tabopen.open_lsp_location(item)
-                        end
-                    end
-                })
-            end, vim.tbl_extend("force", opts, {desc = "Go to implementation (new tab)"}))
+            end, vim.tbl_extend("force", opts, {desc = "Show references (quickfix)"}))
 
             -- Documentation
             vim.keymap.set("n", "K", vim.lsp.buf.hover,
@@ -119,7 +100,7 @@ return {
             vim.keymap.set("n", "<C-k>", vim.lsp.buf.signature_help,
                 vim.tbl_extend("force", opts, {desc = "Signature help"}))
 
-            -- Code actions (these are also mapped in keymaps.lua for global access)
+            -- Code actions
             vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action,
                 vim.tbl_extend("force", opts, {desc = "Code action"}))
 
