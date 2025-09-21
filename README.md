@@ -98,16 +98,45 @@ fc-cache -fv
 
 **⚠️ IMPORTANT**: Set one of the Nerd Font Mono fonts as your terminal's default font for proper icon display.
 
-### 3. Install Neovim from Source
+### 3. Install Neovim
+
+Remove old version.
 
 ```bash
-# Create temporary directory and clone repository
-mkdir -p /tmp/neovim && cd /tmp/neovim && \
-git clone https://github.com/neovim/neovim.git && \
-cd neovim && \
-git checkout stable && \
-make CMAKE_BUILD_TYPE=Release && \
-sudo make install
+sudo rm -f /usr/local/bin/nvim
+sudo rm -rf /usr/local/share/nvim/
+```
+
+Clear cache.
+
+```bash
+rm -rf ~/.local/share/nvim/
+rm -rf ~/.local/state/nvim/
+```
+
+Temporary directory.
+
+```bash
+mkdir -p /tmp/nvim
+cd /tmp/nvim
+```
+
+Install for x86_64.
+
+```bash
+curl -LO https://github.com/neovim/neovim/releases/download/v0.11.4/nvim-linux-x86_64.tar.gz
+tar xzvf nvim-linux-x86_64.tar.gz
+sudo mv nvim-linux-x86_64 /opt/nvim
+sudo ln -sf /opt/nvim/bin/nvim /usr/local/bin/nvim
+```
+
+Install for arm64.
+
+```bash
+curl -LO https://github.com/neovim/neovim/releases/download/v0.11.4/nvim-linux-arm64.tar.gz
+tar xzvf nvim-linux-arm64.tar.gz
+sudo mv nvim-linux-arm64 /opt/nvim
+sudo ln -sf /opt/nvim/bin/nvim /usr/local/bin/nvim
 ```
 
 ### 4. Install Python Tools

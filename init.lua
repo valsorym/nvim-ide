@@ -54,3 +54,4 @@ require("config.nvim-tabs").setup()
 require("config.keymaps").setup()
 require("config.line-numbers").setup()
 require("config.colorcolumn").setup()
+

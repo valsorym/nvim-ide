@@ -100,14 +100,43 @@ fc-cache -fv
 
 ### 3. Встановлення Neovim з вихідного коду
 
+Видалити стару версію.
+
 ```bash
-# Створення тимчасової директорії та клонування репозиторію
-mkdir -p /tmp/neovim && cd /tmp/neovim && \
-git clone https://github.com/neovim/neovim.git && \
-cd neovim && \
-git checkout stable && \
-make CMAKE_BUILD_TYPE=Release && \
-sudo make install
+sudo rm -f /usr/local/bin/nvim
+sudo rm -rf /usr/local/share/nvim/
+```
+
+Очистити кеш.
+
+```bash
+rm -rf ~/.local/share/nvim/
+rm -rf ~/.local/state/nvim/
+```
+
+Тимчасова директорія.
+
+```bash
+mkdir -p /tmp/nvim
+cd /tmp/nvim
+```
+
+Встановити для x86_64 архітектури.
+
+```bash
+curl -LO https://github.com/neovim/neovim/releases/download/v0.11.4/nvim-linux-x86_64.tar.gz
+tar xzvf nvim-linux-x86_64.tar.gz
+sudo mv nvim-linux-x86_64 /opt/nvim
+sudo ln -sf /opt/nvim/bin/nvim /usr/local/bin/nvim
+```
+
+Встановити для arm64 архітектури.
+
+```bash
+curl -LO https://github.com/neovim/neovim/releases/download/v0.11.4/nvim-linux-arm64.tar.gz
+tar xzvf nvim-linux-arm64.tar.gz
+sudo mv nvim-linux-arm64 /opt/nvim
+sudo ln -sf /opt/nvim/bin/nvim /usr/local/bin/nvim
 ```
 
 ### 4. Встановлення Python інструментів

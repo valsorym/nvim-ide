@@ -11,21 +11,27 @@ return {
     -- Treesitter for better syntax highlighting.
     {
         "nvim-treesitter/nvim-treesitter",
+        enabled = true,
         build = ":TSUpdate",
         config = function()
             require("nvim-treesitter.configs").setup({
                 ensure_installed = {
-                    "python", "javascript", "typescript", "vue", "html", "css",
-                    "scss", "go", "c", "cpp", "lua", "json", "yaml",
-                    "dockerfile", "bash", "markdown", "gitignore", "htmldjango"
+                    "python", "javascript", "typescript", "vue",
+                    "go", "c", "cpp",  "dockerfile", "bash", "markdown",
+                    "gitignore", "htmldjango",
+                    "lua", "json", "yaml", "html", "css", "scss",
                 },
                 sync_install = false,
-                auto_install = true,
+                auto_install = false,
                 highlight = {
                     enable = true,
-                    additional_vim_regex_highlighting = false
+                    additional_vim_regex_highlighting = false,
+                    disable = {}
                 },
-                indent = {enable = true}
+                indent = {
+                    enable = true,
+                    disable = {}
+                }
             })
         end
     },
@@ -52,7 +58,23 @@ return {
                         "node_modules", ".git/", "%.pyc", "__pycache__", ".venv",
                         "venv", ".env", "migrations/", "%.min%.js", "%.min%.css",
                         "static/admin/", "media/"
-                    }
+                    },
+                    layout_strategy = "vertical", --"horizontal",
+                    layout_config = {
+                        horizontal = {
+                            prompt_position = "top",
+                            preview_width = 0.6,
+                            results_width = 0.4
+                        },
+                        vertical = {
+                            prompt_position = "top",
+                            mirror = false,
+                        },
+                        width = 0.9,
+                        height = 0.8,
+                        preview_cutoff = 40,
+                    },
+                    sorting_strategy = "ascending",
                 },
                 pickers = {
                     find_files = {
