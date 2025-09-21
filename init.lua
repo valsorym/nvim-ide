@@ -36,6 +36,7 @@ vim.opt.ignorecase = true
 vim.opt.smartcase = true
 vim.opt.termguicolors = true
 
+
 -- Local configs.
 require("config.nvim-tabs").setup()
 require("config.keymaps").setup()

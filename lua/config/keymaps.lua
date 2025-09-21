@@ -72,6 +72,9 @@ function M.setup()
     vim.opt.mouse = "a"
     vim.opt.mousemodel = "extend"
 
+    -- Use system clipboard for all yanks/pastes by default
+    vim.opt.clipboard = "unnamedplus"
+
     -- Patch Telescope builtins to open results in tabs.
     local function patch_telescope_tabdrop()
         local ok, builtin = pcall(require, "telescope.builtin")

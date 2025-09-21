@@ -68,38 +68,37 @@ return {
 
                 -- MyPy with conditional loading
                 null_ls.builtins.diagnostics.mypy.with({
+                    -- Global toggle via vim.g.enable_mypy
                     condition = function()
-                        -- Check if mypy is installed
-                        local python_path = get_python_executable()
-                        local mypy_cmd = python_path:gsub("/python$", "/mypy")
-                        local mypy_available = vim.fn.executable("mypy") == 1 or vim.fn.executable(mypy_cmd) == 1
+                        if vim.g.enable_mypy == false then return false end
 
-                        if mypy_available then
-                            return true
+                        local python = get_python_executable()
+                        local mypy_cmd = python:gsub("/python$", "/mypy")
+                        local ok = (vim.fn.executable("mypy") == 1) or
+                                (vim.fn.executable(mypy_cmd) == 1)
+
+                        if not ok and vim.fn.filereadable("pyproject.toml") == 1 and
+                        not vim.g.mypy_warning_shown then
+                            vim.g.mypy_warning_shown = true
+                            vim.notify(
+                                "MyPy not found. Install: pip install mypy",
+                                vim.log.levels.WARN
+                            )
                         end
-
-                        -- If mypy not available but pyproject.toml exists - show warning once
-                        if vim.fn.filereadable("pyproject.toml") == 1 then
-                            -- Use a flag to show warning only once per session
-                            if not vim.g.mypy_warning_shown then
-                                vim.g.mypy_warning_shown = true
-                                vim.notify("MyPy not found but pyproject.toml exists. Install: pip install mypy",
-                                    vim.log.levels.WARN)
-                            end
-                            return false
-                        end
-
-                        -- No mypy and no pyproject.toml - silently ignore
-                        return false
+                        return ok
                     end,
                     command = function()
-                        local python_path = get_python_executable()
-                        local mypy_cmd = python_path:gsub("/python$", "/mypy")
+                        local python = get_python_executable()
+                        local mypy_cmd = python:gsub("/python$", "/mypy")
                         if vim.fn.executable(mypy_cmd) == 1 then
                             return mypy_cmd
                         end
                         return "mypy"
                     end,
+                    -- Do not scan venv and that specific file
+                    extra_args = {
+                        "--exclude", "(^%.venv/|typing_extensions%.py$)"
+                    },
                 }),
 
                 -- Codespell with conditional loading
@@ -208,6 +207,7 @@ use_parentheses = true
 ensure_newline_before_comments = true
 
 [tool.mypy]
+exclude = "(^\\.venv/|typing_extensions\\.py$)"
 python_version = "3.8"
 warn_return_any = true
 warn_unused_configs = true
