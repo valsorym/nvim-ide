@@ -7,22 +7,15 @@ local M = {}
 local function smart_tab_close()
     local total_tabs = vim.fn.tabpagenr("$")
     local current_buf = vim.api.nvim_get_current_buf()
-    local bufname = vim.fn.bufname(current_buf)
     local filetype = vim.bo[current_buf].filetype
-    local is_modified = vim.bo[current_buf].modified
 
-    -- If it's the last tab
     if total_tabs == 1 then
-        -- Check if it's Dashboard - only Dashboard should close Neovim.
         if filetype == "dashboard" then
-            -- Close Neovim completely.
             vim.cmd("qa")
         else
-            -- For any other buffer (files, empty buffers, etc.) - open Dashboard.
             vim.cmd("Dashboard")
         end
     else
-        -- Multiple tabs exist - just close current tab.
         vim.cmd("tabclose")
     end
 end
@@ -30,12 +23,9 @@ end
 -- Force close tab (with !).
 local function force_close_tab()
     local total_tabs = vim.fn.tabpagenr("$")
-
     if total_tabs == 1 then
-        -- Last tab - open Dashboard regardless of modifications.
         vim.cmd("Dashboard")
     else
-        -- Multiple tabs - force close current tab.
         vim.cmd("tabclose!")
     end
 end
@@ -47,14 +37,11 @@ local function setup_conditional_abbreviations()
         {
             callback = function()
                 local filetype = vim.bo.filetype
-
                 if filetype == "dashboard" then
-                    -- In Dashboard - remove abbreviations, allow native :q behavior.
                     pcall(vim.cmd, "cunabbrev q")
                     pcall(vim.cmd, "cunabbrev wq")
                     pcall(vim.cmd, "cunabbrev WQ")
                 else
-                    -- In normal files - set up buffer-local abbreviations.
                     vim.cmd("cabbrev <buffer> q Q")
                     vim.cmd("cabbrev <buffer> wq Wq")
                     vim.cmd("cabbrev <buffer> WQ Wq")
@@ -67,10 +54,6 @@ end
 function M.setup()
     local map = vim.keymap.set
     local opts = {noremap = true, silent = true}
-
-    -- Enable mouse support for LSP navigation
-    vim.opt.mouse = "a"
-    vim.opt.mousemodel = "extend"
 
     -- Patch Telescope builtins to open results in tabs.
     local function patch_telescope_tabdrop()
@@ -85,41 +68,34 @@ function M.setup()
             return function(user_opts)
                 user_opts = user_opts or {}
                 local prev_attach = user_opts.attach_mappings
-                user_opts.attach_mappings =
-                    function(prompt_bufnr, map_local)
-                        if prev_attach then
-                            prev_attach(prompt_bufnr, map_local)
-                        end
-                        local function select_tab()
-                            local e = state.get_selected_entry()
-                            if not e then
-                                return
-                            end
-                            local file = e.path or e.filename or e.value
-                            if (not file or file == "") and e.bufnr then
-                                file = vim.api.nvim_buf_get_name(e.bufnr)
-                            end
-                            if not file or file == "" then
-                                return actions.select_default(prompt_bufnr)
-                            end
-                            actions.close(prompt_bufnr)
-                            vim.cmd(
-                                "tab drop " .. vim.fn.fnameescape(file)
-                            )
-                            local ln = e.lnum or e.row or 1
-                            local cl = math.max((e.col or 1) - 1, 0)
-                            pcall(
-                                vim.api.nvim_win_set_cursor,
-                                0,
-                                {ln, cl}
-                            )
-                            vim.cmd("normal! zz")
-                        end
-                        actions.select_default:replace(select_tab)
-                        map_local("i", "<CR>", select_tab)
-                        map_local("n", "<CR>", select_tab)
-                        return true
+                user_opts.attach_mappings = function(prompt_bufnr, map_local)
+                    if prev_attach then
+                        prev_attach(prompt_bufnr, map_local)
                     end
+                    local function select_tab()
+                        local e = state.get_selected_entry()
+                        if not e then
+                            return
+                        end
+                        local file = e.path or e.filename or e.value
+                        if (not file or file == "") and e.bufnr then
+                            file = vim.api.nvim_buf_get_name(e.bufnr)
+                        end
+                        if not file or file == "" then
+                            return actions.select_default(prompt_bufnr)
+                        end
+                        actions.close(prompt_bufnr)
+                        vim.cmd("tab drop " .. vim.fn.fnameescape(file))
+                        local ln = e.lnum or e.row or 1
+                        local cl = math.max((e.col or 1) - 1, 0)
+                        pcall(vim.api.nvim_win_set_cursor, 0, {ln, cl})
+                        vim.cmd("normal! zz")
+                    end
+                    actions.select_default:replace(select_tab)
+                    map_local("i", "<CR>", select_tab)
+                    map_local("n", "<CR>", select_tab)
+                    return true
+                end
                 return fn(user_opts)
             end
         end
@@ -130,17 +106,15 @@ function M.setup()
             end
         end
 
-        for _, name in ipairs(
-            {
-                "find_files",
-                "live_grep",
-                "buffers",
-                "git_files",
-                "oldfiles",
-                "grep_string",
-                "lsp_workspace_symbols"
-            }
-        ) do
+        for _, name in ipairs({
+            "find_files",
+            "live_grep",
+            "buffers",
+            "git_files",
+            "oldfiles",
+            "grep_string",
+            "lsp_workspace_symbols"
+        }) do
             patch(name)
         end
     end
@@ -173,9 +147,7 @@ function M.setup()
     map(
         "n",
         "<F9>",
-        function()
-            _G.NvimTreeModal()
-        end,
+        function() _G.NvimTreeModal() end,
         {desc = "Open file explorer", silent = true}
     )
 
@@ -183,9 +155,7 @@ function M.setup()
     map(
         "n",
         "<leader>ee",
-        function()
-            _G.NvimTreeModal()
-        end,
+        function() _G.NvimTreeModal() end,
         {desc = "Open file explorer", silent = true}
     )
 
@@ -193,18 +163,13 @@ function M.setup()
     map(
         "n",
         "<F10>",
-        function()
-            require("telescope.builtin").buffers()
-        end,
+        function() require("telescope.builtin").buffers() end,
         {desc = "Show buffers list", silent = true}
     )
-
     map(
         "n",
         "<leader>eb",
-        function()
-            require("telescope.builtin").buffers()
-        end,
+        function() require("telescope.builtin").buffers() end,
         {desc = "Show buffers list", silent = true}
     )
 
@@ -221,7 +186,6 @@ function M.setup()
         end,
         {desc = "Show tabs list", silent = true}
     )
-
     map(
         "n",
         "<leader>et",
@@ -280,7 +244,7 @@ function M.setup()
         {desc = "Yank entire buffer to clipboard"}
     )
 
-    -- Yank selection to clipboard
+    -- Yank selection to clipboard.
     map("v", "<leader>yy", '"+y', {desc = "Yank selection to clipboard"})
 
     -- Paste from clipboard.
@@ -303,7 +267,6 @@ function M.setup()
         end,
         {desc = "Save and format file"}
     )
-
     map(
         "i",
         "<F2>",
@@ -340,43 +303,31 @@ function M.setup()
     map("n", "<leader>ca", vim.lsp.buf.code_action, {desc = "Code action"})
     map("n", "<leader>rn", vim.lsp.buf.rename, {desc = "Rename symbol"})
 
-    -- Find/Search mappings (patched builtins handle tabs).
+    -- Find/Search mappings (builtins patched to tabs above).
     map(
         "n",
         "<leader>ff",
-        function()
-            require("telescope.builtin").find_files()
-        end,
+        function() require("telescope.builtin").find_files() end,
         {desc = "Find files"}
     )
-
     map(
         "n",
         "<leader>fg",
-        function()
-            require("telescope.builtin").live_grep()
-        end,
+        function() require("telescope.builtin").live_grep() end,
         {desc = "Live grep"}
     )
-
     map(
         "n",
         "<leader>fb",
-        function()
-            require("telescope.builtin").buffers()
-        end,
+        function() require("telescope.builtin").buffers() end,
         {desc = "Find buffers"}
     )
-
     map(
         "n",
         "<leader>fh",
-        function()
-            require("telescope.builtin").help_tags()
-        end,
+        function() require("telescope.builtin").help_tags() end,
         {desc = "Help tags"}
     )
-
     map(
         "n",
         "<leader>fs",
@@ -385,7 +336,6 @@ function M.setup()
         end,
         {desc = "Document symbols"}
     )
-
     map(
         "n",
         "<leader>fw",
@@ -395,21 +345,18 @@ function M.setup()
         {desc = "Workspace symbols"}
     )
 
-    -- Buffer management (FIXED)
+    -- Buffer management.
     map(
         "n",
         "<leader>bb",
-        function()
-            require("telescope.builtin").buffers()
-        end,
+        function() require("telescope.builtin").buffers() end,
         {desc = "List buffers"}
     )
-
     map("n", "<leader>bd", ":bdelete<CR>", {desc = "Delete buffer"})
     map("n", "<leader>bn", ":bnext<CR>", {desc = "Next buffer"})
     map("n", "<leader>bp", ":bprevious<CR>", {desc = "Previous buffer"})
 
-    -- Code Inspector with F7.
+    -- Code Inspector.
     map(
         "n",
         "<F7>",
@@ -417,13 +364,15 @@ function M.setup()
             if _G.CodeInspector then
                 _G.CodeInspector()
             else
-                vim.notify("Code Inspector not loaded", vim.log.levels.WARN)
+                vim.notify(
+                    "Code Inspector not loaded",
+                    vim.log.levels.WARN
+                )
             end
         end,
         {desc = "Code Inspector", silent = true}
     )
 
-    -- LSP Symbols shortcuts.
     map(
         "n",
         "<leader>ls",
@@ -436,8 +385,6 @@ function M.setup()
         end,
         {desc = "Document symbols", silent = true}
     )
-
-    -- Grouped view.
     map(
         "n",
         "<leader>lg",
@@ -445,13 +392,14 @@ function M.setup()
             if _G.CodeInspectorGrouped then
                 _G.CodeInspectorGrouped()
             else
-                vim.notify("Code Inspector not loaded", vim.log.levels.WARN)
+                vim.notify(
+                    "Code Inspector not loaded",
+                    vim.log.levels.WARN
+                )
             end
         end,
         {desc = "Document symbols (grouped)", silent = true}
     )
-
-    -- Workspace symbols.
     map(
         "n",
         "<leader>lw",
@@ -465,19 +413,11 @@ function M.setup()
     vim.api.nvim_create_user_command(
         "Q",
         function(opts)
-            local filetype = vim.bo.filetype
-            if filetype == "dashboard" then
-                if opts.bang then
-                    vim.cmd("qa!")
-                else
-                    vim.cmd("qa")
-                end
+            local ft = vim.bo.filetype
+            if ft == "dashboard" then
+                if opts.bang then vim.cmd("qa!") else vim.cmd("qa") end
             else
-                if opts.bang then
-                    force_close_tab()
-                else
-                    smart_tab_close()
-                end
+                if opts.bang then force_close_tab() else smart_tab_close() end
             end
         end,
         {bang = true, desc = "Smart quit command"}
@@ -487,11 +427,7 @@ function M.setup()
         "Wq",
         function(opts)
             vim.cmd("write")
-            if opts.bang then
-                force_close_tab()
-            else
-                smart_tab_close()
-            end
+            if opts.bang then force_close_tab() else smart_tab_close() end
         end,
         {bang = true, desc = "Write and smart quit"}
     )
@@ -500,11 +436,7 @@ function M.setup()
         "WQ",
         function(opts)
             vim.cmd("write")
-            if opts.bang then
-                force_close_tab()
-            else
-                smart_tab_close()
-            end
+            if opts.bang then force_close_tab() else smart_tab_close() end
         end,
         {bang = true, desc = "Write and smart quit"}
     )
@@ -514,11 +446,6 @@ function M.setup()
 
     -- Override :new to create new tab instead of split.
     vim.cmd("cabbrev new tabnew")
-
-    -- Force LSP tab behavior for mouse clicks (global fallback)
-    map("n", "<C-LeftMouse>", function()
-        vim.lsp.buf.definition()
-    end, {desc = "Go to definition (mouse)"})
 end
 
 return M
