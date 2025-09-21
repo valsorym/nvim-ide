@@ -1,111 +1,208 @@
 -- ~/.config/nvim/lua/config/nvim-tabs.lua
--- Smart tabs configuration with custom naming support.
+-- Traditional tabline configuration - shows tabs only when multiple exist
 
 local M = {}
 
--- Tab label generator with custom naming support.
-local function tab_label(n, style)
-    -- Check for custom tab name first
-    if _G.tab_names and _G.tab_names[n] then
-        return string.format(" %d. %s ", n, _G.tab_names[n])
-    end
+-- Function to get tab label with buffer info
+local function tab_label(tabnum)
+    local buflist = vim.fn.tabpagebuflist(tabnum)
+    local winnr = vim.fn.tabpagewinnr(tabnum)
+    local bufnr = buflist[winnr]
 
-    -- Original logic for unnamed tabs
-    local buflist = vim.fn.tabpagebuflist(n)
-    local winnr = vim.fn.tabpagewinnr(n)
-    local buf = buflist[winnr]
+    -- Get the primary buffer (skip special buffers like NvimTree)
+    local primary_bufnr = nil
+    for _, buf in ipairs(buflist) do
+        local name = vim.fn.bufname(buf)
+        local buftype = vim.bo[buf].buftype
 
-    -- Find the first normal buffer (not NvimTree).
-    for _, b in ipairs(buflist) do
-        local name = vim.fn.bufname(b)
-        if not name:match("NvimTree_") and name ~= "" then
-            buf = b
+        -- Skip special buffers
+        if buftype == "" and
+           not name:match("NvimTree_") and
+           not name:match("toggleterm") and
+           vim.bo[buf].filetype ~= "dashboard" then
+            primary_bufnr = buf
             break
         end
     end
 
-    local file = vim.fn.bufname(buf)
-    local label = vim.fn.fnamemodify(file, ":t")
+    -- If no primary buffer found, use the current one
+    if not primary_bufnr then
+        primary_bufnr = bufnr
+    end
 
-    -- Handle special cases
-    if label == "" then
-        local filetype = vim.bo[buf].filetype
+    local filename = vim.fn.bufname(primary_bufnr)
+    local label = ""
+
+    if filename == "" then
+        local filetype = vim.bo[primary_bufnr].filetype
         if filetype == "dashboard" then
             label = "Dashboard"
         else
             label = "[No Name]"
         end
     else
-        local parent = vim.fn.fnamemodify(file, ":p:h:t")
-        if parent ~= "" and style ~= 0 then
-            if style == 2 then
-                parent = parent:sub(1, 1) .. ".." .. parent:sub(-1)
-            elseif style == 3 then
-                parent = parent:sub(1, 1)
-            elseif style == 4 and #parent > 5 then
-                parent = parent:sub(1, 3) .. ".."
+        -- Show just filename, not full path
+        label = vim.fn.fnamemodify(filename, ":t")
+
+        -- If multiple buffers have same filename, add parent directory
+        local all_buffers = vim.fn.getbufinfo({buflisted = 1})
+        local same_name_count = 0
+        for _, buf in ipairs(all_buffers) do
+            local buf_filename = vim.fn.bufname(buf.bufnr)
+            if buf_filename ~= "" and
+               vim.fn.fnamemodify(buf_filename, ":t") == label then
+                same_name_count = same_name_count + 1
             end
-            label = parent .. "/" .. label
+        end
+
+        if same_name_count > 1 then
+            local parent = vim.fn.fnamemodify(filename, ":p:h:t")
+            if parent ~= "" then
+                label = parent .. "/" .. label
+            end
         end
     end
 
-    if vim.bo[buf].modified then
-        label = label .. "*"
+    -- Add modified indicator
+    if vim.bo[primary_bufnr].modified then
+        label = label .. " +"
     end
 
-    return string.format(" %d. %s ", n, label)
+    -- Count total buffers in this tab
+    local buffer_count = 0
+    for _, buf in ipairs(buflist) do
+        local buftype = vim.bo[buf].buftype
+        local name = vim.fn.bufname(buf)
+        if buftype == "" and
+           not name:match("NvimTree_") and
+           not name:match("toggleterm") then
+            buffer_count = buffer_count + 1
+        end
+    end
+
+    if buffer_count > 1 then
+        label = label .. " (" .. buffer_count .. ")"
+    end
+
+    return string.format(" %d: %s ", tabnum, label)
 end
 
--- Tabline renderer.
-local function tab_name(style)
-    local s = ""
-    local tabs = vim.fn.tabpagenr("$")
-    local current = vim.fn.tabpagenr()
+-- Function to render tabline
+local function render_tabline()
+    local total_tabs = vim.fn.tabpagenr("$")
+    local current_tab = vim.fn.tabpagenr()
 
-    -- Always show tabline if more than one tab OR if current tab is not dashboard
-    local should_show = true
-    if tabs == 1 then
-        local buf = vim.fn.tabpagebuflist(1)[1]
-        if vim.bo[buf].filetype == "dashboard" then
-            should_show = false
+    -- Only show tabline if more than one tab exists
+    if total_tabs <= 1 then
+        return ""
+    end
+
+    local tabline = ""
+
+    for i = 1, total_tabs do
+        -- Highlight current tab
+        if i == current_tab then
+            tabline = tabline .. "%#TabLineSel#"
+        else
+            tabline = tabline .. "%#TabLine#"
+        end
+
+        -- Make tab clickable
+        tabline = tabline .. "%" .. i .. "T"
+
+        -- Add tab label
+        tabline = tabline .. tab_label(i)
+
+        -- Add separator
+        if i < total_tabs then
+            tabline = tabline .. "%#TabLine#│"
         end
     end
 
-    if not should_show then
-        local current_buf = vim.api.nvim_get_current_buf()
-        local filetype = vim.bo[current_buf].filetype
-        local bufname = vim.fn.bufname(current_buf)
-        should_show = filetype ~= "dashboard" or bufname ~= ""
+    -- Fill remaining space
+    tabline = tabline .. "%#TabLineFill#%T"
+
+    -- Add close button on the right
+    if total_tabs > 1 then
+        tabline = tabline .. "%=%#TabLine#%999X✕ "
     end
 
-    if should_show then
-        for i = 1, tabs do
-            if i == current then
-                s = s .. "%#TabLineSel#"
-            else
-                s = s .. "%#TabLine#"
-            end
-            s = s .. "%" .. i .. "T" .. tab_label(i, style) .. " ▕"
-        end
-        s = s .. "%#TabLineFill#%T"
-    end
-
-    return s
+    return tabline
 end
 
--- Public API.
+-- Buffer navigation functions for current tab
+function M.next_buffer()
+    local buffers = vim.fn.getbufinfo({buflisted = 1})
+    local current_buf = vim.api.nvim_get_current_buf()
+    local current_index = nil
+
+    -- Filter to only include real file buffers
+    local file_buffers = {}
+    for _, buf in ipairs(buffers) do
+        local buftype = vim.bo[buf.bufnr].buftype
+        local name = vim.fn.bufname(buf.bufnr)
+        if buftype == "" and
+           not name:match("NvimTree_") and
+           not name:match("toggleterm") and
+           vim.bo[buf.bufnr].filetype ~= "dashboard" then
+            table.insert(file_buffers, buf.bufnr)
+            if buf.bufnr == current_buf then
+                current_index = #file_buffers
+            end
+        end
+    end
+
+    if #file_buffers <= 1 then
+        return
+    end
+
+    local next_index = current_index and (current_index % #file_buffers) + 1 or 1
+    vim.api.nvim_set_current_buf(file_buffers[next_index])
+end
+
+function M.prev_buffer()
+    local buffers = vim.fn.getbufinfo({buflisted = 1})
+    local current_buf = vim.api.nvim_get_current_buf()
+    local current_index = nil
+
+    -- Filter to only include real file buffers
+    local file_buffers = {}
+    for _, buf in ipairs(buffers) do
+        local buftype = vim.bo[buf.bufnr].buftype
+        local name = vim.fn.bufname(buf.bufnr)
+        if buftype == "" and
+           not name:match("NvimTree_") and
+           not name:match("toggleterm") and
+           vim.bo[buf.bufnr].filetype ~= "dashboard" then
+            table.insert(file_buffers, buf.bufnr)
+            if buf.bufnr == current_buf then
+                current_index = #file_buffers
+            end
+        end
+    end
+
+    if #file_buffers <= 1 then
+        return
+    end
+
+    local prev_index = current_index and
+        (current_index - 2) % #file_buffers + 1 or #file_buffers
+    vim.api.nvim_set_current_buf(file_buffers[prev_index])
+end
+
+-- Setup function
 function M.setup()
-    vim.o.showtabline = 2
+    -- Set tabline options
+    vim.o.showtabline = 1  -- Show tabline only when multiple tabs exist
     vim.o.tabline = "%!v:lua.require'config.nvim-tabs'.render()"
+
+    -- Hide buffer line plugins if they exist
+    vim.g.bufferline_show = false
 end
 
+-- Render function (called by tabline)
 function M.render()
-    return tab_name(1) -- style 1: parent/filename
-end
-
--- Export tab_label function for external use (keymaps.lua)
-function M.tab_label(n, style)
-    return tab_label(n, style)
+    return render_tabline()
 end
 
 return M
