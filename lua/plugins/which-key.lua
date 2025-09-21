@@ -125,6 +125,12 @@ return {
                         desc = "• Toggle MyPy"},
                     {"<leader>kd", "<cmd>ToggleDjlint<cr>",
                         desc = "• Toggle djlint (Django)"},
+                    {"<leader>kc", "<cmd>ToggleCodespell<cr>",
+                        desc = "• Toggle Codespell"},
+                    {"<leader>ke", "<cmd>ToggleESLint<cr>",
+                        desc = "• Toggle ESLint"},
+                    {"<leader>kf", "<cmd>ToggleFlake8<cr>",
+                        desc = "• Toggle Flake8"},
 
                     -- DIAGNOSTICS
                     {"<leader>x", group = " Diagnostics"},

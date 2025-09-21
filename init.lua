@@ -36,9 +36,18 @@ vim.opt.ignorecase = true
 vim.opt.smartcase = true
 vim.opt.termguicolors = true
 
--- Set linter toggles before plugins load.
-vim.g.enable_mypy = false    -- start with mypy OFF
-vim.g.enable_djlint = false  -- start with djlint OFF
+-- ── Linters toggles (set BEFORE plugins load) ─────────────────────────
+-- Safe-by-default / specific-by-opt-in policy:
+-- true  => enabled on start
+-- false => disabled on start (enable via <leader>k …)
+
+vim.g.enable_mypy     = false  -- MyPy (Python type checker)
+vim.g.enable_djlint   = false  -- djlint (Django/Jinja linter)
+
+-- Placeholders for future linters/toggles:
+vim.g.enable_codespell = true   -- spelling (safe default)
+vim.g.enable_eslint    = false  -- example: ESLint (if you add it)
+vim.g.enable_flake8    = false  -- example: Flake8 (if you add it)
 
 -- Local configs.
 require("config.nvim-tabs").setup()
