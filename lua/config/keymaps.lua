@@ -595,6 +595,11 @@ function M.setup()
         end
         smart_tab_close()
     end, {desc = "Save and smart close tab"})
+
+    -- Disable F1 help (annoying).
+    map("n", "<F1>", "<nop>", {desc = "Disabled"})
+    map("i", "<F1>", "<nop>", {desc = "Disabled"})
+    map("v", "<F1>", "<nop>", {desc = "Disabled"})
 end
 
 return M

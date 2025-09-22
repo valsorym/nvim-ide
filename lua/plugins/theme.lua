@@ -223,14 +223,26 @@ return {
         "nvim-telescope/telescope.nvim",
         dependencies = {"nvim-lua/plenary.nvim"},
         keys = {
-            {"<leader>ut", "<cmd>ThemeSwitcher<cr>", desc = "Theme switcher"},
-            {"<leader>us", "<cmd>ThemeSwitcherPermanent<cr>", desc = "Set permanent theme"},
+            {
+                "<leader>ut",
+                "<cmd>ThemeSwitcher<cr>",
+                desc = "  Theme switcher"
+            },
+            {
+                "<leader>us",
+                "<cmd>ThemeSwitcherPermanent<cr>",
+                desc = "  Set permanent theme"
+            },
             {
                 "<leader>ud",
                 "<cmd>lua print(vim.inspect(vim.fn.getcompletion('', 'color')))<cr>",
-                desc = "Debug available themes"
+                desc = "  Debug available themes"
             },
-            {"<leader>ui", "<cmd>ThemeInfo<cr>", desc = "Theme info"}
+            {
+                "<leader>ui",
+                "<cmd>ThemeInfo<cr>",
+                desc = "  Theme info"
+            }
         },
         config = function()
             -- Enhanced favorite themes list with all available variants

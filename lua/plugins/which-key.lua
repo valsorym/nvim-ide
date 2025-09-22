@@ -151,14 +151,18 @@ return {
                     {"<leader>vs", desc = "  Select Python Venv"},
 
                     -- OPTIONS
-                    {"<leader>h", desc = "  Clear Search Highlights"},
+                    {"<leader>h", desc = "Clear Search Highlights"},
 
                     -- QUIT / TABS
-                    {"<leader>q", group = " Quit/Tabs"},
+                    {"<leader>q", group = " Quit/Sessions"},  -- expand an existing group
+                    {"<leader>qs", desc = "  Restore Session"},
+                    {"<leader>ql", desc = "  Restore Last Session"},
+                    {"<leader>qd", desc = "  Don't Save Session"},
                     {"<leader>qq", desc = "  Smart Close Current Tab"},
                     {"<leader>qa", desc = "  Close All Tabs & Exit"},
                     {"<leader>qQ", desc = "  Force Close Current Tab"},
                     {"<leader>qA", desc = "  Force Close All Tabs & Exit"},
+
 
                     -- FUNCTION KEYS
                     {"<F2>", desc = "  Save & Format"},
@@ -173,10 +177,30 @@ return {
                     {"<leader>u", group = " UI/Themes"},
                     {"<leader>ut", desc = "  Theme Switcher"},
                     {"<leader>ub", desc = "  Toggle Background"},
+                    {
+                        "<leader>ui",
+                        "<cmd>IBLToggle<cr>",
+                        desc = "  Toggle Indent Guides"
+                    },
+                    {"<leader>uc", function()
+                        if vim.wo.colorcolumn == "" then
+                            vim.wo.colorcolumn = "79"
+                            print("ColorColumn: ON")
+                        else
+                            vim.wo.colorcolumn = ""
+                            print("ColorColumn: OFF")
+                        end
+                    end, desc = "  Toggle ColorColumn"},
 
                     -- LSP / SYMBOLS
                     {"<leader>l", group = " LSP/Symbols"},
                     {"<leader>ls", desc = "  Document Symbols (modal)"},
+
+
+                    -- Flash navigation.
+                    {"<leader>s", group = " Flash Navigation"},
+                    {"s", desc = "  Flash Jump", mode = {"n", "x", "o"}},
+                    {"S", desc = "  Flash Treesitter", mode = {"n", "x", "o"}},
                 }
             }
         )

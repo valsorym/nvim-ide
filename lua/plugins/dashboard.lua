@@ -36,7 +36,13 @@ return {
                             icon = "  ",
                             desc = "Recent Files",
                             key = "r",
-                            action = "Telescope oldfiles"
+                            action = function()
+                                if vim.v.oldfiles and #vim.v.oldfiles > 0 then
+                                    require("telescope.builtin").oldfiles()
+                                else
+                                    print("No recent files found")
+                                end
+                            end
                         },
                         {
                             icon = "  ",
@@ -60,7 +66,7 @@ return {
                     footer = {
                         "",
                         " Press F9 to open File Explorer.",
-                        "Version: 0.0.2",
+                        "Version: 0.0.3",
                     }
                 }
             }

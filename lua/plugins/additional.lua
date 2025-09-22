@@ -59,22 +59,25 @@ return {
                         "venv", ".env", "migrations/", "%.min%.js", "%.min%.css",
                         "static/admin/", "media/"
                     },
-                    layout_strategy = "vertical", --"horizontal",
+                    -- pick one you prefer; both work with prompt at top
+                    layout_strategy = "horizontal", -- or "vertical"
+                    sorting_strategy = "ascending",
                     layout_config = {
+                        -- IMPORTANT: global prompt position
+                        prompt_position = "top",
+
+                        width = 0.9,
+                        height = 0.8,
+                        preview_cutoff = 40,
+
                         horizontal = {
-                            prompt_position = "top",
                             preview_width = 0.6,
                             results_width = 0.4
                         },
                         vertical = {
-                            prompt_position = "top",
-                            mirror = false,
-                        },
-                        width = 0.9,
-                        height = 0.8,
-                        preview_cutoff = 40,
-                    },
-                    sorting_strategy = "ascending",
+                            mirror = false
+                        }
+                    }
                 },
                 pickers = {
                     find_files = {
@@ -106,28 +109,20 @@ return {
 
             telescope.load_extension("fzf")
 
-            -- Plain builtin mappings (opening in tabs handled in keymaps.lua)
+            -- Builtins (opening in tabs handled in keymaps.lua)
             local builtin = require("telescope.builtin")
-            vim.keymap.set(
-                "n", "<leader>ff", builtin.find_files, {desc = "Find files"}
-            )
-            vim.keymap.set(
-                "n", "<leader>fg", builtin.live_grep, {desc = "Live grep"}
-            )
-            vim.keymap.set(
-                "n", "<leader>fb", builtin.buffers, {desc = "Find buffers"}
-            )
-            vim.keymap.set(
-                "n", "<leader>fh", builtin.help_tags, {desc = "Help tags"}
-            )
-            vim.keymap.set(
-                "n", "<leader>fs", builtin.lsp_document_symbols,
-                {desc = "Document symbols"}
-            )
-            vim.keymap.set(
-                "n", "<leader>fw", builtin.lsp_workspace_symbols,
-                {desc = "Workspace symbols"}
-            )
+            vim.keymap.set("n", "<leader>ff", builtin.find_files,
+                {desc = "Find files"})
+            vim.keymap.set("n", "<leader>fg", builtin.live_grep,
+                {desc = "Live grep"})
+            vim.keymap.set("n", "<leader>fb", builtin.buffers,
+                {desc = "Find buffers"})
+            vim.keymap.set("n", "<leader>fh", builtin.help_tags,
+                {desc = "Help tags"})
+            vim.keymap.set("n", "<leader>fs", builtin.lsp_document_symbols,
+                {desc = "Document symbols"})
+            vim.keymap.set("n", "<leader>fw", builtin.lsp_workspace_symbols,
+                {desc = "Workspace symbols"})
         end
     },
 
@@ -305,34 +300,30 @@ return {
     -- Auto pairs.
     {
         "windwp/nvim-autopairs",
+        enabled = true,
         event = "InsertEnter",
         config = function()
             require("nvim-autopairs").setup({
-                check_ts = true,
-                ts_config = {
-                    lua = {"string", "source"},
-                    javascript = {"string", "template_string"},
-                    java = false
-                },
-                disable_filetype = {"TelescopePrompt", "spectre_panel"},
-                fast_wrap = {
-                    map = "<M-e>",
-                    chars = {"{", "[", "(", '"', "'"},
-                    pattern = string.gsub(
-                        [[ [%'%"%)%>%]%)%}%,] ]], "%s+", ""
-                    ),
-                    offset = 0,
-                    end_key = "$",
-                    keys = "qwertyuiopzxcvbnmasdfghjkl",
-                    check_comma = true,
-                    highlight = "PmenuSel",
-                    highlight_grey = "LineNr"
-                }
+                disable_filetype = { "TelescopePrompt", "spectre_panel" },
+                disable_in_macro = false,
+                disable_in_visualblock = false,
+                disable_in_replace_mode = true,
+                ignored_next_char = [=[[%w%%%'%[%"%.%`%$]]=],
+                enable_moveright = true,
+                enable_afterquote = false, -- disable after quotes
+                enable_check_bracket_line = false, -- don't check brackets on line
+                enable_bracket_in_quote = false, -- don't put brackets in quotes
+                check_ts = false, -- disable treesitter integration
+                map_cr = false, -- disable Enter mapping
+                map_bs = false, -- disable Backspace mapping
             })
 
             local cmp_ap = require("nvim-autopairs.completion.cmp")
             local cmp = require("cmp")
             cmp.event:on("confirm_done", cmp_ap.on_confirm_done())
+
+            local npairs = require("nvim-autopairs")
+            npairs.clear_rules()
         end
     },
 
@@ -375,5 +366,166 @@ return {
                 {desc = "• Python venv"}
             )
         end
-    }
+    },
+
+    -- Indent guides.
+    {
+        "lukas-reineke/indent-blankline.nvim",
+        main = "ibl",
+        config = function()
+            -- Налаштування кольорів для indent guides
+            local highlight = {
+                "RainbowRed",
+                "RainbowYellow",
+                "RainbowBlue",
+                "RainbowOrange",
+                "RainbowGreen",
+                "RainbowViolet",
+                "RainbowCyan",
+            }
+
+            local hooks = require("ibl.hooks")
+            -- Create transparent colors for indent guides.
+            hooks.register(hooks.type.HIGHLIGHT_SETUP, function()
+                vim.api.nvim_set_hl(0, "IblIndent", { fg = "#2a2a37" }) -- very dark gray
+                vim.api.nvim_set_hl(0, "IblScope", { fg = "#485093" })   -- bright for active scope
+            end)
+
+            require("ibl").setup({
+                indent = {
+                    char = "▏",
+                    tab_char = "▏",
+                    highlight = "IblIndent", -- transparent lines
+                },
+                scope = {
+                    enabled = true,
+                    show_start = false,
+                    show_end = false,
+                    highlight = "IblScope", -- bright line for active block
+                    include = {
+                        node_type = {
+                            ["*"] = {
+                                "class",
+                                "return_statement",
+                                "function",
+                                "method",
+                                "^if",
+                                "^while",
+                                "jsx_element",
+                                "^for",
+                                "^object",
+                                "^table",
+                                "block",
+                                "arguments",
+                                "if_statement",
+                                "else_clause",
+                                "jsx_element",
+                                "jsx_self_closing_element",
+                                "try_statement",
+                                "catch_clause",
+                                "import_statement",
+                                "operation_type",
+                            },
+                        },
+                    },
+                },
+                exclude = {
+                    filetypes = {
+                        "help",
+                        "alpha",
+                        "dashboard",
+                        "neo-tree",
+                        "NvimTree",
+                        "Trouble",
+                        "trouble",
+                        "lazy",
+                        "mason",
+                        "notify",
+                        "toggleterm",
+                        "lazyterm",
+                    },
+                    buftypes = {
+                        "terminal",
+                        "nofile",
+                        "quickfix",
+                        "prompt",
+                    },
+                },
+            })
+        end
+    },
+
+    -- Flash.nvim - quick navigation.
+    {
+        "folke/flash.nvim",
+        event = "VeryLazy",
+        config = function()
+            require("flash").setup({
+                labels = "asdfghjklqwertyuiopzxcvbnm",
+                search = {
+                    multi_window = true,
+                    forward = true,
+                    wrap = true,
+                },
+                jump = {
+                    jumplist = true,
+                    pos = "start",
+                    history = false,
+                    register = false,
+                    nohlsearch = false,
+                },
+                modes = {
+                    search = {
+                        enabled = true,
+                    },
+                    char = {
+                        enabled = true,
+                        jump_labels = false,
+                    },
+                },
+            })
+        end,
+        keys = {
+            { "s", mode = { "n", "x", "o" }, function() require("flash").jump() end, desc = "Flash" },
+            { "S", mode = { "n", "x", "o" }, function() require("flash").treesitter() end, desc = "Flash Treesitter" },
+            { "r", mode = "o", function() require("flash").remote() end, desc = "Remote Flash" },
+            { "R", mode = { "o", "x" }, function() require("flash").treesitter_search() end, desc = "Treesitter Search" },
+        },
+    },
+
+    -- Persistence.nvim - session saving.
+    {
+        "folke/persistence.nvim",
+        event = "BufReadPre",
+        opts = {
+            dir = vim.fn.expand(vim.fn.stdpath("state") .. "/sessions/"),
+            options = { "buffers", "curdir", "tabpages", "winsize" },
+            pre_save = nil,
+            save_empty = false,
+        },
+        keys = {
+            { "<leader>qs", function() require("persistence").load() end, desc = "Restore Session" },
+            { "<leader>ql", function() require("persistence").load({ last = true }) end, desc = "Restore Last Session" },
+            { "<leader>qd", function() require("persistence").stop() end, desc = "Don't Save Current Session" },
+        },
+    },
+
+    -- Auto-session.
+    {
+        "rmagatti/auto-session",
+        enabled = false, -- disable if you use persistence
+        config = function()
+            require("auto-session").setup({
+                log_level = "error",
+                auto_session_suppress_dirs = { "~/", "~/Projects", "~/Downloads", "/" },
+                auto_session_use_git_branch = false,
+                auto_save_enabled = true,
+                auto_restore_enabled = false, -- do not restore automatically
+            })
+        end,
+        keys = {
+            { "<leader>ss", "<cmd>SessionSave<cr>", desc = "Save session" },
+            { "<leader>sr", "<cmd>SessionRestore<cr>", desc = "Restore session" },
+        },
+    },
 }
