@@ -64,7 +64,17 @@ return {
                         end,
                         desc = "· Open File Explorer"
                     },
-                    {"<leader>et", desc = "· Show Tabs List"},
+                    {
+                        "<leader>et",
+                        function()
+                            if _G.TabsList and _G.TabsList.show_tabs_window then
+                                _G.TabsList.show_tabs_window()
+                            else
+                                print("TabsList functionality not loaded yet")
+                            end
+                        end,
+                        desc = "· Show Tabs List"
+                    },
                     {"<leader>eb", desc = "· Show Buffers List"},
 
                     -- FIND / SEARCH

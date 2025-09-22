@@ -2,12 +2,13 @@
 -- Independent tabs list window.
 
 return {
-    "nvim-telescope/telescope.nvim",
-    dependencies = {"nvim-lua/plenary.nvim"},
+    "nvim-lua/plenary.nvim", -- Just plenary as dependency
+    lazy = false, -- Load immediately
+    priority = 900, -- High priority to load early
     config = function()
         -- Global namespace for tabs list functionality.
         _G.TabsList = {}
-        _G.TabsList.current_win = nil -- Track current window
+        _G.TabsList.current_win = nil -- track current window
 
         -- Function to close any existing tabs window
         function _G.TabsList.close_existing_window()
@@ -125,14 +126,14 @@ return {
 
             -- Header.
             table.insert(lines, "")
-            table.insert(lines, string.format(" %d tabs open:", #tabs))
-            table.insert(lines, string.rep("─", width - 2))
+            table.insert(lines, string.format(" 󰮰  Number of open tabs: %d", #tabs))
+            table.insert(lines, string.rep("─", width))
             table.insert(lines, "")
 
             -- Tab entries.
             for i, tab in ipairs(tabs) do
                 local prefix = tab.is_current and " ⚬ " or "   "
-                local status = tab.is_modified and " [+]" or ""
+                local status = tab.is_modified and "" or "" -- "*" or ""
                 local line = string.format("%s%d. %s%s", prefix, tab.tab_nr, tab.display_name, status)
                 table.insert(lines, line)
 
@@ -146,8 +147,8 @@ return {
                 end
             end
 
-            table.insert(lines, "")
-            table.insert(lines, " Keys: <CR>=switch, d=close, q/ESC=quit")
+            -- table.insert(lines, "")
+            -- table.insert(lines, " Keys: <CR>=switch, d=close, q/ESC=quit")
 
             -- Set buffer content.
             vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
@@ -252,7 +253,7 @@ return {
                 keymap_opts
             )
 
-            -- Arrow keys
+            -- Arrow keys.
             vim.keymap.set("n", "<Down>", "j", keymap_opts)
             vim.keymap.set("n", "<Up>", "k", keymap_opts)
 
@@ -284,7 +285,7 @@ return {
             }
         )
 
-        -- Set up keymap (you can change this to whatever you prefer).
+        -- Set up keymap.
         vim.keymap.set("n", "<leader>tt", _G.TabsList.show_tabs_window, {desc = "Show tabs list", silent = true})
     end
 }
