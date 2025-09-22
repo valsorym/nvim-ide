@@ -55,3 +55,6 @@ require("config.keymaps").setup()
 require("config.line-numbers").setup()
 require("config.colorcolumn").setup()
 
+require("config.indentation").setup()
+require("config.indentation").setup_commands()
+require("config.indentation").setup_keymaps()

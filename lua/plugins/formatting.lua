@@ -327,7 +327,7 @@ return {
                 end
                 vim.cmd("edit!")
             end,
-            {desc = "  Sort Python Imports"}
+            {desc = "· Sort Python Imports"}
         )
 
         -- Create pyproject.toml.
