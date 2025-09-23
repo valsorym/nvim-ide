@@ -58,11 +58,36 @@ return {
                     {
                         "<leader>ee",
                         function()
-                            vim.defer_fn(function()
-                                _G.NvimTreeModal()
-                            end, 100)
+                            if _G.NvimTreeModal then
+                                vim.defer_fn(function()
+                                    _G.NvimTreeModal()
+                                end, 100)
+                            else
+                                -- Fallback to direct API call
+                                local api = require("nvim-tree.api")
+                                if api.tree.is_visible() then
+                                    api.tree.close()
+                                else
+                                    api.tree.open({
+                                        current_window = false,
+                                        find_file = false,
+                                        update_root = false
+                                    })
+                                end
+                            end
                         end,
                         desc = "· Open File Explorer"
+                    },
+                    {
+                        "<leader>eh",
+                        function()
+                            if _G.NvimTreeHistory and _G.NvimTreeHistory.show_history then
+                                _G.NvimTreeHistory.show_history()
+                            else
+                                print("Project history not available")
+                            end
+                        end,
+                        desc = "· Project History"
                     },
                     {
                         "<leader>et",

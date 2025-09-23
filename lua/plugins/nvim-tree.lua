@@ -1,13 +1,349 @@
 -- ~/.config/nvim/lua/plugins/nvim-tree.lua
--- Modal file explorer - always opens as floating window.
+-- Modal file explorer with project history functionality
 
 return {
     "nvim-tree/nvim-tree.lua",
-    dependencies = {"nvim-tree/nvim-web-devicons"},
+    dependencies = {
+        "nvim-tree/nvim-web-devicons",
+        "nvim-lua/plenary.nvim"
+    },
     config = function()
         -- Disable netrw (conflicts with nvim-tree).
         vim.g.loaded_netrw = 1
         vim.g.loaded_netrwPlugin = 1
+
+        -- Global namespace for root history
+        _G.NvimTreeHistory = {}
+
+        local history_file = vim.fn.stdpath("data") .. "/.last_projects.json"
+        local max_history = 20
+
+        -- Load history from file
+        local function load_history()
+            local file = io.open(history_file, "r")
+            if file then
+                local content = file:read("*all")
+                file:close()
+                local ok, data = pcall(vim.json.decode, content)
+                if ok and type(data) == "table" then
+                    return data
+                end
+            end
+            return {}
+        end
+
+        -- Save history to file
+        local function save_history(history)
+            local file = io.open(history_file, "w")
+            if file then
+                file:write(vim.json.encode(history))
+                file:close()
+            end
+        end
+
+        -- Add root to history
+        function _G.NvimTreeHistory.add_root(root_path)
+            if not root_path or root_path == "" then
+                return
+            end
+
+            local history = load_history()
+
+            -- Remove if already exists
+            for i = #history, 1, -1 do
+                if history[i].path == root_path then
+                    table.remove(history, i)
+                end
+            end
+
+            -- Add to beginning
+            table.insert(history, 1, {
+                path = root_path,
+                name = vim.fn.fnamemodify(root_path, ":t"),
+                parent = vim.fn.fnamemodify(root_path, ":h:t"),
+                timestamp = os.time()
+            })
+
+            -- Limit history size
+            while #history > max_history do
+                table.remove(history)
+            end
+
+            save_history(history)
+        end
+
+        -- Helper function to format path display
+        local function format_path_display(path, max_width)
+            local parts = vim.split(path, "/", {plain = true})
+
+            -- Remove empty parts
+            local filtered_parts = {}
+            for _, part in ipairs(parts) do
+                if part ~= "" then
+                    table.insert(filtered_parts, part)
+                end
+            end
+
+            -- If we have 3 or fewer parts, show full path
+            if #filtered_parts <= 3 then
+                return path
+            end
+
+            -- Take last 3 parts
+            local last_three = {}
+            for i = math.max(1, #filtered_parts - 2), #filtered_parts do
+                table.insert(last_three, filtered_parts[i])
+            end
+
+            local short_path = "···/" .. table.concat(last_three, "/")
+
+            -- If still too long, truncate further
+            if #short_path > max_width then
+                return "···/" .. short_path:sub(-(max_width - 4))
+            end
+
+            return short_path
+        end
+
+        -- Show root history window
+        function _G.NvimTreeHistory.show_history()
+            local history = load_history()
+
+            if #history == 0 then
+                print("No root directories in history")
+                return
+            end
+
+            -- Create buffer
+            local buf = vim.api.nvim_create_buf(false, true)
+
+            -- Calculate window size
+            local width = math.min(80, vim.o.columns - 10)
+            local height = math.min(15, #history + 5)
+
+            -- Calculate position
+            local row = math.floor((vim.o.lines - height) / 2)
+            local col = math.floor((vim.o.columns - width) / 2)
+
+            -- Create window
+            local win_opts = {
+                relative = "editor",
+                width = width,
+                height = height,
+                row = row,
+                col = col,
+                style = "minimal",
+                border = "rounded",
+                title = " Root Directories History ",
+                title_pos = "center",
+                zindex = 1000
+            }
+
+            local win = vim.api.nvim_open_win(buf, true, win_opts)
+
+            -- Prepare content
+            local lines = {}
+            local line_to_path = {}
+
+            -- Header
+            table.insert(lines, "")
+            table.insert(lines, string.format(" 󰋚  Number of recent projects: %d", #history))
+            table.insert(lines, string.rep("─", width))
+            table.insert(lines, "")
+
+            -- History entries
+            for i, entry in ipairs(history) do
+                -- Format timestamp
+                local time_str = os.date("%d.%m.%Y %H:%M", entry.timestamp)
+
+                -- Calculate available space for path (reserve space for number, time, and padding)
+                local path_width = width - 8 - #time_str - 3 -- "99. " + time + padding
+
+                -- Format path display
+                local display_path = format_path_display(entry.path, path_width)
+
+                -- Create line with proper spacing
+                local line = string.format(" %2d. %s", i, display_path)
+                local padding_needed = width - #line - #time_str - 1
+                if padding_needed > 0 then
+                    line = line .. string.rep(" ", padding_needed) .. time_str
+                else
+                    -- If no space, just add the time at the end
+                    line = line .. " " .. time_str
+                end
+
+                table.insert(lines, line)
+                line_to_path[#lines] = entry.path
+            end
+
+            table.insert(lines, "")
+            table.insert(lines, " Keys: <CR>=set root, d=remove, c=clear all, q/ESC=quit")
+
+            -- Set buffer content
+            vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+            vim.bo[buf].modifiable = false
+            vim.bo[buf].buftype = "nofile"
+            vim.bo[buf].bufhidden = "wipe"
+
+            -- Enable cursor line
+            vim.wo[win].cursorline = true
+
+            -- Helper function to close window
+            local function close_window()
+                if vim.api.nvim_win_is_valid(win) then
+                    vim.api.nvim_win_close(win, true)
+                end
+            end
+
+            -- Helper function to refresh window
+            local function refresh_window()
+                close_window()
+                _G.NvimTreeHistory.show_history()
+            end
+
+            -- Set up keymaps
+            local keymap_opts = {buffer = buf, nowait = true, silent = true}
+
+            -- Helper: check if we are on Dashboard or empty startup buffer
+            local function on_dashboard()
+                local cur = vim.api.nvim_get_current_buf()
+                return vim.bo[cur].filetype == "dashboard"
+                    or (vim.fn.bufname(cur) == "" and not vim.bo[cur].modified)
+            end
+
+            -- Set root with Enter (without creating new tab from Dashboard)
+            vim.keymap.set("n", "<CR>", function()
+                local line_nr = vim.fn.line(".")
+                local root_path = line_to_path[line_nr]
+                if not root_path then
+                    return
+                end
+                if vim.fn.isdirectory(root_path) ~= 1 then
+                    print("Directory no longer exists: " .. root_path)
+                    return
+                end
+
+                close_window()
+
+                vim.schedule(function()
+                    local api = require("nvim-tree.api")
+
+                    -- If we're on dashboard, handle specially
+                    if on_dashboard() then
+                        -- Just change root without opening tree
+                        api.tree.change_root(root_path)
+                        print("Selected new root directory: " .. root_path)
+
+                        -- If tree is already visible, just reload it
+                        if api.tree.is_visible() then
+                            vim.defer_fn(function()
+                                api.tree.reload()
+                                local tree_win = api.tree.winid()
+                                if tree_win and vim.api.nvim_win_is_valid(tree_win) then
+                                    vim.api.nvim_win_set_cursor(tree_win, {1, 0})
+                                end
+                            end, 50)
+                        end
+                        -- Don't open tree if not visible to avoid tab creation
+                    else
+                        -- Normal behavior for non-dashboard buffers
+                        api.tree.change_root(root_path)
+                        print("Selected new root directory: " .. root_path)
+
+                        if not api.tree.is_visible() then
+                            api.tree.open({
+                                current_window = false,
+                                find_file = false,
+                                update_root = false,
+                            })
+                        end
+
+                        vim.defer_fn(function()
+                            api.tree.reload()
+                            local tree_win = api.tree.winid()
+                            if tree_win and vim.api.nvim_win_is_valid(tree_win) then
+                                vim.api.nvim_win_set_cursor(tree_win, {1, 0})
+                            end
+                        end, 50)
+                    end
+                end)
+            end, keymap_opts)
+
+            -- Remove entry with 'd'
+            vim.keymap.set("n", "d", function()
+                local line_nr = vim.fn.line(".")
+                local root_path = line_to_path[line_nr]
+
+                if root_path then
+                    local history = load_history()
+                    for i = #history, 1, -1 do
+                        if history[i].path == root_path then
+                            table.remove(history, i)
+                            break
+                        end
+                    end
+                    save_history(history)
+                    refresh_window()
+                end
+            end, keymap_opts)
+
+            -- Clear all history with 'c'
+            vim.keymap.set("n", "c", function()
+                vim.ui.input({prompt = "Clear all history? (y/N): "}, function(input)
+                    if input and input:lower() == "y" then
+                        save_history({})
+                        close_window()
+                        print("Root directories history cleared")
+                    end
+                end)
+            end, keymap_opts)
+
+            -- Close window
+            vim.keymap.set("n", "q", close_window, keymap_opts)
+            vim.keymap.set("n", "<Esc>", close_window, keymap_opts)
+
+            -- Navigation
+            vim.keymap.set("n", "j", function()
+                local current_line = vim.fn.line(".")
+                local next_line = current_line + 1
+
+                while next_line <= #lines and not line_to_path[next_line] do
+                    next_line = next_line + 1
+                end
+
+                if line_to_path[next_line] then
+                    vim.api.nvim_win_set_cursor(win, {next_line, 0})
+                end
+            end, keymap_opts)
+
+            vim.keymap.set("n", "k", function()
+                local current_line = vim.fn.line(".")
+                local prev_line = current_line - 1
+
+                while prev_line >= 1 and not line_to_path[prev_line] do
+                    prev_line = prev_line - 1
+                end
+
+                if line_to_path[prev_line] then
+                    vim.api.nvim_win_set_cursor(win, {prev_line, 0})
+                end
+            end, keymap_opts)
+
+            -- Auto-close on focus lost
+            vim.api.nvim_create_autocmd("WinLeave", {
+                buffer = buf,
+                once = true,
+                callback = function()
+                    vim.defer_fn(close_window, 100)
+                end
+            })
+
+            -- Position cursor on first entry
+            for line_nr, _ in pairs(line_to_path) do
+                vim.api.nvim_win_set_cursor(win, {line_nr, 0})
+                break
+            end
+        end
 
         -- Function to get current file path for sync.
         local function get_current_file()
@@ -16,8 +352,8 @@ return {
 
             -- Return empty string for special buffers
             if
-                file_path == "" or file_path:match("NvimTree_") or file_path:match("toggleterm") or
-                    file_path:match("dashboard")
+                file_path == "" or file_path:match("NvimTree_") or
+                file_path:match("toggleterm") or file_path:match("dashboard")
              then
                 return ""
             end
@@ -51,35 +387,6 @@ return {
                 function()
                     if current_file ~= "" then
                         api.tree.find_file(current_file)
-                    end
-                end
-            )
-        end
-
-        -- Function to change root directory.
-        local function change_root_to_cwd()
-            local api = require("nvim-tree.api")
-            local cwd = vim.fn.getcwd()
-            api.tree.change_root(cwd)
-            print("Root changed to: " .. cwd)
-        end
-
-        -- Function to pick root directory.
-        local function pick_root_directory()
-            vim.ui.input(
-                {
-                    prompt = "New root directory: ",
-                    default = vim.fn.getcwd(),
-                    completion = "dir"
-                },
-                function(input)
-                    if input and vim.fn.isdirectory(input) == 1 then
-                        local api = require("nvim-tree.api")
-                        local full_path = vim.fn.fnamemodify(input, ":p")
-                        api.tree.change_root(full_path)
-                        print("Root changed to: " .. full_path)
-                    elseif input then
-                        print("Directory does not exist: " .. input)
                     end
                 end
             )
@@ -190,14 +497,14 @@ return {
                             bookmark = "",
                             modified = "●",
                             folder = {
-                                arrow_closed = "", -- ►
-                                arrow_open = "", -- ▼
-                                default = "", -- closed folder
-                                open = "", -- open folder
-                                empty = "", -- "🗀",  -- empty closed
-                                empty_open = "", -- "🗁",  -- empty open
-                                symlink = "", -- symlink folder
-                                symlink_open = "" -- symlink open
+                                arrow_closed = "", -- ►
+                                arrow_open = "", -- ▼
+                                default = "", -- closed folder
+                                open = "", -- open folder
+                                empty = "", -- "🗀",  -- empty closed
+                                empty_open = "", -- "🗁",  -- empty open
+                                symlink = "", -- symlink folder
+                                symlink_open = "" -- symlink open
                             },
                             git = {
                                 unstaged = "✗",
@@ -284,7 +591,7 @@ return {
                     vim.keymap.set("n", "<Esc>", api.tree.close, {buffer = bufnr, desc = "Close tree"})
                     vim.keymap.set("n", "q", api.tree.close, {buffer = bufnr, desc = "Close tree"})
 
-                    -- Root directory management
+                    -- Root directory management with history integration
                     vim.keymap.set(
                         "n",
                         "C",
@@ -294,26 +601,29 @@ return {
                                 return
                             end
 
+                            local new_root
                             if node.type == "directory" then
-                                api.tree.change_root(node.absolute_path)
-                                print("Root changed to: " .. vim.fn.fnamemodify(node.absolute_path, ":~"))
+                                new_root = node.absolute_path
+                                api.tree.change_root(new_root)
+                                print("Root changed to: " .. vim.fn.fnamemodify(new_root, ":~"))
                             else
                                 -- If it's a file, change to its directory
-                                local dir = vim.fn.fnamemodify(node.absolute_path, ":h")
-                                api.tree.change_root(dir)
-                                print("Root changed to: " .. vim.fn.fnamemodify(dir, ":~"))
+                                new_root = vim.fn.fnamemodify(node.absolute_path, ":h")
+                                api.tree.change_root(new_root)
+                                print("Root changed to: " .. vim.fn.fnamemodify(new_root, ":~"))
                             end
+
+                            -- Add to history
+                            _G.NvimTreeHistory.add_root(new_root)
 
                             -- Refresh and position at top
                             vim.defer_fn(function()
                                 api.tree.reload()
-                                -- Move cursor to first item after header
                                 local win = api.tree.winid()
                                 if win and vim.api.nvim_win_is_valid(win) then
                                     vim.api.nvim_win_set_cursor(win, {1, 0})
-                                    -- Find first file/folder and position there
                                     vim.cmd("normal! gg")
-                                    vim.cmd("normal! j") -- Skip potential header
+                                    vim.cmd("normal! j")
                                 end
                             end, 100)
                         end,
@@ -324,10 +634,12 @@ return {
                     )
 
                     vim.keymap.set("n", "B", function()
-                        local api = require("nvim-tree.api")
                         local cwd = vim.fn.getcwd()
                         api.tree.change_root(cwd)
                         print("Root changed to: " .. cwd)
+
+                        -- Add to history
+                        _G.NvimTreeHistory.add_root(cwd)
 
                         -- Refresh and position at top
                         vim.defer_fn(function()
@@ -350,10 +662,12 @@ return {
                             },
                             function(input)
                                 if input and vim.fn.isdirectory(input) == 1 then
-                                    local api = require("nvim-tree.api")
                                     local full_path = vim.fn.fnamemodify(input, ":p")
                                     api.tree.change_root(full_path)
                                     print("Root changed to: " .. full_path)
+
+                                    -- Add to history
+                                    _G.NvimTreeHistory.add_root(full_path)
 
                                     -- Refresh and position at top
                                     vim.defer_fn(function()
@@ -373,7 +687,13 @@ return {
                     end, {buffer = bufnr, desc = "Pick root directory"})
 
                     vim.keymap.set("n", "P", function()
+                        local current_root = vim.fn.getcwd()
+                        local parent_path = vim.fn.fnamemodify(current_root, ":h")
+
                         api.tree.change_root_to_parent()
+
+                        -- Add to history
+                        _G.NvimTreeHistory.add_root(parent_path)
 
                         -- Refresh and position at top
                         vim.defer_fn(function()
@@ -386,6 +706,11 @@ return {
                             end
                         end, 100)
                     end, {buffer = bufnr, desc = "Parent directory"})
+
+                    -- Show project history
+                    vim.keymap.set("n", "H", function()
+                        _G.NvimTreeHistory.show_history()
+                    end, {buffer = bufnr, desc = "Show project history"})
 
                     -- Refresh tree
                     vim.keymap.set("n", "r", api.tree.reload, {buffer = bufnr, desc = "Refresh"})
@@ -411,7 +736,7 @@ return {
                     -- Toggle hidden files
                     vim.keymap.set(
                         "n",
-                        "H",
+                        "I",
                         api.tree.toggle_hidden_filter,
                         {buffer = bufnr, desc = "Toggle hidden files"}
                     )
@@ -426,14 +751,30 @@ return {
         -- Global function for modal tree access
         _G.NvimTreeModal = open_tree_modal
 
-        -- Create user command for modal tree
-        vim.api.nvim_create_user_command("NvimTreeModal", open_tree_modal, {desc = "Open NvimTree as modal window"})
+        -- Hook into nvim-tree root changes
+        vim.api.nvim_create_autocmd("User", {
+            pattern = "NvimTreeRootChanged",
+            callback = function(event)
+                if event.data and event.data.new_root then
+                    _G.NvimTreeHistory.add_root(event.data.new_root)
+                end
+            end
+        })
 
-        -- Create command for changing root
-        vim.api.nvim_create_user_command(
-            "NvimTreeChangeRoot",
-            pick_root_directory,
-            {desc = "Change NvimTree root directory"}
-        )
+        -- User commands
+        vim.api.nvim_create_user_command("NvimTreeModal",
+            open_tree_modal,
+            {desc = "Open NvimTree as modal window"})
+
+        vim.api.nvim_create_user_command("NvimTreeRootHistory",
+            _G.NvimTreeHistory.show_history,
+            {desc = "Show nvim-tree root directories history"})
+
+        vim.api.nvim_create_user_command("NvimTreeClearHistory",
+            function()
+                save_history({})
+                print("Root directories history cleared")
+            end,
+            {desc = "Clear nvim-tree root directories history"})
     end
 }
