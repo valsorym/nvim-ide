@@ -219,6 +219,38 @@ return {
                     {"<leader>s", group = " Flash Navigation"},
                     {"s", desc = "· Flash Jump", mode = {"n", "x", "o"}},
                     {"S", desc = "· Flash Treesitter", mode = {"n", "x", "o"}},
+
+                    -- DEBUGGING
+                    {"<leader>d", group = " Debug (DAP)"},
+                    {"<leader>db", function() require("dap").toggle_breakpoint() end, desc = "· Toggle Breakpoint"},
+                    {"<leader>dc", function() require("dap").continue() end, desc = "· Continue"},
+                    {"<leader>ds", function() require("dap").step_over() end, desc = "· Step Over"},
+                    {"<leader>di", function() require("dap").step_into() end, desc = "· Step Into"},
+                    {"<leader>do", function() require("dap").step_out() end, desc = "· Step Out"},
+                    {"<leader>dr", function() require("dap").repl.open() end, desc = "· Open REPL"},
+                    {"<leader>dl", function() require("dap").run_last() end, desc = "· Run Last"},
+                    {"<leader>dt", function() require("dap").terminate() end, desc = "· Terminate"},
+                    {"<leader>du", function() require("dapui").toggle() end, desc = "· Toggle DAP UI"},
+
+                    -- PROJECTS
+                    {"<leader>p", group = " Projects"},
+                    {"<leader>pp", desc = "· Switch Project"},
+                    {"<leader>pr", desc = "· Go to Project Root"},
+                    {"<leader>fp", desc = "· Find Projects"},
+
+                    -- TERMINAL / TOOLS
+                    {"<leader>t", group = " Terminal/Tools"},
+                    {"<leader>tf", desc = "· Float Terminal"},
+                    {"<leader>th", desc = "· Horizontal Terminal"},
+                    {"<leader>tv", desc = "· Vertical Terminal"},
+                    {"<leader>tb", desc = "· Toggle Git Blame"},
+                    {"<leader>tn", desc = "· New Tab"},
+                    {"<leader>tp", desc = "· Python Terminal"},
+                    {"<leader>td", desc = "· Django Shell"},
+                    {"<leader>tr", desc = "· Django Runserver"},
+                    {"<leader>tN", desc = "· Node Terminal"},
+                    {"<leader>m", desc = "· Mason"},
+                    {"<leader>vs", desc = "· Select Python Venv"},
                 }
             }
         )

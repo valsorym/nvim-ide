@@ -230,15 +230,6 @@ function M.setup()
     map("n", "<leader>tn", ":tabnew<CR>", {desc = "New tab"})
     map("n", "<C-t>", ":tabnew<CR>", {desc = "New tab"})
 
-    -- File tree modal with F9.
-    map(
-        "n",
-        "<F9>",
-        function()
-            _G.NvimTreeModal()
-        end,
-        {desc = "Open file explorer", silent = true}
-    )
 
     -- Explorer commands.
     map(
@@ -250,16 +241,6 @@ function M.setup()
         {desc = "Open file explorer", silent = true}
     )
 
-    -- Buffers list with F10 and leader shortcuts.
-    map(
-        "n",
-        "<F10>",
-        function()
-            require("telescope.builtin").buffers()
-        end,
-        {desc = "Show buffers list", silent = true}
-    )
-
     map(
         "n",
         "<leader>eb",
@@ -267,20 +248,6 @@ function M.setup()
             require("telescope.builtin").buffers()
         end,
         {desc = "Show buffers list", silent = true}
-    )
-
-    -- Tabs list with F8 and leader shortcut.
-    map(
-        "n",
-        "<F8>",
-        function()
-            if _G.TabsList and _G.TabsList.show_tabs_window then
-                _G.TabsList.show_tabs_window()
-            else
-                print("TabsList functionality not loaded yet")
-            end
-        end,
-        {desc = "Show tabs list", silent = true}
     )
 
     map(
@@ -296,9 +263,6 @@ function M.setup()
         {desc = "Show tabs list", silent = true}
     )
 
-    -- Tab navigation with F keys.
-    map("n", "<F5>", ":tabprevious<CR>", {desc = "Previous tab"})
-    map("n", "<F6>", ":tabnext<CR>", {desc = "Next tab"})
 
     -- Smart quit commands with Dashboard-aware logic.
     map("n", "<leader>qq", smart_tab_close, {desc = "Smart close tab"})
@@ -350,38 +314,6 @@ function M.setup()
 
     -- Clear search highlighting.
     map("n", "<leader>h", ":nohlsearch<CR>", {desc = "Clear highlights"})
-
-    -- F2 for smart save and format.
-    map("n", "<F2>", function()
-        if vim.bo.readonly then
-            vim.notify("File is readonly. Use :w! to force save", vim.log.levels.WARN)
-            return
-        end
-
-        -- Format first, then save.
-        if vim.g.format_on_save ~= false then
-            vim.lsp.buf.format({async = false, timeout_ms = 2000})
-        end
-        vim.cmd("write")
-        print("File saved and formatted")
-    end, {desc = "Save and format file"})
-
-    map("i", "<F2>", function()
-        vim.cmd("stopinsert")
-        if vim.bo.readonly then
-            vim.notify("File is readonly. Use :w! to force save", vim.log.levels.WARN)
-            vim.cmd("startinsert")
-            return
-        end
-
-        -- Format first, then save.
-        if vim.g.format_on_save ~= false then
-            vim.lsp.buf.format({async = false, timeout_ms = 2000})
-        end
-        vim.cmd("write")
-        vim.cmd("startinsert")
-        print("File saved and formatted")
-    end, {desc = "Save and format file"})
 
     -- Mason.
     map("n", "<leader>m", ":Mason<CR>", {desc = "Open Mason"})
@@ -473,19 +405,7 @@ function M.setup()
     map("n", "<leader>bn", ":bnext<CR>", {desc = "Next buffer"})
     map("n", "<leader>bp", ":bprevious<CR>", {desc = "Previous buffer"})
 
-    -- Code Inspector with F7.
-    map(
-        "n",
-        "<F7>",
-        function()
-            if _G.CodeInspector then
-                _G.CodeInspector()
-            else
-                vim.notify("Code Inspector not loaded", vim.log.levels.WARN)
-            end
-        end,
-        {desc = "Code Inspector", silent = true}
-    )
+
 
     -- LSP Symbols shortcuts.
     map(
@@ -596,10 +516,197 @@ function M.setup()
         smart_tab_close()
     end, {desc = "Save and smart close tab"})
 
-    -- Disable F1 help (annoying).
-    map("n", "<F1>", "<nop>", {desc = "Disabled"})
-    map("i", "<F1>", "<nop>", {desc = "Disabled"})
-    map("v", "<F1>", "<nop>", {desc = "Disabled"})
+    -- -- Disable F1 help (annoying).
+    -- map("n", "<F1>", "<nop>", {desc = "Disabled"})
+    -- map("i", "<F1>", "<nop>", {desc = "Disabled"})
+
+    -- -- map("v", "<F1>", "<nop>", {desc = "Disabled"})
+    -- map("n", "<F1>", function()
+    --     _G.NvimTreeModal()
+    -- end, {desc = "Open file explorer", silent = true})
+
+    -- map("n", "<F2>", function()
+    --     if _G.TabsList and _G.TabsList.show_tabs_window then
+    --         _G.TabsList.show_tabs_window()
+    --     else
+    --         print("TabsList functionality not loaded yet")
+    --     end
+    -- end, {desc = "Show tabs list", silent = true})
+
+    -- map("n", "<F3>", function()
+    --     require("telescope.builtin").buffers()
+    -- end, {desc = "Show buffers list", silent = true})
+
+    -- map("n", "<F4>", function()
+    --     require("trouble").toggle("workspace_diagnostics")
+    -- end, {desc = "Toggle problems list", silent = true})
+
+    -- -- F2 for smart save and format.
+    -- map("n", "<F2>", function()
+    --     if vim.bo.readonly then
+    --         vim.notify("File is readonly. Use :w! to force save", vim.log.levels.WARN)
+    --         return
+    --     end
+
+    --     -- Format first, then save.
+    --     if vim.g.format_on_save ~= false then
+    --         vim.lsp.buf.format({async = false, timeout_ms = 2000})
+    --     end
+    --     vim.cmd("write")
+    --     print("File saved and formatted")
+    -- end, {desc = "Save and format file"})
+
+    -- map("i", "<F2>", function()
+    --     vim.cmd("stopinsert")
+    --     if vim.bo.readonly then
+    --         vim.notify("File is readonly. Use :w! to force save", vim.log.levels.WARN)
+    --         vim.cmd("startinsert")
+    --         return
+    --     end
+
+    --     -- Format first, then save.
+    --     if vim.g.format_on_save ~= false then
+    --         vim.lsp.buf.format({async = false, timeout_ms = 2000})
+    --     end
+    --     vim.cmd("write")
+    --     vim.cmd("startinsert")
+    --     print("File saved and formatted")
+    -- end, {desc = "Save and format file"})
+
+    -- -- Tab navigation with F keys.
+    -- map("n", "<F5>", ":tabprevious<CR>", {desc = "Previous tab"})
+    -- map("n", "<F6>", ":tabnext<CR>", {desc = "Next tab"})
+
+    -- -- Code Inspector with F7.
+    -- map(
+    --     "n",
+    --     "<F7>",
+    --     function()
+    --         if _G.CodeInspector then
+    --             _G.CodeInspector()
+    --         else
+    --             vim.notify("Code Inspector not loaded", vim.log.levels.WARN)
+    --         end
+    --     end,
+    --     {desc = "Code Inspector", silent = true}
+    -- )
+
+    -- -- Tabs list with F8 and leader shortcut.
+    -- map(
+    --     "n",
+    --     "<F8>",
+    --     function()
+    --         if _G.TabsList and _G.TabsList.show_tabs_window then
+    --             _G.TabsList.show_tabs_window()
+    --         else
+    --             print("TabsList functionality not loaded yet")
+    --         end
+    --     end,
+    --     {desc = "Show tabs list", silent = true}
+    -- )
+
+    -- -- File tree modal with F9.
+    -- map(
+    --     "n",
+    --     "<F9>",
+    --     function()
+    --         _G.NvimTreeModal()
+    --     end,
+    --     {desc = "Open file explorer", silent = true}
+    -- )
+
+    -- -- Buffers list with F10 and leader shortcuts.
+    -- map(
+    --     "n",
+    --     "<F10>",
+    --     function()
+    --         require("telescope.builtin").buffers()
+    --     end,
+    --     {desc = "Show buffers list", silent = true}
+    -- )
+
+    -- F1 for file explorer.
+    map("n", "<F1>", function()
+        _G.NvimTreeModal()
+    end, {desc = "Open file explorer", silent = true})
+
+    -- F2 for smart save and format.
+    map("n", "<F2>", function()
+        if vim.bo.readonly then
+            vim.notify("File is readonly. Use :w! to force save", vim.log.levels.WARN)
+            return
+        end
+
+        -- Format first, then save.
+        if vim.g.format_on_save ~= false then
+            vim.lsp.buf.format({async = false, timeout_ms = 2000})
+        end
+        vim.cmd("write")
+        print("File saved and formatted")
+    end, {desc = "Save and format file"})
+
+    map("n", "<F3>", function()
+        if _G.TabsList and _G.TabsList.show_tabs_window then
+            _G.TabsList.show_tabs_window()
+        else
+            print("TabsList functionality not loaded yet")
+        end
+    end, {desc = "Show tabs list", silent = true})
+
+    map("n", "<F4>", function()
+        require("telescope.builtin").buffers()
+    end, {desc = "Show buffers list", silent = true})
+
+    map("n", "<F5>", function()
+        require("trouble").toggle("workspace_diagnostics")
+    end, {desc = "Toggle problems list", silent = true})
+
+    -- -- Tab navigation with F keys.
+    -- map("n", "<F5>", ":tabprevious<CR>", {desc = "Previous tab"})
+    -- map("n", "<F6>", ":tabnext<CR>", {desc = "Next tab"})
+
+
+    -- Debug mappings for F8, F9, F10.
+    map("n", "<F8>", function()
+        require("dap").toggle_breakpoint()
+    end, {desc = "Toggle breakpoint", silent = true})
+
+    map("n", "<S-F8>", function()
+        vim.ui.input({prompt = "Breakpoint condition: "}, function(condition)
+            if condition and condition ~= "" then
+                require("dap").set_breakpoint(condition)
+            end
+        end)
+    end, {desc = "Conditional breakpoint", silent = true})
+
+    map("n", "<F9>", function()
+        require("dap").continue()
+    end, {desc = "Debug continue", silent = true})
+
+    map("n", "<S-F9>", function()
+        require("dap").terminate()
+    end, {desc = "Debug terminate", silent = true})
+
+    map("n", "<F10>", function()
+        require("dap").step_over()
+    end, {desc = "Debug step over", silent = true})
+
+    map("n", "<S-F10>", function()
+        require("dap").step_into()
+    end, {desc = "Debug step into", silent = true})
+
+    map("n", "<C-F10>", function()
+        require("dap").step_out()
+    end, {desc = "Debug step out", silent = true})
+
+    -- Additional debug shortcuts
+    map("n", "<F11>", function()
+        require("dap").run_last()
+    end, {desc = "Debug run last", silent = true})
+
+    map("n", "<F12>", function()
+        require("dapui").toggle()
+    end, {desc = "Toggle debug UI", silent = true})
 end
 
 return M
