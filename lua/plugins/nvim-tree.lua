@@ -285,8 +285,6 @@ return {
                     vim.keymap.set("n", "q", api.tree.close, {buffer = bufnr, desc = "Close tree"})
 
                     -- Root directory management
-                    vim.keymap.set("n", "B", change_root_to_cwd, {buffer = bufnr, desc = "Change root to CWD"})
-                    vim.keymap.set("n", "R", pick_root_directory, {buffer = bufnr, desc = "Pick root directory"})
                     vim.keymap.set(
                         "n",
                         "C",
@@ -305,6 +303,19 @@ return {
                                 api.tree.change_root(dir)
                                 print("Root changed to: " .. vim.fn.fnamemodify(dir, ":~"))
                             end
+
+                            -- Refresh and position at top
+                            vim.defer_fn(function()
+                                api.tree.reload()
+                                -- Move cursor to first item after header
+                                local win = api.tree.winid()
+                                if win and vim.api.nvim_win_is_valid(win) then
+                                    vim.api.nvim_win_set_cursor(win, {1, 0})
+                                    -- Find first file/folder and position there
+                                    vim.cmd("normal! gg")
+                                    vim.cmd("normal! j") -- Skip potential header
+                                end
+                            end, 100)
                         end,
                         {
                             buffer = bufnr,
@@ -312,13 +323,69 @@ return {
                         }
                     )
 
-                    -- Navigate up one directory level
-                    vim.keymap.set(
-                        "n",
-                        "P",
-                        api.tree.change_root_to_parent,
-                        {buffer = bufnr, desc = "Parent directory"}
-                    )
+                    vim.keymap.set("n", "B", function()
+                        local api = require("nvim-tree.api")
+                        local cwd = vim.fn.getcwd()
+                        api.tree.change_root(cwd)
+                        print("Root changed to: " .. cwd)
+
+                        -- Refresh and position at top
+                        vim.defer_fn(function()
+                            api.tree.reload()
+                            local win = api.tree.winid()
+                            if win and vim.api.nvim_win_is_valid(win) then
+                                vim.api.nvim_win_set_cursor(win, {1, 0})
+                                vim.cmd("normal! gg")
+                                vim.cmd("normal! j")
+                            end
+                        end, 100)
+                    end, {buffer = bufnr, desc = "Change root to CWD"})
+
+                    vim.keymap.set("n", "R", function()
+                        vim.ui.input(
+                            {
+                                prompt = "New root directory: ",
+                                default = vim.fn.getcwd(),
+                                completion = "dir"
+                            },
+                            function(input)
+                                if input and vim.fn.isdirectory(input) == 1 then
+                                    local api = require("nvim-tree.api")
+                                    local full_path = vim.fn.fnamemodify(input, ":p")
+                                    api.tree.change_root(full_path)
+                                    print("Root changed to: " .. full_path)
+
+                                    -- Refresh and position at top
+                                    vim.defer_fn(function()
+                                        api.tree.reload()
+                                        local win = api.tree.winid()
+                                        if win and vim.api.nvim_win_is_valid(win) then
+                                            vim.api.nvim_win_set_cursor(win, {1, 0})
+                                            vim.cmd("normal! gg")
+                                            vim.cmd("normal! j")
+                                        end
+                                    end, 100)
+                                elseif input then
+                                    print("Directory does not exist: " .. input)
+                                end
+                            end
+                        )
+                    end, {buffer = bufnr, desc = "Pick root directory"})
+
+                    vim.keymap.set("n", "P", function()
+                        api.tree.change_root_to_parent()
+
+                        -- Refresh and position at top
+                        vim.defer_fn(function()
+                            api.tree.reload()
+                            local win = api.tree.winid()
+                            if win and vim.api.nvim_win_is_valid(win) then
+                                vim.api.nvim_win_set_cursor(win, {1, 0})
+                                vim.cmd("normal! gg")
+                                vim.cmd("normal! j")
+                            end
+                        end, 100)
+                    end, {buffer = bufnr, desc = "Parent directory"})
 
                     -- Refresh tree
                     vim.keymap.set("n", "r", api.tree.reload, {buffer = bufnr, desc = "Refresh"})
