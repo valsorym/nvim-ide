@@ -103,7 +103,7 @@ return {
                     {"<leader>bd", desc = "· Delete Buffer"},
                     {"<leader>bn", desc = "· Next Buffer"},
                     {"<leader>bp", desc = "· Previous Buffer"},
-                    {"<leader>tt", desc = "· Tabs List"},
+                    -- {"<leader>tt", desc = "· Tabs List"},
                     {"<A-Left>", desc = "· Previous Tab", mode = "n"},
                     {"<A-Right>", desc = "· Next Tab", mode = "n"},
                     {"<A-h>", desc = "· Move Tab Left", mode = "n"},
@@ -129,7 +129,7 @@ return {
                     {"gr", desc = "· References"},
                     {"K", desc = "· Hover Info"},
 
-                    -- LINTERS (new submenu)
+                    -- Linters.
                     {"<leader>k", group = " Linters"},
                     -- {"<leader>km", "<cmd>ToggleMyPy<cr>",
                     --     desc = "· Toggle MyPy"},
@@ -142,7 +142,7 @@ return {
                     {"<leader>kf", "<cmd>ToggleFlake8<cr>",
                         desc = "· Toggle Flake8"},
 
-                    -- DIAGNOSTICS
+                    -- Diagnostics
                     {"<leader>x", group = " Diagnostics"},
                     {"<leader>xx", desc = "· Show Line Diagnostics"},
                     {"<leader>xl", desc = "· Open Diagnostic List"},
@@ -150,20 +150,10 @@ return {
                     {"]d", desc = "· Next Diagnostic"},
                     {"[d", desc = "· Previous Diagnostic"},
 
-                    -- TERMINAL / TOOLS
-                    {"<leader>t", group = " Terminal/Tools"},
-                    {"<leader>tf", desc = "· Float Terminal"},
-                    {"<leader>th", desc = "· Horizontal Terminal"},
-                    {"<leader>tv", desc = "· Vertical Terminal"},
-                    {"<leader>tb", desc = "· Toggle Git Blame"},
-                    {"<leader>tn", desc = "· New Tab"},
-                    {"<leader>m", desc = "· Mason"},
-                    {"<leader>vs", desc = "· Select Python Venv"},
-
-                    -- OPTIONS
+                    -- Options.
                     {"<leader>h", desc = "· Clear Search Highlights"},
 
-                    -- QUIT / TABS
+                    -- Quit / Tabs.
                     {"<leader>q", group = " Quit/Sessions"},  -- expand an existing group
                     {"<leader>qs", desc = "· Restore Session"},
                     {"<leader>ql", desc = "· Restore Last Session"},
@@ -173,8 +163,7 @@ return {
                     {"<leader>qQ", desc = "· Force Close Current Tab"},
                     {"<leader>qA", desc = "· Force Close All Tabs & Exit"},
 
-
-                    -- FUNCTION KEYS
+                    -- Function keys.
                     {"<F2>", desc = "· Save & Format"},
                     {"<F5>", desc = "· Previous Tab"},
                     {"<F6>", desc = "· Next Tab"},
@@ -183,7 +172,7 @@ return {
                     {"<F9>", desc = "· Open File Explorer"},
                     {"<F10>", desc = "· Show Buffers List"},
 
-                    -- UI / THEMES
+                    -- UI / Themes.
                     {"<leader>u", group = " UI/Themes"},
                     {"<leader>ut", desc = "· Theme Switcher"},
                     {"<leader>ub", desc = "· Toggle Background"},
@@ -210,15 +199,32 @@ return {
                     {"<leader>u2", desc = "· Set 2 Spaces"},
                     {"<leader>u4", desc = "· Set 4 Spaces"},
 
-                    -- LSP / SYMBOLS
+                    -- LSP / Symbols.
                     {"<leader>l", group = " LSP/Symbols"},
                     {"<leader>ls", desc = "· Document Symbols (modal)"},
-
 
                     -- Flash navigation.
                     {"<leader>s", group = " Flash Navigation"},
                     {"s", desc = "· Flash Jump", mode = {"n", "x", "o"}},
                     {"S", desc = "· Flash Treesitter", mode = {"n", "x", "o"}},
+
+                    -- Terminal / Tools.
+                    {"<leader>t", group = " Terminal/Tools"},
+                    {"<leader>tf", desc = "· Float Terminal"},
+                    {"<leader>th", desc = "· Horizontal Terminal"},
+                    {"<leader>tv", desc = "· Vertical Terminal"},
+                    {"<leader>tb", desc = "· Toggle Git Blame"},
+                    {"<leader>tn", desc = "· New Tab"},
+                    {"<leader>tp", desc = "· Python Terminal"},
+                    {"<leader>td", desc = "· Django Shell"},
+                    {"<leader>tr", desc = "· Django Runserver"},
+                    {"<leader>tN", desc = "· Node Terminal"},
+                    {"<leader>m", desc = "· Mason"},
+                    {"<leader>vs", desc = "· Select Python Venv"},
+
+                    -- Mason.
+                    {"<leader>m", desc = "· Mason"},
+                    {"<leader>vs", desc = "· Select Python Venv"},
                 }
             }
         )
