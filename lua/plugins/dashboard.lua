@@ -25,7 +25,7 @@ return {
                         "│    ╚═╝  ╚═══╝  ╚═══╝  ╚═╝╚═╝     ╚═╝    ╚═╝╚═════╝ ╚══════╝   │",
                         "│             Welcome to your development environment!         │",
                         "│                                                               │",
-                        "│                                                       v.0.0.5 │",
+                        "│                                                       v.0.0.6 │",
                         "╰───────────────────────────────────────────────────────────────╯",
                         "",
                         "",
@@ -65,7 +65,29 @@ return {
                             icon = "󰗼  ",
                             desc = "Quit",
                             key = "q",
-                            action = "qa"
+                            action = function()
+                                -- Custom quit with confirmation.
+                                vim.ui.input({
+                                    prompt = "Really quit? [Y/n]: ",
+                                    default = ""
+                                }, function(input)
+                                    -- Handle cancellation (Escape pressed).
+                                    if input == nil then
+                                        print("Cancelled.")
+                                        return
+                                    end
+
+                                    -- Normalize input.
+                                    local choice = vim.trim(input):lower()
+
+                                    -- Exit on empty input, 'y', or 'yes'
+                                    if choice == "" or choice == "y" or choice == "yes" then
+                                        vim.cmd("qa")
+                                    else
+                                        print("Cancelled.")
+                                    end
+                                end)
+                            end
                         }
                     },
                     footer = {
@@ -99,5 +121,6 @@ return {
                 callback = hide_numbers
             }
         )
+
     end
 }
