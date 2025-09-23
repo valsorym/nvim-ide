@@ -66,27 +66,21 @@ return {
                             desc = "Quit",
                             key = "q",
                             action = function()
-                                -- Custom quit with confirmation.
-                                vim.ui.input({
-                                    prompt = "Really quit? [Y/n]: ",
-                                    default = ""
-                                }, function(input)
-                                    -- Handle cancellation (Escape pressed).
-                                    if input == nil then
-                                        print("Cancelled.")
-                                        return
-                                    end
+                                -- Show prompt
+                                print("Really quit? [y/n]")
 
-                                    -- Normalize input.
-                                    local choice = vim.trim(input):lower()
+                                -- Get single character
+                                local char = vim.fn.getchar()
+                                local key = vim.fn.nr2char(char)
 
-                                    -- Exit on empty input, 'y', or 'yes'
-                                    if choice == "" or choice == "y" or choice == "yes" then
-                                        vim.cmd("qa")
-                                    else
-                                        print("Cancelled.")
-                                    end
-                                end)
+                                -- Clear the command line
+                                vim.cmd("echo ''")
+
+                                if key:lower() == "y" then
+                                    vim.cmd("qa")
+                                else
+                                    print("Cancelled.")
+                                end
                             end
                         }
                     },
