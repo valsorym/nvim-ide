@@ -285,8 +285,32 @@ return {
                     vim.keymap.set("n", "q", api.tree.close, {buffer = bufnr, desc = "Close tree"})
 
                     -- Root directory management
-                    vim.keymap.set("n", "C", change_root_to_cwd, {buffer = bufnr, desc = "Change root to CWD"})
+                    vim.keymap.set("n", "B", change_root_to_cwd, {buffer = bufnr, desc = "Change root to CWD"})
                     vim.keymap.set("n", "R", pick_root_directory, {buffer = bufnr, desc = "Pick root directory"})
+                    vim.keymap.set(
+                        "n",
+                        "C",
+                        function()
+                            local node = api.tree.get_node_under_cursor()
+                            if not node then
+                                return
+                            end
+
+                            if node.type == "directory" then
+                                api.tree.change_root(node.absolute_path)
+                                print("Root changed to: " .. vim.fn.fnamemodify(node.absolute_path, ":~"))
+                            else
+                                -- If it's a file, change to its directory
+                                local dir = vim.fn.fnamemodify(node.absolute_path, ":h")
+                                api.tree.change_root(dir)
+                                print("Root changed to: " .. vim.fn.fnamemodify(dir, ":~"))
+                            end
+                        end,
+                        {
+                            buffer = bufnr,
+                            desc = "Change root to selected directory"
+                        }
+                    )
 
                     -- Navigate up one directory level
                     vim.keymap.set(
