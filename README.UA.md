@@ -243,14 +243,21 @@ Icon=neovide
 Terminal=false
 Categories=Development;TextEditor;IDE;
 StartupNotify=true
+StartupWMClass=neovide
 MimeType=text/plain;text/x-makefile;text/x-c++hdr;text/x-c++src;text/x-chdr;text/x-csrc;text/x-java;text/x-moc;text/x-pascal;text/x-tcl;text/x-tex;application/x-shellscript;text/x-c;text/x-c++;
+Actions=NewWindow;
+
+[Desktop Action NewWindow]
+Name=New Window
+Exec=neovide
+OnlyShowIn=Cinnamon;GNOME;KDE;XFCE;Unity;
 EOF
 
 mkdir -p ~/.local/share/icons/hicolor/scalable/apps/
 wget -O ~/.local/share/icons/hicolor/scalable/apps/neovide.svg \
   https://raw.githubusercontent.com/neovide/neovide/main/assets/neovide.svg
 
-update-desktop-database ~/.local/share/applications/
+update-desktop-database ~/.local/share/applications/ >/dev/null 2>&1 || true
 ```
 
 ### Cinnamon
@@ -258,7 +265,7 @@ update-desktop-database ~/.local/share/applications/
 ```bash
 rm -rf ~/.cinnamon/spices.cache
 rm -rf ~/.cache/cinnamon/
-nohup cinnamon --replace &
+nohup cinnamon --replace >/dev/null 2>&1 &
 ```
 
 ## Підтримка мов
