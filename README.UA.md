@@ -189,6 +189,75 @@ echo "Плагіни встановляться автоматично при п
 - Завантажить LSP сервери через Mason
 - Налаштує парсери Treesitter
 
+## Neovide
+
+### Update cargo.
+
+```bash
+sudo apt remove cargo rustc
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source ~/.cargo/env
+rustup install stable
+rustup default stable
+```
+
+### Install Neovide.
+
+```bash
+cargo install --git https://github.com/neovide/neovide
+```
+
+### Config Neovide.
+
+```bash
+mkdir -p ~/.config/neovide
+cat > ~/.config/neovide/config.toml << 'EOF'
+[font]
+normal = ["JetBrainsMono Nerd Font", "monospace"]
+size = 12.0
+
+[window]
+transparency = 1.0
+blur = false
+
+[cursor]
+animation_length = 0.13
+trail_size = 0.8
+EOF
+```
+
+### Create a desktop entry for Neovide.
+
+```bash
+cat > ~/.local/share/applications/neovide.desktop << 'EOF'
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Neovide
+Comment=A simple, fast and good looking Neovim GUI
+Exec=neovide %F
+Icon=neovide
+Terminal=false
+Categories=Development;TextEditor;IDE;
+StartupNotify=true
+MimeType=text/plain;text/x-makefile;text/x-c++hdr;text/x-c++src;text/x-chdr;text/x-csrc;text/x-java;text/x-moc;text/x-pascal;text/x-tcl;text/x-tex;application/x-shellscript;text/x-c;text/x-c++;
+EOF
+
+mkdir -p ~/.local/share/icons/hicolor/scalable/apps/
+wget -O ~/.local/share/icons/hicolor/scalable/apps/neovide.svg \
+  https://raw.githubusercontent.com/neovide/neovide/main/assets/neovide.svg
+
+update-desktop-database ~/.local/share/applications/
+```
+
+### Cinnamon
+
+```bash
+rm -rf ~/.cinnamon/spices.cache
+rm -rf ~/.cache/cinnamon/
+nohup cinnamon --replace &
+```
+
 ## Підтримка мов
 
 ### Python + Django
