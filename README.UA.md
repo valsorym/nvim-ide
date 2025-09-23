@@ -211,18 +211,16 @@ cargo install --git https://github.com/neovide/neovide
 
 ```bash
 mkdir -p ~/.config/neovide
-cat > ~/.config/neovide/config.toml << 'EOF'
+cat <<'EOF' | install -Dm644 /dev/stdin ~/.config/neovide/config.toml
+maximized = true
+vsync = true
+tabs = "native"
+frame = "full"
+
 [font]
 normal = ["JetBrainsMono Nerd Font", "monospace"]
 size = 12.0
-
-[window]
-transparency = 1.0
-blur = false
-
-[cursor]
-animation_length = 0.13
-trail_size = 0.8
+features = ["calt", "liga"]
 EOF
 ```
 

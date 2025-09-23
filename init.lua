@@ -36,18 +36,31 @@ vim.opt.ignorecase = true
 vim.opt.smartcase = true
 vim.opt.termguicolors = true
 
--- ── Linters toggles (set BEFORE plugins load) ─────────────────────────
--- Safe-by-default / specific-by-opt-in policy:
--- true  => enabled on start
--- false => disabled on start (enable via <leader>k …)
-
+-- Linters toggles.
 vim.g.enable_mypy     = false  -- MyPy (Python type checker)
 vim.g.enable_djlint   = false  -- djlint (Django/Jinja linter)
-
--- Placeholders for future linters/toggles:
 vim.g.enable_codespell = true   -- spelling (safe default)
 vim.g.enable_eslint    = false  -- example: ESLint (if you add it)
 vim.g.enable_flake8    = false  -- example: Flake8 (if you add it)
+
+
+-- Neovide
+if vim.g.neovide then
+  -- Remember window size between runs.
+  vim.g.neovide_remember_window_size = true
+
+  -- Tune scale if UI looks tiny on HiDPI.
+  vim.g.neovide_scale_factor = 1.0
+
+  -- Cosmetics (optional).
+  vim.g.neovide_cursor_animation_length = 0.10
+  vim.g.neovide_cursor_trail_length = 0.6
+  vim.g.neovide_hide_mouse_when_typing = true
+  vim.g.neovide_padding_top = 10
+  vim.g.neovide_padding_bottom = 10
+  vim.g.neovide_padding_left = 10
+  vim.g.neovide_padding_right = 10
+end
 
 -- Local configs.
 require("config.nvim-tabs").setup()
