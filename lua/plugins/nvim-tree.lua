@@ -12,13 +12,13 @@ return {
         vim.g.loaded_netrw = 1
         vim.g.loaded_netrwPlugin = 1
 
-        -- Global namespace for root history
+        -- Global namespace for root history.
         _G.NvimTreeHistory = {}
 
         local history_file = vim.fn.stdpath("data") .. "/.last_projects.json"
         local max_history = 20
 
-        -- Load history from file
+        -- Load history from file.
         local function load_history()
             local file = io.open(history_file, "r")
             if file then
@@ -32,7 +32,7 @@ return {
             return {}
         end
 
-        -- Save history to file
+        -- Save history to file.
         local function save_history(history)
             local file = io.open(history_file, "w")
             if file then
@@ -41,7 +41,7 @@ return {
             end
         end
 
-        -- Add root to history
+        -- Add root to history.
         function _G.NvimTreeHistory.add_root(root_path)
             if not root_path or root_path == "" then
                 return
@@ -49,14 +49,14 @@ return {
 
             local history = load_history()
 
-            -- Remove if already exists
+            -- Remove if already exists.
             for i = #history, 1, -1 do
                 if history[i].path == root_path then
                     table.remove(history, i)
                 end
             end
 
-            -- Add to beginning
+            -- Add to beginning.
             table.insert(history, 1, {
                 path = root_path,
                 name = vim.fn.fnamemodify(root_path, ":t"),
@@ -64,7 +64,7 @@ return {
                 timestamp = os.time()
             })
 
-            -- Limit history size
+            -- Limit history size.
             while #history > max_history do
                 table.remove(history)
             end
@@ -72,11 +72,11 @@ return {
             save_history(history)
         end
 
-        -- Helper function to format path display
+        -- Helper function to format path display.
         local function format_path_display(path, max_width)
             local parts = vim.split(path, "/", {plain = true})
 
-            -- Remove empty parts
+            -- Remove empty parts.
             local filtered_parts = {}
             for _, part in ipairs(parts) do
                 if part ~= "" then
@@ -84,12 +84,12 @@ return {
                 end
             end
 
-            -- If we have 3 or fewer parts, show full path
+            -- If we have 3 or fewer parts, show full path.
             if #filtered_parts <= 3 then
                 return path
             end
 
-            -- Take last 3 parts
+            -- Take last 3 parts.
             local last_three = {}
             for i = math.max(1, #filtered_parts - 2), #filtered_parts do
                 table.insert(last_three, filtered_parts[i])
@@ -97,7 +97,7 @@ return {
 
             local short_path = "···/" .. table.concat(last_three, "/")
 
-            -- If still too long, truncate further
+            -- If still too long, truncate further.
             if #short_path > max_width then
                 return "···/" .. short_path:sub(-(max_width - 4))
             end
@@ -105,7 +105,7 @@ return {
             return short_path
         end
 
-        -- Show root history window
+        -- Show root history window.
         function _G.NvimTreeHistory.show_history()
             local history = load_history()
 
@@ -114,14 +114,14 @@ return {
                 return
             end
 
-            -- Create buffer
+            -- Create buffer.
             local buf = vim.api.nvim_create_buf(false, true)
 
-            -- Calculate window size
+            -- Calculate window size.
             local width = math.min(80, vim.o.columns - 10)
             local height = math.min(15, #history + 5)
 
-            -- Calculate position
+            -- Calculate position.
             local row = math.floor((vim.o.lines - height) / 2)
             local col = math.floor((vim.o.columns - width) / 2)
 
@@ -153,22 +153,22 @@ return {
 
             -- History entries
             for i, entry in ipairs(history) do
-                -- Format timestamp
+                -- Format timestamp.
                 local time_str = os.date("%d.%m.%Y %H:%M", entry.timestamp)
 
-                -- Calculate available space for path (reserve space for number, time, and padding)
+                -- Calculate available space for path (reserve space for number, time, and padding).
                 local path_width = width - 8 - #time_str - 3 -- "99. " + time + padding
 
-                -- Format path display
+                -- Format path display.
                 local display_path = format_path_display(entry.path, path_width)
 
-                -- Create line with proper spacing
+                -- Create line with proper spacing.
                 local line = string.format(" %2d. %s", i, display_path)
                 local padding_needed = width - #line - #time_str - 1
                 if padding_needed > 0 then
                     line = line .. string.rep(" ", padding_needed) .. time_str
                 else
-                    -- If no space, just add the time at the end
+                    -- If no space, just add the time at the end.
                     line = line .. " " .. time_str
                 end
 
@@ -522,10 +522,10 @@ return {
                 on_attach = function(bufnr)
                     local api = require("nvim-tree.api")
 
-                    -- Clear default mappings
+                    -- Clear default mappings.
                     api.config.mappings.default_on_attach(bufnr)
 
-                    -- Enter -> expand folder or open file in new tab
+                    -- Enter -> expand folder or open file in new tab.
                     vim.keymap.set(
                         "n",
                         "<CR>",
@@ -536,14 +536,14 @@ return {
                             end
 
                             if node.type == "directory" then
-                                -- Expand/collapse folder
+                                -- Expand/collapse folder.
                                 api.node.open.edit()
                             elseif node.type == "file" then
                                 local file_path = node.absolute_path
                                 local found = false
                                 local replace_current = false
 
-                                -- Check if file is already open in any tab
+                                -- Check if file is already open in any tab.
                                 for tab_nr = 1, vim.fn.tabpagenr("$") do
                                     local buflist = vim.fn.tabpagebuflist(tab_nr)
                                     for _, buf_nr in ipairs(buflist) do
@@ -562,7 +562,7 @@ return {
                                 if not found then
                                     api.tree.close()
 
-                                    -- Check if current tab is dashboard or empty
+                                    -- Check if current tab is dashboard or empty.
                                     local curbuf = vim.api.nvim_get_current_buf()
                                     if
                                         vim.bo[curbuf].filetype == "dashboard" or
@@ -572,10 +572,10 @@ return {
                                     end
 
                                     if replace_current then
-                                        -- Replace current tab with the file
+                                        -- Replace current tab with the file.
                                         vim.cmd("edit " .. vim.fn.fnameescape(file_path))
                                     else
-                                        -- Open in new tab
+                                        -- Open in new tab.
                                         vim.cmd("tabnew " .. vim.fn.fnameescape(file_path))
                                     end
                                 end
@@ -591,7 +591,7 @@ return {
                     vim.keymap.set("n", "<Esc>", api.tree.close, {buffer = bufnr, desc = "Close tree"})
                     vim.keymap.set("n", "q", api.tree.close, {buffer = bufnr, desc = "Close tree"})
 
-                    -- Root directory management with history integration
+                    -- Root directory management with history integration.
                     vim.keymap.set(
                         "n",
                         "C",
@@ -607,16 +607,16 @@ return {
                                 api.tree.change_root(new_root)
                                 print("Root changed to: " .. vim.fn.fnamemodify(new_root, ":~"))
                             else
-                                -- If it's a file, change to its directory
+                                -- If it's a file, change to its directory.
                                 new_root = vim.fn.fnamemodify(node.absolute_path, ":h")
                                 api.tree.change_root(new_root)
                                 print("Root changed to: " .. vim.fn.fnamemodify(new_root, ":~"))
                             end
 
-                            -- Add to history
+                            -- Add to history.
                             _G.NvimTreeHistory.add_root(new_root)
 
-                            -- Refresh and position at top
+                            -- Refresh and position at top.
                             vim.defer_fn(function()
                                 api.tree.reload()
                                 local win = api.tree.winid()
@@ -638,10 +638,10 @@ return {
                         api.tree.change_root(cwd)
                         print("Root changed to: " .. cwd)
 
-                        -- Add to history
+                        -- Add to history.
                         _G.NvimTreeHistory.add_root(cwd)
 
-                        -- Refresh and position at top
+                        -- Refresh and position at top.
                         vim.defer_fn(function()
                             api.tree.reload()
                             local win = api.tree.winid()
@@ -707,36 +707,36 @@ return {
                         end, 100)
                     end, {buffer = bufnr, desc = "Parent directory"})
 
-                    -- Show project history
-                    vim.keymap.set("n", "H", function()
-                        _G.NvimTreeHistory.show_history()
-                    end, {buffer = bufnr, desc = "Show project history"})
+                    -- Show project history (removed from here - use <leader>eh instead)
+                    -- vim.keymap.set("n", "H", function()
+                    --     _G.NvimTreeHistory.show_history()
+                    -- end, {buffer = bufnr, desc = "Show project history"})
 
                     -- Refresh tree
                     vim.keymap.set("n", "r", api.tree.reload, {buffer = bufnr, desc = "Refresh"})
 
-                    -- Create file/directory
+                    -- Create file/directory.
                     vim.keymap.set("n", "a", api.fs.create, {buffer = bufnr, desc = "Create file/directory"})
 
-                    -- Delete file/directory
+                    -- Delete file/directory.
                     vim.keymap.set("n", "d", api.fs.remove, {buffer = bufnr, desc = "Delete"})
 
-                    -- Rename file/directory
+                    -- Rename file/directory.
                     vim.keymap.set("n", "rn", api.fs.rename, {buffer = bufnr, desc = "Rename"})
 
-                    -- Copy file/directory
+                    -- Copy file/directory.
                     vim.keymap.set("n", "c", api.fs.copy.node, {buffer = bufnr, desc = "Copy"})
 
-                    -- Cut file/directory
+                    -- Cut file/directory.
                     vim.keymap.set("n", "x", api.fs.cut, {buffer = bufnr, desc = "Cut"})
 
-                    -- Paste file/directory
+                    -- Paste file/directory.
                     vim.keymap.set("n", "p", api.fs.paste, {buffer = bufnr, desc = "Paste"})
 
-                    -- Toggle hidden files
+                    -- Toggle hidden files.
                     vim.keymap.set(
                         "n",
-                        "I",
+                        "H",
                         api.tree.toggle_hidden_filter,
                         {buffer = bufnr, desc = "Toggle hidden files"}
                     )
@@ -748,10 +748,10 @@ return {
             }
         )
 
-        -- Global function for modal tree access
+        -- Global function for modal tree access.
         _G.NvimTreeModal = open_tree_modal
 
-        -- Hook into nvim-tree root changes
+        -- Hook into nvim-tree root changes.
         vim.api.nvim_create_autocmd("User", {
             pattern = "NvimTreeRootChanged",
             callback = function(event)
@@ -761,7 +761,7 @@ return {
             end
         })
 
-        -- User commands
+        -- User commands.
         vim.api.nvim_create_user_command("NvimTreeModal",
             open_tree_modal,
             {desc = "Open NvimTree as modal window"})
