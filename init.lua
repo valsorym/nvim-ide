@@ -46,24 +46,24 @@ vim.g.enable_flake8    = false  -- example: Flake8 (if you add it)
 
 -- Neovide
 if vim.g.neovide then
-  -- Keep window size between runs.
-  vim.g.neovide_remember_window_size = true
+    -- Keep window size between runs.
+    vim.g.neovide_remember_window_size = true
 
-  -- HiDPI tuning.
-  vim.g.neovide_scale_factor = 1.0
+    -- HiDPI tuning.
+    vim.g.neovide_scale_factor = 1.0
 
-  -- Disable cursor/scroll animations that "fly" across splits.
-  vim.g.neovide_cursor_animation_length = 0
-  vim.g.neovide_cursor_trail_length = 0
-  vim.g.neovide_cursor_animate_in_insert_mode = false
-  vim.g.neovide_scroll_animation_length = 0
+    -- Disable cursor/scroll animations that "fly" across splits.
+    vim.g.neovide_cursor_animation_length = 0
+    vim.g.neovide_cursor_trail_length = 0
+    vim.g.neovide_cursor_animate_in_insert_mode = false
+    vim.g.neovide_scroll_animation_length = 0
 
-  -- Optional cosmetics.
-  vim.g.neovide_hide_mouse_when_typing = true
-  vim.g.neovide_padding_top = 10
-  vim.g.neovide_padding_bottom = 10
-  vim.g.neovide_padding_left = 10
-  vim.g.neovide_padding_right = 10
+    -- Optional cosmetics.
+    vim.g.neovide_hide_mouse_when_typing = true
+    vim.g.neovide_padding_top = 10
+    vim.g.neovide_padding_bottom = 10
+    vim.g.neovide_padding_left = 10
+    vim.g.neovide_padding_right = 10
 end
 
 
