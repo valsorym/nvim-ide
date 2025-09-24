@@ -73,36 +73,46 @@ return {
         end
 
         -- Helper function to format path display.
+        -- local function format_path_display(path, max_width)
+        --     local parts = vim.split(path, "/", {plain = true})
+
+        --     -- Remove empty parts.
+        --     local filtered_parts = {}
+        --     for _, part in ipairs(parts) do
+        --         if part ~= "" then
+        --             table.insert(filtered_parts, part)
+        --         end
+        --     end
+
+        --     -- If we have 3 or fewer parts, show full path.
+        --     if #filtered_parts <= 3 then
+        --         return path
+        --     end
+
+        --     -- Take last 3 parts.
+        --     local last_three = {}
+        --     for i = math.max(1, #filtered_parts - 2), #filtered_parts do
+        --         table.insert(last_three, filtered_parts[i])
+        --     end
+
+        --     local short_path = "···/" .. table.concat(last_three, "/")
+
+        --     -- If still too long, truncate further.
+        --     if #short_path > max_width then
+        --         return "···/" .. short_path:sub(-(max_width - 4))
+        --     end
+
+        --     return short_path
+        -- end
         local function format_path_display(path, max_width)
-            local parts = vim.split(path, "/", {plain = true})
-
-            -- Remove empty parts.
-            local filtered_parts = {}
-            for _, part in ipairs(parts) do
-                if part ~= "" then
-                    table.insert(filtered_parts, part)
-                end
+            -- If path is longer than max_width, show last 36
+            -- characters with prefix.
+            local display_width = 36
+            if #path > display_width then
+                return "…" .. path:sub(-(display_width - 1))
             end
 
-            -- If we have 3 or fewer parts, show full path.
-            if #filtered_parts <= 3 then
-                return path
-            end
-
-            -- Take last 3 parts.
-            local last_three = {}
-            for i = math.max(1, #filtered_parts - 2), #filtered_parts do
-                table.insert(last_three, filtered_parts[i])
-            end
-
-            local short_path = "···/" .. table.concat(last_three, "/")
-
-            -- If still too long, truncate further.
-            if #short_path > max_width then
-                return "···/" .. short_path:sub(-(max_width - 4))
-            end
-
-            return short_path
+            return path
         end
 
         -- Show root history window.
@@ -125,7 +135,7 @@ return {
             local row = math.floor((vim.o.lines - height) / 2)
             local col = math.floor((vim.o.columns - width) / 2)
 
-            -- Create window
+            -- Create window.
             local win_opts = {
                 relative = "editor",
                 width = width,
@@ -141,11 +151,11 @@ return {
 
             local win = vim.api.nvim_open_win(buf, true, win_opts)
 
-            -- Prepare content
+            -- Prepare content.
             local lines = {}
             local line_to_path = {}
 
-            -- Header
+            -- Header.
             table.insert(lines, "")
             table.insert(lines, string.format(" 󰋚  Number of recent projects: %d", #history))
             table.insert(lines, string.rep("─", width))
@@ -176,8 +186,8 @@ return {
                 line_to_path[#lines] = entry.path
             end
 
-            table.insert(lines, "")
-            table.insert(lines, " Keys: <CR>=set root, d=remove, c=clear all, q/ESC=quit")
+            -- table.insert(lines, "")
+            -- table.insert(lines, " Keys: <CR>=set root, d=remove, C=clear all, q/ESC=quit")
 
             -- Set buffer content
             vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
@@ -288,12 +298,12 @@ return {
             end, keymap_opts)
 
             -- Clear all history with 'c'
-            vim.keymap.set("n", "c", function()
+            vim.keymap.set("n", "C", function()
                 vim.ui.input({prompt = "Clear all history? (y/N): "}, function(input)
                     if input and input:lower() == "y" then
                         save_history({})
                         close_window()
-                        print("Root directories history cleared")
+                        print("Root directories history cleared.")
                     end
                 end)
             end, keymap_opts)
@@ -448,11 +458,11 @@ return {
                 },
                 filters = {
                     git_ignored = false,
-                    dotfiles = false,
+                    dotfiles = true,
                     git_clean = false,
                     no_buffer = false,
                     custom = {".DS_Store"},
-                    exclude = {}
+                    exclude = {".env", ".gitignore", ".gitkeep"}
                 },
                 renderer = {
                     add_trailing = false,
@@ -495,16 +505,16 @@ return {
                             default = "",
                             symlink = "",
                             bookmark = "",
-                            modified = "●",
+                            modified = "*",
                             folder = {
-                                arrow_closed = "", -- ►
-                                arrow_open = "", -- ▼
-                                default = "", -- closed folder
-                                open = "", -- open folder
-                                empty = "", -- "🗀",  -- empty closed
-                                empty_open = "", -- "🗁",  -- empty open
-                                symlink = "", -- symlink folder
-                                symlink_open = "" -- symlink open
+                                arrow_closed = "", -- ►
+                                arrow_open = "", -- ▼
+                                default = "", -- closed folder
+                                open = "", -- open folder
+                                empty = "", -- "🗀",  -- empty closed
+                                empty_open = "", -- "🗁",  -- empty open
+                                symlink = "", -- symlink folder
+                                symlink_open = "" -- symlink open
                             },
                             git = {
                                 unstaged = "✗",
