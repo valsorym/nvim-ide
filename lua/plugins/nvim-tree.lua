@@ -427,14 +427,14 @@ return {
                         bookmark = "",
                         modified = "*",
                         folder = {
-                            arrow_closed = "",
-                            arrow_open = "",
-                            default = "",
-                            open = "",
-                            empty = "",
-                            empty_open = "",
-                            symlink = "",
-                            symlink_open = "",
+                            arrow_closed = "", -- ►
+                            arrow_open = "", -- ▼
+                            default = "", -- closed folder
+                            open = "", -- open folder
+                            empty = "", -- "🗀",  -- empty closed
+                            empty_open = "", -- "🗁",  -- empty open
+                            symlink = "", -- symlink folder
+                            symlink_open = "" -- symlink open
                         },
                         git = {
                             unstaged = "✗",
