@@ -252,32 +252,12 @@ return {
 
                     -- If we're on dashboard, handle specially
                     if on_dashboard() then
-                        -- Initialize nvim-tree if needed, then change root
-                        if not api.tree.is_visible() then
-                            -- Open tree briefly to initialize, then close it
-                            api.tree.open({
-                                current_window = false,
-                                find_file = false,
-                                update_root = false,
-                            })
-                            vim.defer_fn(function()
-                                api.tree.close()
-                                api.tree.change_root(root_path)
-                                vim.defer_fn(update_window_title, 100)
-                            end, 50)
-                        else
-                            -- Tree is visible, just change root
-                            api.tree.change_root(root_path)
-                            vim.defer_fn(function()
-                                api.tree.reload()
-                                local tree_win = api.tree.winid()
-                                if tree_win and vim.api.nvim_win_is_valid(tree_win) then
-                                    vim.api.nvim_win_set_cursor(tree_win, {1, 0})
-                                end
-                                update_window_title()
-                            end, 100)
-                        end
+                        -- Just change working directory and nvim-tree root without opening tree
+                        -- This will initialize nvim-tree internally without creating tabs
+                        pcall(api.tree.change_root, root_path)
+                        vim.defer_fn(update_window_title, 100)
                         print("Selected new root directory: " .. root_path)
+                        -- Stay on dashboard - don't open any tree or tabs
                     else
                         -- Normal behavior for non-dashboard buffers
                         api.tree.change_root(root_path)
