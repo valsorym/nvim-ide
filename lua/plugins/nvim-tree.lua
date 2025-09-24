@@ -264,21 +264,8 @@ return {
                         vim.defer_fn(update_window_title, 100)
                         print("Selected new root directory: " .. root_path)
 
-                        if not api.tree.is_visible() then
-                            api.tree.open({
-                                current_window = false,
-                                find_file = false,
-                                update_root = false,
-                            })
-                        end
-
-                        vim.defer_fn(function()
-                            api.tree.reload()
-                            local tree_win = api.tree.winid()
-                            if tree_win and vim.api.nvim_win_is_valid(tree_win) then
-                                vim.api.nvim_win_set_cursor(tree_win, {1, 0})
-                            end
-                        end, 50)
+                        -- Don't automatically open tree - just change root and close history
+                        -- User can open tree manually with leader+e+e if needed
                     end
                 end)
             end, keymap_opts)
