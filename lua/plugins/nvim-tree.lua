@@ -77,7 +77,7 @@ return {
             local current_root = vim.fn.getcwd()
             local project_name = vim.fn.fnamemodify(current_root, ":t")
 
-            vim.o.title = true  -- Enable title
+            vim.o.title = true  -- enable title
             vim.o.titlestring = project_name
         end
 
@@ -204,33 +204,33 @@ return {
             vim.bo[buf].buftype = "nofile"
             vim.bo[buf].bufhidden = "wipe"
 
-            -- Enable cursor line
+            -- Enable cursor line.
             vim.wo[win].cursorline = true
 
-            -- Helper function to close window
+            -- Helper function to close window.
             local function close_window()
                 if vim.api.nvim_win_is_valid(win) then
                     vim.api.nvim_win_close(win, true)
                 end
             end
 
-            -- Helper function to refresh window
+            -- Helper function to refresh window.
             local function refresh_window()
                 close_window()
                 _G.NvimTreeHistory.show_history()
             end
 
-            -- Set up keymaps
+            -- Set up keymaps.
             local keymap_opts = {buffer = buf, nowait = true, silent = true}
 
-            -- Helper: check if we are on Dashboard or empty startup buffer
+            -- Helper: check if we are on Dashboard or empty startup buffer.
             local function on_dashboard()
                 local cur = vim.api.nvim_get_current_buf()
                 return vim.bo[cur].filetype == "dashboard"
                     or (vim.fn.bufname(cur) == "" and not vim.bo[cur].modified)
             end
 
-            -- Set root with Enter (without creating new tab from Dashboard)
+            -- Set root with Enter (without creating new tab from Dashboard).
             vim.keymap.set("n", "<CR>", function()
                 local line_nr = vim.fn.line(".")
                 local root_path = line_to_path[line_nr]
@@ -247,25 +247,26 @@ return {
                 vim.schedule(function()
                     local api = require("nvim-tree.api")
 
-                    -- Change current working directory first
+                    -- Change current working directory first.
                     vim.cmd("cd " .. vim.fn.fnameescape(root_path))
 
-                    -- If we're on dashboard, handle specially
+                    -- If we're on dashboard, handle specially.
                     if on_dashboard() then
-                        -- Just change working directory and nvim-tree root without opening tree
-                        -- This will initialize nvim-tree internally without creating tabs
+                        -- Just change working directory and nvim-tree root without opening tree.
+                        -- This will initialize nvim-tree internally without creating tabs.
                         pcall(api.tree.change_root, root_path)
                         vim.defer_fn(update_window_title, 100)
                         print("Selected new root directory: " .. root_path)
-                        -- Stay on dashboard - don't open any tree or tabs
+
+                        -- Stay on dashboard - don't open any tree or tabs.
                     else
                         -- Normal behavior for non-dashboard buffers
                         api.tree.change_root(root_path)
                         vim.defer_fn(update_window_title, 100)
                         print("Selected new root directory: " .. root_path)
 
-                        -- Don't automatically open tree - just change root and close history
-                        -- User can open tree manually with leader+e+e if needed
+                        -- Don't automatically open tree - just change root and close history.
+                        -- User can open tree manually with leader+e+e if needed.
                     end
                 end)
             end, keymap_opts)
@@ -299,11 +300,11 @@ return {
                 end)
             end, keymap_opts)
 
-            -- Close window
+            -- Close window.
             vim.keymap.set("n", "q", close_window, keymap_opts)
             vim.keymap.set("n", "<Esc>", close_window, keymap_opts)
 
-            -- Navigation
+            -- Navigation.
             vim.keymap.set("n", "j", function()
                 local current_line = vim.fn.line(".")
                 local next_line = current_line + 1
@@ -330,7 +331,7 @@ return {
                 end
             end, keymap_opts)
 
-            -- Auto-close on focus lost
+            -- Auto-close on focus lost.
             vim.api.nvim_create_autocmd("WinLeave", {
                 buffer = buf,
                 once = true,
@@ -339,7 +340,7 @@ return {
                 end
             })
 
-            -- Position cursor on first entry
+            -- Position cursor on first entry.
             for line_nr, _ in pairs(line_to_path) do
                 vim.api.nvim_win_set_cursor(win, {line_nr, 0})
                 break
