@@ -213,14 +213,28 @@ return {
             table.insert(lines, string.rep("─", maxw))
             table.insert(lines, "")
 
+            -- Calculate the width needed for timestamps
+            local time_width = 18  -- "24.09.2025 14:14 " length
+            local number_width = 4 -- " 99. " width
+
+            -- Available width for paths after number and time
+            local path_width = maxw - number_width - time_width - 1 -- -1 for spacing
+
             for i, e in ipairs(hist) do
-                local t = os.date("%d.%m.%Y %H:%M", e.ts)
-                local pad = 8 + #t + 2 -- "99. " + space + time
-                local avail = math.max(12, maxw - pad)
-                local disp = strshort(e.path, avail)
-                local left = (" %2d. %s"):format(i, disp)
-                local nsp = math.max(1, maxw - #left - #t)
-                local line = left .. string.rep(" ", nsp) .. t
+                local t = os.date("%d.%m.%Y %H:%M ", e.ts)
+                local disp = strshort(e.path, path_width)
+
+                -- Create line with fixed-width formatting
+                -- Format: " 99. path..." + spaces to fill + "24.09.2025 14:14"
+                local left_part = (" %2d. %s"):format(i, disp)
+                local left_width = strwidth(left_part)
+
+                -- Calculate spaces needed to right-align timestamp
+                local spaces_needed = maxw - left_width - strwidth(t)
+                if spaces_needed < 1 then spaces_needed = 1 end
+
+                local line = left_part .. string.rep(" ", spaces_needed) .. t
+
                 table.insert(lines, line)
                 idx[#lines] = e.path
             end
@@ -322,6 +336,7 @@ return {
                 end,
             })
 
+            -- Set cursor to first history entry
             for ln, _ in pairs(idx) do
                 vim.api.nvim_win_set_cursor(win, {ln, 0})
                 break
