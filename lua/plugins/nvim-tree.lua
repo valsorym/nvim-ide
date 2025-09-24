@@ -247,24 +247,37 @@ return {
                 vim.schedule(function()
                     local api = require("nvim-tree.api")
 
+                    -- Change current working directory first
+                    vim.cmd("cd " .. vim.fn.fnameescape(root_path))
+
                     -- If we're on dashboard, handle specially
                     if on_dashboard() then
-                        -- Just change root without opening tree
-                        api.tree.change_root(root_path)
-                        vim.defer_fn(update_window_title, 100)
-                        print("Selected new root directory: " .. root_path)
-
-                        -- If tree is already visible, just reload it
-                        if api.tree.is_visible() then
+                        -- Initialize nvim-tree if needed, then change root
+                        if not api.tree.is_visible() then
+                            -- Open tree briefly to initialize, then close it
+                            api.tree.open({
+                                current_window = false,
+                                find_file = false,
+                                update_root = false,
+                            })
+                            vim.defer_fn(function()
+                                api.tree.close()
+                                api.tree.change_root(root_path)
+                                vim.defer_fn(update_window_title, 100)
+                            end, 50)
+                        else
+                            -- Tree is visible, just change root
+                            api.tree.change_root(root_path)
                             vim.defer_fn(function()
                                 api.tree.reload()
                                 local tree_win = api.tree.winid()
                                 if tree_win and vim.api.nvim_win_is_valid(tree_win) then
                                     vim.api.nvim_win_set_cursor(tree_win, {1, 0})
                                 end
-                            end, 50)
+                                update_window_title()
+                            end, 100)
                         end
-                        -- Don't open tree if not visible to avoid tab creation
+                        print("Selected new root directory: " .. root_path)
                     else
                         -- Normal behavior for non-dashboard buffers
                         api.tree.change_root(root_path)
