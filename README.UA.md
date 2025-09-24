@@ -60,6 +60,17 @@ sudo apt install -y \
   python3-pip \
   ripgrep \
   codespell
+  cmake \
+  pkg-config \
+  libssl-dev \
+  libfreetype6-dev \
+  libfontconfig1-dev \
+  libxcb-shape0-dev \
+  libxcb-xfixes0-dev \
+  libxkbcommon-dev \
+  libxkbcommon-x11-dev \
+  libegl1-mesa-dev \
+  libssl-dev
 ```
 
 ### 2. Встановлення Nerd Fonts
