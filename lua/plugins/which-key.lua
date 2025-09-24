@@ -246,6 +246,7 @@ return {
                     {"<leader>tN", desc = "· Node Terminal"},
                     {"<leader>m", desc = "· Mason"},
                     {"<leader>vs", desc = "· Select Python Venv"},
+                    {"<leader>R", desc = "· Reload Vim Config"},
 
                     -- Mason.
                     {"<leader>m", desc = "· Mason"},
