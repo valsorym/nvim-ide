@@ -251,7 +251,7 @@ return {
                     if on_dashboard() then
                         -- Just change root without opening tree
                         api.tree.change_root(root_path)
-                        update_window_title()
+                        vim.defer_fn(update_window_title, 100)
                         print("Selected new root directory: " .. root_path)
 
                         -- If tree is already visible, just reload it
@@ -268,7 +268,7 @@ return {
                     else
                         -- Normal behavior for non-dashboard buffers
                         api.tree.change_root(root_path)
-                        update_window_title()
+                        vim.defer_fn(update_window_title, 100)
                         print("Selected new root directory: " .. root_path)
 
                         if not api.tree.is_visible() then
