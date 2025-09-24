@@ -2,6 +2,7 @@
 -- Centralized keymaps configuration.
 
 local M = {}
+local safe_save = require("config.safe-save")
 
 -- Delete buffers that are not visible in any tab.
 local function cleanup_orphan_buffers(force)
@@ -353,34 +354,13 @@ function M.setup()
 
     -- F2 for smart save and format.
     map("n", "<F2>", function()
-        if vim.bo.readonly then
-            vim.notify("File is readonly. Use :w! to force save", vim.log.levels.WARN)
-            return
-        end
-
-        -- Format first, then save.
-        if vim.g.format_on_save ~= false then
-            vim.lsp.buf.format({async = false, timeout_ms = 2000})
-        end
-        vim.cmd("write")
-        print("File saved and formatted")
+        safe_save.smart_write()
     end, {desc = "Save and format file"})
 
     map("i", "<F2>", function()
         vim.cmd("stopinsert")
-        if vim.bo.readonly then
-            vim.notify("File is readonly. Use :w! to force save", vim.log.levels.WARN)
-            vim.cmd("startinsert")
-            return
-        end
-
-        -- Format first, then save.
-        if vim.g.format_on_save ~= false then
-            vim.lsp.buf.format({async = false, timeout_ms = 2000})
-        end
-        vim.cmd("write")
+        safe_save.smart_write()
         vim.cmd("startinsert")
-        print("File saved and formatted")
     end, {desc = "Save and format file"})
 
     -- Mason.

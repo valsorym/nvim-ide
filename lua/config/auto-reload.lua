@@ -1,5 +1,5 @@
 -- ~/.config/nvim/lua/config/auto-reload.lua
--- Auto-reload with modern floating notifications
+-- Simple, safe auto-reload (no deps). Flat icons. Lazy-aware.
 
 local M = {}
 
@@ -9,8 +9,7 @@ function M.setup(opts)
     local debounce_ms = opts.debounce_ms or 150
 
     -- Nerd Font icons (flat).
-    local ico_ok, ico_err, ico_cfg =
-        "", "", ""
+    local ico_ok, ico_err, ico_cfg = "", "", ""
 
     -- Debounce timers per file.
     local pending = {}
@@ -31,26 +30,7 @@ function M.setup(opts)
         end)
     end
 
-    -- Modern notification helper
-    local function notify(msg, level, title)
-        -- Check if nvim-notify is available
-        local notify_ok, notify_plugin = pcall(require, "notify")
-        if notify_ok then
-            notify_plugin(msg, level or vim.log.levels.INFO, {
-                title = title or "Config Reload",
-                icon = level == vim.log.levels.ERROR and ico_err or ico_ok,
-                timeout = 2500,
-                render = "compact",
-                stages = "fade_in_slide_out",
-                top_down = true,
-            })
-        else
-            -- Fallback to vim.notify
-            vim.notify(msg, level or vim.log.levels.INFO)
-        end
-    end
-
-    -- Echo helper (fallback if notifications fail)
+    -- Echo helper.
     local function echo(msg, hl)
         vim.cmd('echo ""')
         vim.api.nvim_echo({{msg, hl or "MoreMsg"}}, false, {})
@@ -86,7 +66,7 @@ function M.setup(opts)
         package.loaded[mod] = nil
         local ok, res = pcall(require, mod)
         if not ok then
-            notify("Reload error: " .. mod, vim.log.levels.ERROR)
+            echo(ico_err .. "  Reload error: " .. mod, "ErrorMsg")
             return false
         end
         -- If module returns a table with setup(), call it.
@@ -99,7 +79,6 @@ function M.setup(opts)
     -- Smart reload.
     local function reload_config(filepath)
         local norm = vim.fn.fnamemodify(filepath, ":p")
-        local filename = vim.fn.fnamemodify(filepath, ":t")
 
         -- 1) init.lua => clear config/plugins namespaces and re-run init.
         if norm == config_dir .. "/init.lua" then
@@ -110,9 +89,9 @@ function M.setup(opts)
             end
             local ok, err = pcall(dofile, norm)
             if ok then
-                notify(ico_cfg .. " init.lua reloaded")
+                echo(ico_ok .. "  " .. ico_cfg .. " init.lua reloaded")
             else
-                notify("init.lua: " .. tostring(err), vim.log.levels.ERROR)
+                echo(ico_err .. "  init.lua: " .. tostring(err), "ErrorMsg")
             end
             return
         end
@@ -121,7 +100,7 @@ function M.setup(opts)
         if norm:match("^" .. vim.pesc(config_dir) .. "/lua/config/") then
             local mod = to_module(norm)
             if reload_module(mod) then
-                notify(ico_cfg .. " " .. filename .. " reloaded")
+                echo(ico_ok .. "  " .. ico_cfg .. "  " .. mod .. " reloaded")
             end
             return
         end
@@ -136,19 +115,19 @@ function M.setup(opts)
                 -- next restart; side effects (if any) are re-required.
                 local mod = to_module(norm)
                 reload_module(mod)
-                notify("Plugin saved (restart required)", vim.log.levels.WARN)
+                echo(ico_ok .. "  plugins saved (reload on restart)")
                 return
             end
-            notify("Plugin reloaded: " .. stem)
+            echo(ico_ok .. "  plugins reloaded: " .. stem)
             return
         end
 
         -- 4) Any other file under config: try module reload if mappable.
         local mod = to_module(norm)
         if mod and reload_module(mod) then
-            notify(ico_cfg .. " " .. filename .. " reloaded")
+            echo(ico_ok .. " " .. ico_cfg .. " " .. mod .. " reloaded")
         else
-            notify("File saved: " .. filename, vim.log.levels.INFO)
+            echo(ico_ok .. "  Ok", "MoreMsg")
         end
     end
 
@@ -179,9 +158,7 @@ function M.setup(opts)
             reload_config(config_dir .. "/init.lua")
         elseif arg == "plugins" then
             if not try_lazy_reload("") then
-                notify("Lazy not found", vim.log.levels.ERROR)
-            else
-                notify("All plugins reloaded")
+                echo(ico_err .. " Lazy not found", "ErrorMsg")
             end
         elseif arg == "current" then
             reload_config(vim.fn.expand("%:p"))
@@ -194,9 +171,9 @@ function M.setup(opts)
             end
             local ok, err = pcall(dofile, config_dir .. "/init.lua")
             if ok then
-                notify(ico_cfg .. " Configuration reloaded")
+                echo(ico_ok .. " " .. ico_cfg .. " config reloaded")
             else
-                notify("Reload error: " .. tostring(err), vim.log.levels.ERROR)
+                echo(ico_err .. " reload: " .. tostring(err), "ErrorMsg")
             end
         end
     end, {
