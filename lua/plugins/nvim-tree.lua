@@ -72,23 +72,20 @@ return {
             save_history(history)
         end
 
-        -- Update window title with current root
+        -- Update window title with current root.
         local function update_window_title()
-            local api = require("nvim-tree.api")
             local current_root = vim.fn.getcwd()
+            local project_name = vim.fn.fnamemodify(current_root, ":t")
 
-            -- Try to get nvim-tree root if available
-            local ok, tree_root = pcall(function()
-                return api.tree.get_nodes()[1] and api.tree.get_nodes()[1].absolute_path or current_root
-            end)
-
-            if ok and tree_root then
-                current_root = tree_root
+            -- Use same formatting logic as history display
+            local display_path = current_root
+            local display_width = 36
+            if #current_root > display_width then
+                display_path = "…" .. current_root:sub(-(display_width - 1))
             end
 
-            local project_name = vim.fn.fnamemodify(current_root, ":t")
             vim.o.title = true  -- Enable title
-            vim.o.titlestring = project_name .. " - " .. vim.fn.fnamemodify(current_root, ":~")
+            vim.o.titlestring = project_name .. " - " .. display_path
         end
 
         -- Helper function to format path display.
