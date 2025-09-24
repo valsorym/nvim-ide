@@ -77,15 +77,8 @@ return {
             local current_root = vim.fn.getcwd()
             local project_name = vim.fn.fnamemodify(current_root, ":t")
 
-            -- Use same formatting logic as history display
-            local display_path = current_root
-            local display_width = 36
-            if #current_root > display_width then
-                display_path = "…" .. current_root:sub(-(display_width - 1))
-            end
-
             vim.o.title = true  -- Enable title
-            vim.o.titlestring = project_name .. " - " .. display_path
+            vim.o.titlestring = project_name
         end
 
         -- Helper function to format path display.
@@ -258,7 +251,7 @@ return {
                     if on_dashboard() then
                         -- Just change root without opening tree
                         api.tree.change_root(root_path)
-                        vim.defer_fn(update_window_title, 100)
+                        update_window_title()
                         print("Selected new root directory: " .. root_path)
 
                         -- If tree is already visible, just reload it
@@ -275,7 +268,7 @@ return {
                     else
                         -- Normal behavior for non-dashboard buffers
                         api.tree.change_root(root_path)
-                        vim.defer_fn(update_window_title, 100)
+                        update_window_title()
                         print("Selected new root directory: " .. root_path)
 
                         if not api.tree.is_visible() then
@@ -525,14 +518,14 @@ return {
                             bookmark = "",
                             modified = "*",
                             folder = {
-                                arrow_closed = "", -- ►
-                                arrow_open = "", -- ▼
-                                default = "", -- closed folder
-                                open = "", -- open folder
-                                empty = "", -- "🗀",  -- empty closed
-                                empty_open = "", -- "🗁",  -- empty open
-                                symlink = "", -- symlink folder
-                                symlink_open = "" -- symlink open
+                                arrow_closed = "", -- ►
+                                arrow_open = "", -- ▼
+                                default = "", -- closed folder
+                                open = "", -- open folder
+                                empty = "", -- "🗀",  -- empty closed
+                                empty_open = "", -- "🗁",  -- empty open
+                                symlink = "", -- symlink folder
+                                symlink_open = "" -- symlink open
                             },
                             git = {
                                 unstaged = "✗",
@@ -633,13 +626,13 @@ return {
                             if node.type == "directory" then
                                 new_root = node.absolute_path
                                 api.tree.change_root(new_root)
-                                vim.defer_fn(update_window_title, 100)
+                                update_window_title()
                                 print("Root changed to: " .. vim.fn.fnamemodify(new_root, ":~"))
                             else
                                 -- If it's a file, change to its directory.
                                 new_root = vim.fn.fnamemodify(node.absolute_path, ":h")
                                 api.tree.change_root(new_root)
-                                vim.defer_fn(update_window_title, 100)
+                                update_window_title()
                                 print("Root changed to: " .. vim.fn.fnamemodify(new_root, ":~"))
                             end
 
@@ -666,7 +659,7 @@ return {
                     vim.keymap.set("n", "B", function()
                         local cwd = vim.fn.getcwd()
                         api.tree.change_root(cwd)
-                        vim.defer_fn(update_window_title, 100)
+                        update_window_title()
                         print("Root changed to: " .. cwd)
 
                         -- Add to history.
@@ -695,7 +688,7 @@ return {
                                 if input and vim.fn.isdirectory(input) == 1 then
                                     local full_path = vim.fn.fnamemodify(input, ":p")
                                     api.tree.change_root(full_path)
-                                    vim.defer_fn(update_window_title, 100)
+                                    update_window_title()
                                     print("Root changed to: " .. full_path)
 
                                     -- Add to history
@@ -723,6 +716,7 @@ return {
                         local parent_path = vim.fn.fnamemodify(current_root, ":h")
 
                         api.tree.change_root_to_parent()
+                        update_window_title()
 
                         -- Add to history
                         _G.NvimTreeHistory.add_root(parent_path)
