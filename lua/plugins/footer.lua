@@ -34,13 +34,13 @@ return {
             end
             local parts = {}
             if (gs.added or 0) > 0 then
-                table.insert(parts, icons.added .. gs.added)
+                table.insert(parts, icons.added .. " " .. gs.added)
             end
             if (gs.changed or 0) > 0 then
-                table.insert(parts, icons.changed .. gs.changed)
+                table.insert(parts, icons.changed .. " " .. gs.changed)
             end
             if (gs.removed or 0) > 0 then
-                table.insert(parts, icons.removed .. gs.removed)
+                table.insert(parts, icons.removed .. " " .. gs.removed)
             end
             local tail = (#parts > 0) and (" [" .. table.concat(parts, " ")
                 .. "]") or ""
@@ -111,7 +111,7 @@ return {
         local function loc_fmt(_)
             local l = vim.fn.line(".")
             local c = vim.fn.col(".")
-            return icons.line .. " " .. l .. " " .. icons.col .. " " .. c
+            return icons.col .. " " .. c .. " " .. icons.line .. " " .. l
         end
 
         -- SETUP
