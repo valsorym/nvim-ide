@@ -397,7 +397,7 @@ return {
                 git_clean = false,
                 no_buffer = false,
                 custom = { ".DS_Store" },
-                exclude = { ".env", ".gitignore", ".gitkeep" },
+                exclude = { ".env", ".gitignore", ".gitkeep", ".dockerignore", ".project" },
             },
             renderer = {
                 add_trailing = false,
