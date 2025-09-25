@@ -1,5 +1,5 @@
 -- ~/.config/nvim/init.lua
--- Main NeoVim configuration file
+-- Main NeoVim configuration file.
 
 -- Bootstrap lazy.nvim
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
@@ -25,23 +25,23 @@ vim.g.maplocalleader = " "
 require("lazy").setup("plugins")
 
 -- Basic settings.
-vim.opt.number = true
+vim.opt.number         = true
 vim.opt.relativenumber = false
-vim.opt.expandtab = true
-vim.opt.shiftwidth = 2
-vim.opt.tabstop = 2
-vim.opt.smartindent = true
-vim.opt.wrap = false
-vim.opt.ignorecase = true
-vim.opt.smartcase = true
-vim.opt.termguicolors = true
+vim.opt.expandtab      = true
+vim.opt.shiftwidth     = 2
+vim.opt.tabstop        = 2
+vim.opt.smartindent    = true
+vim.opt.wrap           = false
+vim.opt.ignorecase     = true
+vim.opt.smartcase      = true
+vim.opt.termguicolors  = true
 
 -- Linters toggles.
-vim.g.enable_mypy     = false  -- MyPy (Python type checker)
-vim.g.enable_djlint   = false  -- djlint (Django/Jinja linter)
-vim.g.enable_codespell = true   -- spelling (safe default)
-vim.g.enable_eslint    = false  -- example: ESLint (if you add it)
-vim.g.enable_flake8    = false  -- example: Flake8 (if you add it)
+vim.g.enable_mypy      = false -- MyPy (Python type checker)
+vim.g.enable_djlint    = false -- djlint (Django/Jinja linter)
+vim.g.enable_codespell = true  -- spelling (safe default)
+vim.g.enable_eslint    = false -- example: ESLint (if you add it)
+vim.g.enable_flake8    = false -- example: Flake8 (if you add it)
 
 
 -- Neovide
@@ -78,3 +78,4 @@ require("config.indentation").setup_commands()
 require("config.indentation").setup_keymaps()
 
 require("config.auto-reload").setup()
+
