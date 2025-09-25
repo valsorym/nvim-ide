@@ -36,7 +36,7 @@ return {
         end
     },
 
-    -- Fuzzy finder (no selection overrides here; tabs logic is in keymaps)
+    -- Fuzzy finder with updated keymaps
     {
         "nvim-telescope/telescope.nvim",
         dependencies = {
@@ -59,17 +59,13 @@ return {
                         "venv", ".env", "migrations/", "%.min%.js", "%.min%.css",
                         "static/admin/", "media/"
                     },
-                    -- pick one you prefer; both work with prompt at top
-                    layout_strategy = "horizontal", -- or "vertical"
+                    layout_strategy = "horizontal",
                     sorting_strategy = "ascending",
                     layout_config = {
-                        -- IMPORTANT: global prompt position
                         prompt_position = "top",
-
                         width = 0.9,
                         height = 0.8,
                         preview_cutoff = 40,
-
                         horizontal = {
                             preview_width = 0.6,
                             results_width = 0.4
@@ -109,7 +105,7 @@ return {
 
             telescope.load_extension("fzf")
 
-            -- Builtins (opening in tabs handled in keymaps.lua)
+            -- Updated keymaps following new structure
             local builtin = require("telescope.builtin")
             vim.keymap.set("n", "<leader>ff", builtin.find_files,
                 {desc = "Find files"})
@@ -119,14 +115,16 @@ return {
                 {desc = "Find buffers"})
             vim.keymap.set("n", "<leader>fh", builtin.help_tags,
                 {desc = "Help tags"})
-            vim.keymap.set("n", "<leader>fs", builtin.lsp_document_symbols,
+            vim.keymap.set("n", "<leader>fo", builtin.oldfiles,
+                {desc = "Old files"})
+            vim.keymap.set("n", "<leader>fd", builtin.lsp_document_symbols,
                 {desc = "Document symbols"})
             vim.keymap.set("n", "<leader>fw", builtin.lsp_workspace_symbols,
                 {desc = "Workspace symbols"})
         end
     },
 
-    -- Git integration.
+    -- Git integration with updated keymaps
     {
         "lewis6991/gitsigns.nvim",
         config = function()
@@ -179,23 +177,22 @@ return {
                         return "<Ignore>"
                     end, {expr = true, desc = "Previous hunk"})
 
-                    map("n", "<leader>hs", gs.stage_hunk, {desc = "Stage hunk"})
-                    map("n", "<leader>hr", gs.reset_hunk, {desc = "Reset hunk"})
-                    map("n", "<leader>hp", gs.preview_hunk,{desc = "Preview"})
-                    map("n", "<leader>hb", function()
+                    -- Updated git keymaps using <leader>g prefix
+                    map("n", "<leader>gs", gs.stage_hunk, {desc = "Stage hunk"})
+                    map("n", "<leader>gr", gs.reset_hunk, {desc = "Reset hunk"})
+                    map("n", "<leader>gp", gs.preview_hunk, {desc = "Preview hunk"})
+                    map("n", "<leader>gb", function()
                         gs.blame_line({full = true})
                     end, {desc = "Blame line"})
-                    map(
-                        "n", "<leader>tb", gs.toggle_current_line_blame,
-                        {desc = "Toggle blame"}
-                    )
-                    map("n", "<leader>hd", gs.diffthis, {desc = "Diff this"})
+                    map("n", "<leader>gt", gs.toggle_current_line_blame,
+                        {desc = "Toggle blame"})
+                    map("n", "<leader>gd", gs.diffthis, {desc = "Diff this"})
                 end
             })
         end
     },
 
-    -- Terminal integration.
+    -- Terminal integration with updated keymaps
     {
         "akinsho/toggleterm.nvim",
         version = "*",
@@ -263,41 +260,28 @@ return {
 
             function _NODE_TOGGLE() node:toggle() end
 
-            vim.keymap.set(
-                "n", "<leader>tf",
+            -- Updated terminal keymaps using <leader>xt prefix
+            vim.keymap.set("n", "<leader>xtf",
                 "<cmd>ToggleTerm direction=float<cr>",
-                {desc = "Float terminal"}
-            )
-            vim.keymap.set(
-                "n", "<leader>th",
+                {desc = "Float terminal"})
+            vim.keymap.set("n", "<leader>xth",
                 "<cmd>ToggleTerm direction=horizontal<cr>",
-                {desc = "Horizontal terminal"}
-            )
-            vim.keymap.set(
-                "n", "<leader>tv",
+                {desc = "Horizontal terminal"})
+            vim.keymap.set("n", "<leader>xtv",
                 "<cmd>ToggleTerm direction=vertical size=80<cr>",
-                {desc = "Vertical terminal"}
-            )
-            vim.keymap.set(
-                "n", "<leader>tp", "<cmd>lua _PYTHON_TOGGLE()<CR>",
-                {desc = "Python terminal"}
-            )
-            vim.keymap.set(
-                "n", "<leader>td", "<cmd>lua _DJANGO_SHELL_TOGGLE()<CR>",
-                {desc = "Django shell"}
-            )
-            vim.keymap.set(
-                "n", "<leader>tr", "<cmd>lua _DJANGO_RUNSERVER()<CR>",
-                {desc = "Django runserver"}
-            )
-            vim.keymap.set(
-                "n", "<leader>tn", "<cmd>lua _NODE_TOGGLE()<CR>",
-                {desc = "Node terminal"}
-            )
+                {desc = "Vertical terminal"})
+            vim.keymap.set("n", "<leader>xtp", "<cmd>lua _PYTHON_TOGGLE()<CR>",
+                {desc = "Python terminal"})
+            vim.keymap.set("n", "<leader>xtd", "<cmd>lua _DJANGO_SHELL_TOGGLE()<CR>",
+                {desc = "Django shell"})
+            vim.keymap.set("n", "<leader>xtr", "<cmd>lua _DJANGO_RUNSERVER()<CR>",
+                {desc = "Django runserver"})
+            vim.keymap.set("n", "<leader>xtn", "<cmd>lua _NODE_TOGGLE()<CR>",
+                {desc = "Node terminal"})
         end
     },
 
-    -- Auto pairs.
+    -- Auto pairs
     {
         "windwp/nvim-autopairs",
         enabled = true,
@@ -310,12 +294,12 @@ return {
                 disable_in_replace_mode = true,
                 ignored_next_char = [=[[%w%%%'%[%"%.%`%$]]=],
                 enable_moveright = true,
-                enable_afterquote = false, -- disable after quotes
-                enable_check_bracket_line = false, -- don't check brackets on line
-                enable_bracket_in_quote = false, -- don't put brackets in quotes
-                check_ts = false, -- disable treesitter integration
-                map_cr = false, -- disable Enter mapping
-                map_bs = false, -- disable Backspace mapping
+                enable_afterquote = false,
+                enable_check_bracket_line = false,
+                enable_bracket_in_quote = false,
+                check_ts = false,
+                map_cr = false,
+                map_bs = false,
             })
 
             local cmp_ap = require("nvim-autopairs.completion.cmp")
@@ -327,7 +311,7 @@ return {
         end
     },
 
-    -- Comment plugin.
+    -- Comment plugin
     {
         "numToStr/Comment.nvim",
         config = function()
@@ -342,13 +326,13 @@ return {
         end
     },
 
-    -- Django/Jinja2 template support.
+    -- Django/Jinja2 template support
     {
         "Glench/Vim-Jinja2-Syntax",
         ft = {"htmldjango", "html"}
     },
 
-    -- Python virtual environment detection.
+    -- Python virtual environment detection with updated keymap
     {
         "linux-cultist/venv-selector.nvim",
         dependencies = {
@@ -361,69 +345,43 @@ return {
                 name = {".venv", "venv"},
                 auto_refresh = true
             })
-            vim.keymap.set(
-                "n", "<leader>vs", "<cmd>VenvSelect<cr>",
-                {desc = "• Python venv"}
-            )
+            -- Updated keymap using <leader>c prefix for code-related actions
+            vim.keymap.set("n", "<leader>cv", "<cmd>VenvSelect<cr>",
+                {desc = "Select Python venv"})
         end
     },
 
-    -- Indent guides.
+    -- Indent guides
     {
         "lukas-reineke/indent-blankline.nvim",
         main = "ibl",
         config = function()
-            -- Налаштування кольорів для indent guides
-            local highlight = {
-                "RainbowRed",
-                "RainbowYellow",
-                "RainbowBlue",
-                "RainbowOrange",
-                "RainbowGreen",
-                "RainbowViolet",
-                "RainbowCyan",
-            }
-
             local hooks = require("ibl.hooks")
-            -- Create transparent colors for indent guides.
+
             hooks.register(hooks.type.HIGHLIGHT_SETUP, function()
-                vim.api.nvim_set_hl(0, "IblIndent", { fg = "#2a2a37" }) -- very dark gray
-                vim.api.nvim_set_hl(0, "IblScope", { fg = "#485093" })   -- bright for active scope
+                vim.api.nvim_set_hl(0, "IblIndent", { fg = "#2a2a37" })
+                vim.api.nvim_set_hl(0, "IblScope", { fg = "#485093" })
             end)
 
             require("ibl").setup({
                 indent = {
                     char = "▏",
                     tab_char = "▏",
-                    highlight = "IblIndent", -- transparent lines
+                    highlight = "IblIndent",
                 },
                 scope = {
                     enabled = true,
                     show_start = false,
                     show_end = false,
-                    highlight = "IblScope", -- bright line for active block
+                    highlight = "IblScope",
                     include = {
                         node_type = {
                             ["*"] = {
-                                "class",
-                                "return_statement",
-                                "function",
-                                "method",
-                                "^if",
-                                "^while",
-                                "jsx_element",
-                                "^for",
-                                "^object",
-                                "^table",
-                                "block",
-                                "arguments",
-                                "if_statement",
-                                "else_clause",
-                                "jsx_element",
-                                "jsx_self_closing_element",
-                                "try_statement",
-                                "catch_clause",
-                                "import_statement",
+                                "class", "return_statement", "function", "method",
+                                "^if", "^while", "jsx_element", "^for", "^object",
+                                "^table", "block", "arguments", "if_statement",
+                                "else_clause", "jsx_self_closing_element",
+                                "try_statement", "catch_clause", "import_statement",
                                 "operation_type",
                             },
                         },
@@ -431,31 +389,19 @@ return {
                 },
                 exclude = {
                     filetypes = {
-                        "help",
-                        "alpha",
-                        "dashboard",
-                        "neo-tree",
-                        "NvimTree",
-                        "Trouble",
-                        "trouble",
-                        "lazy",
-                        "mason",
-                        "notify",
-                        "toggleterm",
-                        "lazyterm",
+                        "help", "alpha", "dashboard", "neo-tree", "NvimTree",
+                        "Trouble", "trouble", "lazy", "mason", "notify",
+                        "toggleterm", "lazyterm",
                     },
                     buftypes = {
-                        "terminal",
-                        "nofile",
-                        "quickfix",
-                        "prompt",
+                        "terminal", "nofile", "quickfix", "prompt",
                     },
                 },
             })
         end
     },
 
-    -- Flash.nvim - quick navigation.
+    -- Flash.nvim - quick navigation with updated keymaps
     {
         "folke/flash.nvim",
         event = "VeryLazy",
@@ -486,46 +432,14 @@ return {
             })
         end,
         keys = {
-            { "s", mode = { "n", "x", "o" }, function() require("flash").jump() end, desc = "Flash" },
-            { "S", mode = { "n", "x", "o" }, function() require("flash").treesitter() end, desc = "Flash Treesitter" },
-            { "r", mode = "o", function() require("flash").remote() end, desc = "Remote Flash" },
-            { "R", mode = { "o", "x" }, function() require("flash").treesitter_search() end, desc = "Treesitter Search" },
-        },
-    },
-
-    -- Persistence.nvim - session saving.
-    {
-        "folke/persistence.nvim",
-        event = "BufReadPre",
-        opts = {
-            dir = vim.fn.expand(vim.fn.stdpath("state") .. "/sessions/"),
-            options = { "buffers", "curdir", "tabpages", "winsize" },
-            pre_save = nil,
-            save_empty = false,
-        },
-        keys = {
-            { "<leader>qs", function() require("persistence").load() end, desc = "Restore Session" },
-            { "<leader>ql", function() require("persistence").load({ last = true }) end, desc = "Restore Last Session" },
-            { "<leader>qd", function() require("persistence").stop() end, desc = "Don't Save Current Session" },
-        },
-    },
-
-    -- Auto-session.
-    {
-        "rmagatti/auto-session",
-        enabled = false, -- disable if you use persistence
-        config = function()
-            require("auto-session").setup({
-                log_level = "error",
-                auto_session_suppress_dirs = { "~/", "~/Projects", "~/Downloads", "/" },
-                auto_session_use_git_branch = false,
-                auto_save_enabled = true,
-                auto_restore_enabled = false, -- do not restore automatically
-            })
-        end,
-        keys = {
-            { "<leader>ss", "<cmd>SessionSave<cr>", desc = "Save session" },
-            { "<leader>sr", "<cmd>SessionRestore<cr>", desc = "Restore session" },
+            { "<leader>fs", mode = { "n", "x", "o" },
+              function() require("flash").jump() end, desc = "Flash Jump" },
+            { "<leader>fS", mode = { "n", "x", "o" },
+              function() require("flash").treesitter() end, desc = "Flash Treesitter" },
+            { "<leader>fr", mode = "o",
+              function() require("flash").remote() end, desc = "Flash Remote" },
+            { "<leader>fR", mode = { "o", "x" },
+              function() require("flash").treesitter_search() end, desc = "Flash Search" },
         },
     },
 }

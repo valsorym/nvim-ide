@@ -226,22 +226,22 @@ return {
             {
                 "<leader>ut",
                 "<cmd>ThemeSwitcher<cr>",
-                desc = "  Theme switcher"
+                desc = "· Theme switcher"
             },
             {
                 "<leader>us",
                 "<cmd>ThemeSwitcherPermanent<cr>",
-                desc = "  Set permanent theme"
+                desc = "· Set permanent theme"
             },
             {
                 "<leader>ud",
                 "<cmd>lua print(vim.inspect(vim.fn.getcompletion('', 'color')))<cr>",
-                desc = "  Debug available themes"
+                desc = "· Debug available themes"
             },
             {
                 "<leader>ui",
                 "<cmd>ThemeInfo<cr>",
-                desc = "  Theme info"
+                desc = "· Theme info"
             }
         },
         config = function()

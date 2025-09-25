@@ -9,22 +9,22 @@ return {
     -- Keymaps focus on fast toggles without changing global handlers.
     keys = {
         {
-            "<leader>xX",
+            "<leader>cC",
             "<cmd>Trouble diagnostics toggle<cr>",
             desc = "Diagnostics (WS)"
         },
         {
-            "<leader>xx",
+            "<leader>cc",
             "<cmd>Trouble diagnostics toggle filter.buf=0<cr>",
             desc = "Diagnostics (Buf)"
         },
         {
-            "<leader>xl",
+            "<leader>cl",
             "<cmd>Trouble loclist toggle<cr>",
             desc = "Location List"
         },
         {
-            "<leader>xq",
+            "<leader>cq",
             "<cmd>Trouble qflist toggle<cr>",
             desc = "Quickfix List"
         },
@@ -34,27 +34,27 @@ return {
             desc = "Symbols"
         },
         {
-            "<leader>cl",
+            "<leader>cw",
             "<cmd>Trouble lsp toggle focus=false win.position=right<cr>",
             desc = "LSP (defs/refs/…)"
         },
         {
-            "<leader>xL",
+            "<leader>cL",
             "<cmd>Trouble lsp_document_symbols toggle win.position=right<cr>",
-            desc = "Document Symbols"
+            desc = "· Document Symbols"
         },
         {
-            "<leader>xr",
+            "<leader>cr",
             "<cmd>Trouble lsp_references toggle<cr>",
             desc = "LSP References"
         },
         {
-            "<leader>xT",
+            "<leader>cT",
             "<cmd>TroubleToggleMode<cr>",
             desc = "Toggle WS/Buf"
         },
         {
-            "<leader>xS",
+            "<leader>cS",
             "<cmd>DiagnosticSummary<cr>",
             desc = "Diag summary"
         },

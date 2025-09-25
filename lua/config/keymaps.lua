@@ -1,5 +1,5 @@
 -- ~/.config/nvim/lua/config/keymaps.lua
--- Centralized keymaps configuration.
+-- Centralized keymaps configuration with reorganized structure.
 
 local M = {}
 local safe_save = require("config.safe-save")
@@ -113,8 +113,6 @@ local function setup_conditional_abbreviations()
     )
 end
 
-
-
 function M.setup()
     local map = vim.keymap.set
     local opts = {noremap = true, silent = true}
@@ -210,6 +208,37 @@ function M.setup()
     -- Apply the patch once on startup.
     pcall(patch_telescope_tabdrop)
 
+    -- BASIC NAVIGATION & WINDOW MANAGEMENT
+
+    -- Better window navigation.
+    map("n", "<C-h>", "<C-w>h", {desc = "Go to left window"})
+    map("n", "<C-j>", "<C-w>j", {desc = "Go to lower window"})
+    map("n", "<C-k>", "<C-w>k", {desc = "Go to upper window"})
+    map("n", "<C-l>", "<C-w>l", {desc = "Go to right window"})
+
+    -- Resize windows.
+    map("n", "<C-Up>", ":resize +2<CR>", opts)
+    map("n", "<C-Down>", ":resize -2<CR>", opts)
+    map("n", "<C-Left>", ":vertical resize -2<CR>", opts)
+    map("n", "<C-Right>", ":vertical resize +2<CR>", opts)
+
+    -- Move text up and down.
+    map("v", "<A-j>", ":m .+1<CR>==", opts)
+    map("v", "<A-k>", ":m .-2<CR>==", opts)
+    map("x", "J", ":move '>+1<CR>gv-gv", opts)
+    map("x", "K", ":move '<-2<CR>gv-gv", opts)
+    map("x", "<A-j>", ":move '>+1<CR>gv-gv", opts)
+    map("x", "<A-k>", ":move '<-2<CR>gv-gv", opts)
+
+    -- Stay in indent mode.
+    map("v", "<", "<gv", opts)
+    map("v", ">", ">gv", opts)
+
+    -- Better paste.
+    map("v", "p", '"_dP', opts)
+
+    -- TAB NAVIGATION
+
     -- Tabs navigation.
     map("n", "<A-Left>", ":tabprevious<CR>", {desc = "Previous tab"})
     map("n", "<A-Right>", ":tabnext<CR>", {desc = "Next tab"})
@@ -227,16 +256,26 @@ function M.setup()
     map("n", "<A-h>", ":-tabmove<CR>", {desc = "Move tab left"})
     map("n", "<A-l>", ":+tabmove<CR>", {desc = "Move tab right"})
 
-    -- Create new tab.
-    map("n", "<leader>tn", ":tabnew<CR>", {desc = "New tab"})
-    map("n", "<C-t>", ":tabnew<CR>", {desc = "New tab"})
+    -- Tab navigation with F keys.
+    map("n", "<F5>", ":tabprevious<CR>", {desc = "Previous tab"})
+    map("n", "<F6>", ":tabnext<CR>", {desc = "Next tab"})
+
+    -- WORKSPACE / SESSIONS (<leader>w)
+
+    map("n", "<leader>wq", smart_tab_close, {desc = "Smart close tab"})
+    map("n", "<leader>wA", ":qa<CR>", {desc = "Close all tabs and exit"})
+    map("n", "<leader>wQ", force_close_tab, {desc = "Force close tab"})
+
+    -- EXPLORER / TREE / BUFFERS (<leader>e)
 
     -- File tree modal with F9.
     map(
         "n",
         "<F9>",
         function()
-            _G.NvimTreeModal()
+            if _G.NvimTreeModal then
+                _G.NvimTreeModal()
+            end
         end,
         {desc = "Open file explorer", silent = true}
     )
@@ -246,12 +285,14 @@ function M.setup()
         "n",
         "<leader>ee",
         function()
-            _G.NvimTreeModal()
+            if _G.NvimTreeModal then
+                _G.NvimTreeModal()
+            end
         end,
         {desc = "Open file explorer", silent = true}
     )
 
-    -- Buffers list with F10 and leader shortcuts.
+    -- Buffers list with F10.
     map(
         "n",
         "<F10>",
@@ -270,15 +311,13 @@ function M.setup()
         {desc = "Show buffers list", silent = true}
     )
 
-    -- Tabs list with F8 and leader shortcut.
+    -- Tabs list with F8.
     map(
         "n",
         "<F8>",
         function()
             if _G.TabsList and _G.TabsList.show_tabs_window then
                 _G.TabsList.show_tabs_window()
-            else
-                print("TabsList functionality not loaded yet")
             end
         end,
         {desc = "Show tabs list", silent = true}
@@ -290,49 +329,200 @@ function M.setup()
         function()
             if _G.TabsList and _G.TabsList.show_tabs_window then
                 _G.TabsList.show_tabs_window()
-            else
-                print("TabsList functionality not loaded yet")
             end
         end,
         {desc = "Show tabs list", silent = true}
     )
 
-    -- Tab navigation with F keys.
-    map("n", "<F5>", ":tabprevious<CR>", {desc = "Previous tab"})
-    map("n", "<F6>", ":tabnext<CR>", {desc = "Next tab"})
+    -- Buffer management (moved to <leader>e)
+    map("n", "<leader>ed", ":bdelete<CR>", {desc = "Delete buffer"})
+    map("n", "<leader>en", ":bnext<CR>", {desc = "Next buffer"})
+    map("n", "<leader>ep", ":bprevious<CR>", {desc = "Previous buffer"})
 
-    -- Smart quit commands with Dashboard-aware logic.
-    map("n", "<leader>qq", smart_tab_close, {desc = "Smart close tab"})
-    map("n", "<leader>qa", ":qa<CR>", {desc = "Close all tabs and exit"})
-    map("n", "<leader>qQ", force_close_tab, {desc = "Force close tab"})
-    map("n", "<leader>qA", ":qa!<CR>", {desc = "Force close all and exit"})
+    -- New tab
+    map("n", "<leader>eT", ":tabnew<CR>", {desc = "New tab"})
+    map("n", "<C-t>", ":tabnew<CR>", {desc = "New tab"})
 
-    -- Better window navigation.
-    map("n", "<C-h>", "<C-w>h", {desc = "Go to left window"})
-    map("n", "<C-j>", "<C-w>j", {desc = "Go to lower window"})
-    map("n", "<C-k>", "<C-w>k", {desc = "Go to upper window"})
-    map("n", "<C-l>", "<C-w>l", {desc = "Go to right window"})
+    -- CODE / LSP / DIAGNOSTICS (<leader>c)
 
-    -- Resize windows.
-    map("n", "<C-Up>", ":resize +2<CR>", opts)
-    map("n", "<C-Down>", ":resize -2<CR>", opts)
-    map("n", "<C-Left>", ":vertical resize -2<CR>", opts)
-    map("n", "<C-Right>", ":vertical resize +2<CR>", opts)
+    -- Code Inspector with F7.
+    map(
+        "n",
+        "<F7>",
+        function()
+            if _G.CodeInspector then
+                _G.CodeInspector()
+            else
+                vim.notify("Code Inspector not loaded", vim.log.levels.WARN)
+            end
+        end,
+        {desc = "Code Inspector", silent = true}
+    )
 
-    -- Stay in indent mode.
-    map("v", "<", "<gv", opts)
-    map("v", ">", ">gv", opts)
+    -- LSP Symbols shortcuts (moved to <leader>c).
+    map(
+        "n",
+        "<leader>cs",
+        function()
+            if _G.CodeInspector then
+                _G.CodeInspector()
+            else
+                require("telescope.builtin").lsp_document_symbols()
+            end
+        end,
+        {desc = "Document symbols", silent = true}
+    )
 
-    -- Move text up and down.
-    map("v", "<A-j>", ":m .+1<CR>==", opts)
-    map("v", "<A-k>", ":m .-2<CR>==", opts)
-    map("x", "J", ":move '>+1<CR>gv-gv", opts)
-    map("x", "K", ":move '<-2<CR>gv-gv", opts)
-    map("x", "<A-j>", ":move '>+1<CR>gv-gv", opts)
-    map("x", "<A-k>", ":move '<-2<CR>gv-gv", opts)
+    -- Grouped view.
+    map(
+        "n",
+        "<leader>cg",
+        function()
+            if _G.CodeInspectorGrouped then
+                _G.CodeInspectorGrouped()
+            else
+                vim.notify("Code Inspector not loaded", vim.log.levels.WARN)
+            end
+        end,
+        {desc = "Document symbols (grouped)", silent = true}
+    )
 
-    -- Better paste.
-    map("v", "p", '"_dP', opts)
+    -- Workspace symbols.
+    map(
+        "n",
+        "<leader>cw",
+        function()
+            require("telescope.builtin").lsp_workspace_symbols()
+        end,
+        {desc = "Workspace symbols", silent = true}
+    )
+
+    -- Diagnostics (moved from <leader>x to <leader>c)
+    map(
+        "n",
+        "<leader>cc",
+        function()
+            local diagnostic_opts = {
+                focusable = false,
+                close_events = {"BufLeave", "CursorMoved", "InsertEnter", "FocusLost"},
+                border = "rounded",
+                source = "always",
+                prefix = " ",
+                scope = "line"
+            }
+            vim.diagnostic.open_float(nil, diagnostic_opts)
+        end,
+        {desc = "Show line diagnostics"}
+    )
+
+    map("n", "gl", function()
+        local diagnostic_opts = {
+            focusable = false,
+            close_events = {"BufLeave", "CursorMoved", "InsertEnter", "FocusLost"},
+            border = "rounded",
+            source = "always",
+            prefix = " ",
+            scope = "line"
+        }
+        vim.diagnostic.open_float(nil, diagnostic_opts)
+    end, {desc = "Show line diagnostics"})
+
+    -- Diagnostic navigation.
+    map("n", "[d", vim.diagnostic.goto_prev,
+        {desc = "Previous diagnostic"})
+    map("n", "]d", vim.diagnostic.goto_next,
+        {desc = "Next diagnostic"})
+
+    -- Diagnostics quickfix (moved to <leader>c).
+    map(
+        "n",
+        "<leader>cl",
+        function()
+            vim.diagnostic.setloclist()
+            vim.cmd("lopen")
+            vim.wo.cursorline = true
+            vim.wo.number = true
+            vim.wo.relativenumber = false
+        end,
+        {desc = "Open diagnostic quickfix list"}
+    )
+
+    -- LSP Code Actions and Rename.
+    map("n", "<leader>ca", vim.lsp.buf.code_action, {desc = "Code action"})
+    map("n", "<leader>cr", vim.lsp.buf.rename, {desc = "Rename symbol"})
+
+    -- Format.
+    map("n", "<leader>cf", function()
+        vim.lsp.buf.format({async = true})
+    end, {desc = "Format buffer"})
+
+    -- Sort Python imports.
+    map(
+        "n", "<leader>ci",
+        function()
+            vim.cmd("write")
+            local function get_python_executable()
+                local venv = vim.fn.getenv("VIRTUAL_ENV")
+                if venv ~= vim.NIL and venv ~= "" then
+                    return venv .. "/bin/python"
+                end
+                if vim.fn.isdirectory(".venv") == 1 then
+                    return vim.fn.getcwd() .. "/.venv/bin/python"
+                end
+                if vim.fn.isdirectory("venv") == 1 then
+                    return vim.fn.getcwd() .. "/venv/bin/python"
+                end
+                return "python3"
+            end
+            local py = get_python_executable()
+            local exe = py:gsub("/python$", "/isort")
+            local args = table.concat({
+                "--profile","black","--line-length","79",
+                "--multi-line","3","--trailing-comma"
+            }, " ")
+            if vim.fn.executable(exe) == 1 then
+                vim.cmd("!" .. exe .. " " .. args .. " %")
+            else
+                vim.cmd("!isort " .. args .. " %")
+            end
+            vim.cmd("edit!")
+        end,
+        {desc = "Sort Python Imports"}
+    )
+
+    -- SYSTEM / CONFIG / TOOLS (<leader>x)
+
+    -- Clear search highlighting (moved to <leader>x).
+    map("n", "<leader>xh", ":nohlsearch<CR>", {desc = "Clear highlights"})
+
+    -- Mason (moved to <leader>x).
+    map("n", "<leader>xm", ":Mason<CR>", {desc = "Open Mason"})
+
+    -- Config reload (moved to <leader>x).
+    map("n", "<leader>xr", function()
+        local current_file = vim.fn.expand("%:p")
+        local config_dir = vim.fn.stdpath("config")
+
+        if current_file:match("^" .. vim.pesc(config_dir)) then
+            -- If we're in a config file, reload it specifically
+            local reload_path = current_file
+            if vim.fn.filereadable(reload_path) then
+                local ok, err = pcall(dofile, reload_path)
+                if ok then
+                    vim.notify("Reloaded: " .. vim.fn.fnamemodify(reload_path, ":t"),
+                        vim.log.levels.INFO)
+                else
+                    vim.notify("Error: " .. tostring(err), vim.log.levels.ERROR)
+                end
+            end
+        else
+            -- General config reload
+            vim.cmd("source " .. config_dir .. "/init.lua")
+            vim.notify("Config reloaded", vim.log.levels.INFO)
+        end
+    end, {desc = "Reload config"})
+
+    -- YANK / CLIPBOARD (<leader>y)
 
     -- Yank entire buffer to clipboard.
     map(
@@ -349,8 +539,7 @@ function M.setup()
     map("n", "<leader>yp", '"+p', {desc = "Paste from clipboard"})
     map("v", "<leader>yp", '"+p', {desc = "Paste from clipboard"})
 
-    -- Clear search highlighting.
-    map("n", "<leader>h", ":nohlsearch<CR>", {desc = "Clear highlights"})
+    -- SAVE AND FORMAT
 
     -- F2 for smart save and format.
     map("n", "<F2>", function()
@@ -363,149 +552,35 @@ function M.setup()
         vim.cmd("startinsert")
     end, {desc = "Save and format file"})
 
-    -- Mason.
-    map("n", "<leader>m", ":Mason<CR>", {desc = "Open Mason"})
+    -- FORCE LSP TAB BEHAVIOR
 
-    -- Diagnostics with improved quickfix window.
-    map(
-        "n",
-        "<leader>xl",
-        function()
-            vim.diagnostic.setloclist()
-            vim.cmd("lopen")
-            vim.wo.cursorline = true
-            vim.wo.number = true
-            vim.wo.relativenumber = false
-        end,
-        {desc = "Open diagnostic quickfix list"}
-    )
+    -- Force LSP tab behavior for mouse clicks (global fallback)
+    map("n", "<C-LeftMouse>", function()
+        if _G.LspDefinitionInTab then
+            _G.LspDefinitionInTab()
+        else
+            vim.lsp.buf.definition()
+        end
+    end, {desc = "Go to definition (mouse)"})
 
-    -- LSP Code Actions and Rename.
-    map("n", "<leader>ca", vim.lsp.buf.code_action, {desc = "Code action"})
-    map("n", "<leader>rn", vim.lsp.buf.rename, {desc = "Rename symbol"})
+    -- Reassigning ZZ for smart behavior.
+    map("n", "ZZ", function()
+        if vim.bo.modified then
+            vim.cmd("write")
+        end
+        smart_tab_close()
+    end, {desc = "Save and smart close tab"})
 
-    -- Find/Search mappings (patched builtins handle tabs).
-    map(
-        "n",
-        "<leader>ff",
-        function()
-            require("telescope.builtin").find_files()
-        end,
-        {desc = "Find files"}
-    )
+    -- DISABLED KEYS
 
-    map(
-        "n",
-        "<leader>fg",
-        function()
-            require("telescope.builtin").live_grep()
-        end,
-        {desc = "Live grep"}
-    )
+    -- Disable F1 help (annoying).
+    map("n", "<F1>", "<nop>", {desc = "Disabled"})
+    map("i", "<F1>", "<nop>", {desc = "Disabled"})
+    map("v", "<F1>", "<nop>", {desc = "Disabled"})
 
-    map(
-        "n",
-        "<leader>fb",
-        function()
-            require("telescope.builtin").buffers()
-        end,
-        {desc = "Find buffers"}
-    )
+    -- USER COMMANDS
 
-    map(
-        "n",
-        "<leader>fh",
-        function()
-            require("telescope.builtin").help_tags()
-        end,
-        {desc = "Help tags"}
-    )
-
-    map(
-        "n",
-        "<leader>fs",
-        function()
-            require("telescope.builtin").lsp_document_symbols()
-        end,
-        {desc = "Document symbols"}
-    )
-
-    map(
-        "n",
-        "<leader>fw",
-        function()
-            require("telescope.builtin").lsp_workspace_symbols()
-        end,
-        {desc = "Workspace symbols"}
-    )
-
-    -- Buffer management (FIXED)
-    map(
-        "n",
-        "<leader>bb",
-        function()
-            require("telescope.builtin").buffers()
-        end,
-        {desc = "List buffers"}
-    )
-
-    map("n", "<leader>bd", ":bdelete<CR>", {desc = "Delete buffer"})
-    map("n", "<leader>bn", ":bnext<CR>", {desc = "Next buffer"})
-    map("n", "<leader>bp", ":bprevious<CR>", {desc = "Previous buffer"})
-
-    -- Code Inspector with F7.
-    map(
-        "n",
-        "<F7>",
-        function()
-            if _G.CodeInspector then
-                _G.CodeInspector()
-            else
-                vim.notify("Code Inspector not loaded", vim.log.levels.WARN)
-            end
-        end,
-        {desc = "Code Inspector", silent = true}
-    )
-
-    -- LSP Symbols shortcuts.
-    map(
-        "n",
-        "<leader>ls",
-        function()
-            if _G.CodeInspector then
-                _G.CodeInspector()
-            else
-                require("telescope.builtin").lsp_document_symbols()
-            end
-        end,
-        {desc = "Document symbols", silent = true}
-    )
-
-    -- Grouped view.
-    map(
-        "n",
-        "<leader>lg",
-        function()
-            if _G.CodeInspectorGrouped then
-                _G.CodeInspectorGrouped()
-            else
-                vim.notify("Code Inspector not loaded", vim.log.levels.WARN)
-            end
-        end,
-        {desc = "Document symbols (grouped)", silent = true}
-    )
-
-    -- Workspace symbols.
-    map(
-        "n",
-        "<leader>lw",
-        function()
-            require("telescope.builtin").lsp_workspace_symbols()
-        end,
-        {desc = "Workspace symbols", silent = true}
-    )
-
-    -- User commands for smart quit.
+    -- Smart quit commands with Dashboard-aware logic.
     vim.api.nvim_create_user_command(
         "Q",
         function(opts)
@@ -558,28 +633,6 @@ function M.setup()
 
     -- Override :new to create new tab instead of split.
     vim.cmd("cabbrev new tabnew")
-
-    -- Force LSP tab behavior for mouse clicks (global fallback)
-    map("n", "<C-LeftMouse>", function()
-        if _G.LspDefinitionInTab then
-            _G.LspDefinitionInTab()
-        else
-            vim.lsp.buf.definition()
-        end
-    end, {desc = "Go to definition (mouse)"})
-
-    -- Reassigning ZZ for smart behavior.
-    map("n", "ZZ", function()
-        if vim.bo.modified then
-            vim.cmd("write")
-        end
-        smart_tab_close()
-    end, {desc = "Save and smart close tab"})
-
-    -- Disable F1 help (annoying).
-    map("n", "<F1>", "<nop>", {desc = "Disabled"})
-    map("i", "<F1>", "<nop>", {desc = "Disabled"})
-    map("v", "<F1>", "<nop>", {desc = "Disabled"})
 end
 
 return M

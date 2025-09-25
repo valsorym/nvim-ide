@@ -286,6 +286,11 @@ return {
         )
 
         -- Set up keymap.
-        vim.keymap.set("n", "<leader>tt", _G.TabsList.show_tabs_window, {desc = "Show tabs list", silent = true})
+        vim.keymap.set(
+            "n",
+            "<leader>et",
+            _G.TabsList.show_tabs_window,
+            {desc = "Show tabs list", silent = true}
+        )
     end
 }

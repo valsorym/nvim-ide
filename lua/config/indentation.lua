@@ -236,11 +236,11 @@ function M.setup_keymaps()
     local map = vim.keymap.set
 
     -- Show indent info
-    map("n", "<leader>ui", M.show_indent_info, { desc = "Show indent info" })
+    map("n", "<leader>ui", M.show_indent_info, { desc = "· Show indent info" })
 
     -- Convert indentation
-    map("n", "<leader>ut2", M.tabs_to_spaces, { desc = "Tabs → Spaces" })
-    map("n", "<leader>us2", M.spaces_to_tabs, { desc = "Spaces → Tabs" })
+    map("n", "<leader>ut2", M.tabs_to_spaces, { desc = "· Tabs → Spaces" })
+    map("n", "<leader>us2", M.spaces_to_tabs, { desc = "· Spaces → Tabs" })
 
     -- Quick indent settings
     map("n", "<leader>u2", function()
@@ -249,7 +249,7 @@ function M.setup_keymaps()
         vim.opt_local.shiftwidth = 2
         vim.opt_local.softtabstop = 2
         print("Set to 2 spaces")
-    end, { desc = "Set 2 spaces" })
+    end, { desc = "· Set 2 spaces" })
 
     map("n", "<leader>u4", function()
         vim.opt_local.expandtab = true
@@ -257,7 +257,7 @@ function M.setup_keymaps()
         vim.opt_local.shiftwidth = 4
         vim.opt_local.softtabstop = 4
         print("Set to 4 spaces")
-    end, { desc = "Set 4 spaces" })
+    end, { desc = "· Set 4 spaces" })
 end
 
 return M

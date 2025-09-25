@@ -294,24 +294,24 @@ return {
         vim.keymap.set(
             "n", "<leader>F",
             function() vim.lsp.buf.format({async = true}) end,
-            {desc = "Format document"}
+            {desc = "· Format document"}
         )
 
         -- Toggle format on save.
         vim.g.format_on_save = true
         vim.keymap.set(
-            "n", "<leader>tf",
+            "n", "<leader>xf",
             function()
                 vim.g.format_on_save = not vim.g.format_on_save
                 print("Format on save: " ..
                     (vim.g.format_on_save and "ON" or "OFF"))
             end,
-            {desc = "Toggle format on save"}
+            {desc = "· Toggle format on save"}
         )
 
         -- Sort Python imports.
         vim.keymap.set(
-            "n", "<leader>is",
+            "n", "<leader>ci",
             function()
                 vim.cmd("write")
                 local py = get_python_executable()
