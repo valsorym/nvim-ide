@@ -578,7 +578,38 @@ function M.setup()
     map("i", "<F1>", "<nop>", {desc = "Disabled"})
     map("v", "<F1>", "<nop>", {desc = "Disabled"})
 
+    -- Manual trailing spaces cleanup.
+    map("n", "<leader>dx", function()
+        local save_cursor = vim.fn.getpos(".")
+        vim.cmd([[%s/\s\+$//e]])
+        vim.fn.setpos(".", save_cursor)
+        vim.notify("Trailing spaces cleaned", vim.log.levels.INFO)
+    end, {desc = "· Clean Trailing Spaces"})
+
     -- USER COMMANDS
+    -- Auto-clean trailing spaces on save
+    vim.api.nvim_create_autocmd("BufWritePre", {
+        group = vim.api.nvim_create_augroup("TrailingSpaces", { clear = true }),
+        pattern = "*",
+        callback = function()
+            if vim.bo.binary then return end
+            local save_cursor = vim.fn.getpos(".")
+            vim.cmd([[%s/\s\+$//e]])
+            vim.fn.setpos(".", save_cursor)
+        end,
+    })
+
+    -- Toggle trailing spaces visibility
+    map("n", "<leader>dt", function()
+        if vim.opt.list:get() then
+            vim.opt.list = false
+            vim.notify("Trailing spaces hidden", vim.log.levels.INFO)
+        else
+            vim.opt.list = true
+            vim.opt.listchars = { trail = "·" }
+            vim.notify("Trailing spaces visible", vim.log.levels.INFO)
+        end
+    end, {desc = "· Toggle Trailing Spaces"})
 
     -- Smart quit commands with Dashboard-aware logic.
     vim.api.nvim_create_user_command(

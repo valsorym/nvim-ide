@@ -260,6 +260,11 @@ return {
                 {"<F8>", desc = "· Tabs List"},
                 {"<F9>", desc = "· File Explorer"},
                 {"<F10>", desc = "· Buffers List"},
+
+                -- DOCUMENT
+                {"<leader>d", group = " Document"},
+                {"<leader>df", desc = "· Format Document"},
+                {"<leader>dt", desc = "· Toggle Trailing Spaces"},
             }
         })
 

@@ -151,7 +151,7 @@ function M.setup(opts)
         return {"init","plugins","current"}
     end})
 
-    vim.keymap.set("n", "<leader>R", function()
+    vim.keymap.set("n", "<leader>xR", function()
         reload_path(vim.fn.expand("%:p"))
     end, {desc = "· Reload VIM config", silent = true})
 

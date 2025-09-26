@@ -43,6 +43,16 @@ vim.g.enable_codespell = true  -- spelling (safe default)
 vim.g.enable_eslint    = false -- example: ESLint (if you add it)
 vim.g.enable_flake8    = false -- example: Flake8 (if you add it)
 
+-- Trailing spaces.
+vim.opt.list = true
+vim.opt.listchars = {
+    trail = "⋅",
+    -- tab = "→ ",
+    -- extends = "»",
+    -- precedes = "«",
+    -- nbsp = "␣",
+}
+
 
 -- Neovide
 if vim.g.neovide then

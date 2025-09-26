@@ -292,7 +292,7 @@ return {
 
         -- Manual format.
         vim.keymap.set(
-            "n", "<leader>F",
+            "n", "<leader>df",
             function() vim.lsp.buf.format({async = true}) end,
             {desc = "· Format document"}
         )
