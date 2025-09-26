@@ -1,6 +1,6 @@
 # Neovim IDE - Tab-Focused Development Environment
 
-## Overview  
+## Overview
 
 This Neovim configuration creates a modern IDE experience focused on **tab-based workflow** rather than traditional buffer management. This approach makes it more similar to contemporary IDEs like VSCode, IntelliJ IDEA, or Sublime Text, where each file opens in its own tab for easier navigation and organization.
 
@@ -250,7 +250,7 @@ Type=Application
 Name=Neovide
 Comment=A simple, fast and good looking Neovim GUI
 Exec=neovide %F
-Icon=neovide
+Icon=$HOME/.local/share/icons/hicolor/scalable/apps/neovide.svg
 Terminal=false
 Categories=Development;TextEditor;IDE;
 StartupNotify=true
