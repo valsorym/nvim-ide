@@ -22,6 +22,12 @@ return {
         local luasnip = require("luasnip")
         local lspkind = require("lspkind")
 
+        luasnip.config.setup({
+            history = true,
+            region_check_events = "InsertEnter",
+            delete_check_events = "TextChanged,InsertLeave",
+        })
+
         -- SNIPPETS
         require("luasnip.loaders.from_vscode").lazy_load()
 
@@ -145,7 +151,12 @@ return {
                     end,
                 }),
             },
-            experimental = { ghost_text = { hl_group = "Comment" } },
+            experimental = { ghost_text = false },
+            -- experimental = {
+            --     ghost_text = {
+            --         hl_group = "Comment"
+            --     }
+            -- },
         })
 
         -- CMDLINE
