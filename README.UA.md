@@ -240,20 +240,21 @@ cat > ~/.local/share/applications/nvim-kitty.desktop << 'EOF'
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=NVim
-Comment=Launch Neovim inside Kitty terminal
+Name=Keovim
+GenericName=Text Editor
+Comment=Edit text files in Neovim inside Kitty terminal
 Exec=kitty -e nvim %F
 Icon=nvim
 Terminal=false
-Categories=Development;TextEditor;IDE;
+Categories=Utility;Development;TextEditor;
 StartupNotify=true
-StartupWMClass=neovide
+StartupWMClass=kitty
 MimeType=text/plain;text/x-makefile;text/x-c++hdr;text/x-c++src;text/x-chdr;text/x-csrc;text/x-java;text/x-moc;text/x-pascal;text/x-tcl;text/x-tex;application/x-shellscript;text/x-c;text/x-c++;
 Actions=NewWindow;
 
 [Desktop Action NewWindow]
 Name=New Window
-Exec=kitty -e nvim %F
+Exec=kitty -e nvim
 OnlyShowIn=Cinnamon;GNOME;KDE;XFCE;Unity;
 EOF
 ```
