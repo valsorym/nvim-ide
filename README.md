@@ -200,58 +200,48 @@ On first launch, Neovim will automatically:
 - Download LSP servers through Mason
 - Configure Treesitter parsers
 
-## Neovide
+## NeoVim + Kitty.
 
-### Update cargo.
+### Install Kitty.
+
+Use kitty as an alternative terminal to run nvim.
 
 ```bash
-sudo apt remove cargo rustc
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source ~/.cargo/env
-rustup install stable
-rustup default stable
+sudo apt install kitty
 ```
 
-### Install Neovide.
+Now you can use it as:
 
 ```bash
-cargo install --git https://github.com/neovide/neovide
+kitty -e nvim
 ```
 
-### Config Neovide.
+### Config Kitty.
 
 ```bash
-mkdir -p ~/.config/neovide
-cat <<'EOF' | install -Dm644 /dev/stdin ~/.config/neovide/config.toml
-frame = "full"
-idle = true
-maximized = false
-vsync = true
-mouse-cursor-icon = "arrow"
-no-multigrid = true
-srgb = false
-tabs = true
-title-hidden = false
-wsl = false
+mkdir -p ~/.config/kitty && \
+cat <<'EOF' | install -Dm644 /dev/stdin ~/.config/kitty/kitty.conf
+font_family      UbuntuMono Nerd Font
+bold_font        UbuntuMono Nerd Font Bold
+italic_font      UbuntuMono Nerd Font Italic
+bold_italic_font UbuntuMono Nerd Font Bold Italic
 
-[font]
-normal = ["JetBrainsMono Nerd Font", "monospace"]
-size = 12.0
+font_size 13.0
 EOF
 ```
 
-### Create a desktop entry for Neovide.
+### Create a desktop entry for Kitty + NVim.
 
 ```bash
 mkdir -p ~/.local/share/applications && \
-cat > ~/.local/share/applications/neovide.desktop << 'EOF'
+cat > ~/.local/share/applications/nvim-kitty.desktop << 'EOF'
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=Neovide
-Comment=A simple, fast and good looking Neovim GUI
-Exec=neovide --no-multigrid %F
-Icon=neovide
+Name=NVim
+Comment=Launch Neovim inside Kitty terminal
+Exec=kitty -e nvim %F
+Icon=nvim
 Terminal=false
 Categories=Development;TextEditor;IDE;
 StartupNotify=true
@@ -261,14 +251,22 @@ Actions=NewWindow;
 
 [Desktop Action NewWindow]
 Name=New Window
-Exec=neovide
+Exec=kitty -e nvim %F
 OnlyShowIn=Cinnamon;GNOME;KDE;XFCE;Unity;
 EOF
+```
 
+Install NeoVim official icon
+
+```bash
 mkdir -p ~/.local/share/icons/hicolor/scalable/apps/
-wget -O ~/.local/share/icons/hicolor/scalable/apps/neovide.svg \
-  https://raw.githubusercontent.com/neovide/neovide/main/assets/neovide.svg
+wget -O ~/.local/share/icons/hicolor/scalable/apps/nvim.svg \
+  https://raw.githubusercontent.com/neovim/neovim.github.io/master/logos/neovim-mark.svg
+```
 
+Update desktop database
+
+```bash
 update-desktop-database ~/.local/share/applications/ >/dev/null 2>&1 || true
 ```
 
