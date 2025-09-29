@@ -449,7 +449,7 @@ function M.setup()
 
     -- LSP Code Actions and Rename.
     map("n", "<leader>ca", vim.lsp.buf.code_action, {desc = "Code action"})
-    map("n", "<leader>cr", vim.lsp.buf.rename, {desc = "Rename symbol"})
+    map("n", "<leader>cr", vim.lsp.buf.rename, {desc = "· Rename Symbol"})
 
     -- Format.
     map("n", "<leader>cf", function()

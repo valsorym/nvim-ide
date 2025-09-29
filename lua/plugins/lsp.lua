@@ -233,7 +233,7 @@ return {
                 vim.tbl_extend("force", opts, {desc = "Code action"}))
 
             vim.keymap.set("n", "<leader>cn", vim.lsp.buf.rename,
-                vim.tbl_extend("force", opts, {desc = "Rename symbol"}))
+                vim.tbl_extend("force", opts, {desc = "· Rename Symbol"}))
 
             -- Diagnostics navigation.
             vim.keymap.set("n", "[d", vim.diagnostic.goto_prev,
