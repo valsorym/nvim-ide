@@ -226,7 +226,7 @@ bold_font        UbuntuMono Nerd Font Bold
 italic_font      UbuntuMono Nerd Font Italic
 bold_italic_font UbuntuMono Nerd Font Bold Italic
 
-font_size 13.0
+font_size 14.0
 EOF
 ```
 
