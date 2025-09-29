@@ -54,18 +54,25 @@ vim.opt.listchars = {
 }
 
 
--- Neovide
+-- Neovide.
 if vim.g.neovide then
     -- Keep window size between runs.
     vim.g.neovide_remember_window_size = true
 
-    -- HiDPI tuning.
+    -- HiDPI scaling (1.0 = native).
     vim.g.neovide_scale_factor = 1.0
 
-    -- Disable cursor/scroll animations that "fly" across splits.
+    -- Refresh rates.
+    vim.g.neovide_refresh_rate = 60
+    vim.g.neovide_refresh_rate_idle = 5
+
+    -- Cursor animations (disable for performance/stability).
     vim.g.neovide_cursor_animation_length = 0
     vim.g.neovide_cursor_trail_length = 0
     vim.g.neovide_cursor_animate_in_insert_mode = false
+    vim.g.neovide_cursor_animate_command_line = false
+
+    -- Disable scroll animation.
     vim.g.neovide_scroll_animation_length = 0
 
     -- Optional cosmetics.
@@ -74,6 +81,12 @@ if vim.g.neovide then
     vim.g.neovide_padding_bottom = 10
     vim.g.neovide_padding_left = 10
     vim.g.neovide_padding_right = 10
+
+    -- Stability/workarounds.
+    vim.g.neovide_confirm_quit = true   -- prompt before quit
+    vim.g.neovide_no_idle = true        -- reduce flicker on some GPUs
+    vim.g.neovide_vsync = true          -- enforce vsync to avoid tearing
+    vim.g.neovide_opacity = 1.0    -- ensure no "ghost" transparency
 end
 
 
