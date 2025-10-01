@@ -233,7 +233,7 @@ return {
                 vim.tbl_extend("force", opts, {desc = "Code action"}))
 
             vim.keymap.set("n", "<leader>cn", vim.lsp.buf.rename,
-                vim.tbl_extend("force", opts, {desc = "· Rename Symbol"}))
+                vim.tbl_extend("force", opts, {desc = "Rename Symbol"}))
 
             -- Diagnostics navigation.
             vim.keymap.set("n", "[d", vim.diagnostic.goto_prev,
@@ -253,7 +253,7 @@ return {
                     scope = "line"
                 }
                 vim.diagnostic.open_float(nil, diagnostic_opts)
-            end, vim.tbl_extend("force", opts, {desc = "· Show line diagnostics"}))
+            end, vim.tbl_extend("force", opts, {desc = "Show line diagnostics"}))
 
             vim.keymap.set("n", "gl", function()
                 local diagnostic_opts = {
@@ -265,7 +265,7 @@ return {
                     scope = "line"
                 }
                 vim.diagnostic.open_float(nil, diagnostic_opts)
-            end, vim.tbl_extend("force", opts, {desc = "· Show line diagnostics"}))
+            end, vim.tbl_extend("force", opts, {desc = "Show line diagnostics"}))
 
             -- Format.
             vim.keymap.set("n", "<leader>f", function()

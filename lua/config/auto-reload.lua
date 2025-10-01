@@ -153,7 +153,7 @@ function M.setup(opts)
 
     vim.keymap.set("n", "<leader>xR", function()
         reload_path(vim.fn.expand("%:p"))
-    end, {desc = "· Reload VIM config", silent = true})
+    end, {desc = "Reload VIM config", silent = true})
 
     vim.opt.shortmess:append("F")
 end

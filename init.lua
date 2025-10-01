@@ -43,6 +43,14 @@ vim.g.enable_codespell = true  -- spelling (safe default)
 vim.g.enable_eslint    = false -- example: ESLint (if you add it)
 vim.g.enable_flake8    = false -- example: Flake8 (if you add it)
 
+-- Single column for git/LSP signs
+-- %s - sign column (git signs, LSP diagnostics)
+-- %l - absolute line number
+-- %C - fold column (іконки ⌄ »)
+vim.opt.signcolumn = "yes"
+vim.opt.statuscolumn = "%s%l %C"
+
+
 -- Trailing spaces.
 vim.opt.list = true
 vim.opt.listchars = {

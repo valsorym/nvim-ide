@@ -41,7 +41,7 @@ return {
         {
             "<leader>cL",
             "<cmd>Trouble lsp_document_symbols toggle win.position=right<cr>",
-            desc = "· Document Symbols"
+            desc = "Document Symbols"
         },
         {
             "<leader>cr",

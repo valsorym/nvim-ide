@@ -425,7 +425,7 @@ return {
                     webdev_colors = true,
                     git_placement = "before",
                     modified_placement = "after",
-                    padding = " ",
+                    padding = "  ",
                     symlink_arrow = " ➛ ",
                     show = {
                         file = true,

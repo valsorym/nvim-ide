@@ -35,7 +35,7 @@ return {
                         timeout = 2000,
                     })
                 end,
-                desc = "· Restore Session"
+                desc = "Restore Session"
             },
             {
                 "<leader>wL",
@@ -47,7 +47,7 @@ return {
                         timeout = 2000,
                     })
                 end,
-                desc = "· Restore Last Session"
+                desc = "Restore Last Session"
             },
             {
                 "<leader>wD",
@@ -59,7 +59,7 @@ return {
                         timeout = 2000,
                     })
                 end,
-                desc = "· Delete Session"
+                desc = "Delete Session"
             },
         },
     },
@@ -297,10 +297,10 @@ return {
             end, { desc = "Delete session" })
 
             -- Keymaps with Telescope.
-            vim.keymap.set("n", "<leader>wS", "<cmd>SessionSave<cr>", { desc = "· Save session" })
-            vim.keymap.set("n", "<leader>wR", "<cmd>SessionRestore<cr>", { desc = "· Restore session" })
-            vim.keymap.set("n", "<leader>wD", "<cmd>SessionDelete<cr>", { desc = "· Delete session" })
-            vim.keymap.set("n", "<leader>wF", telescope_sessions, { desc = "· Find sessions" })
+            vim.keymap.set("n", "<leader>wS", "<cmd>SessionSave<cr>", { desc = "Save session" })
+            vim.keymap.set("n", "<leader>wR", "<cmd>SessionRestore<cr>", { desc = "Restore session" })
+            vim.keymap.set("n", "<leader>wD", "<cmd>SessionDelete<cr>", { desc = "Delete session" })
+            vim.keymap.set("n", "<leader>wF", telescope_sessions, { desc = "Find sessions" })
         end,
     }
 }

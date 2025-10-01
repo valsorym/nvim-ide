@@ -449,7 +449,7 @@ function M.setup()
 
     -- LSP Code Actions and Rename.
     map("n", "<leader>ca", vim.lsp.buf.code_action, {desc = "Code action"})
-    map("n", "<leader>cr", vim.lsp.buf.rename, {desc = "· Rename Symbol"})
+    map("n", "<leader>cr", vim.lsp.buf.rename, {desc = "Rename Symbol"})
 
     -- Format.
     map("n", "<leader>cf", function()
@@ -584,7 +584,7 @@ function M.setup()
         vim.cmd([[%s/\s\+$//e]])
         vim.fn.setpos(".", save_cursor)
         vim.notify("Trailing spaces cleaned", vim.log.levels.INFO)
-    end, {desc = "· Clean Trailing Spaces"})
+    end, {desc = "Clean Trailing Spaces"})
 
     -- USER COMMANDS
     -- Auto-clean trailing spaces on save
@@ -609,7 +609,7 @@ function M.setup()
             vim.opt.listchars = { trail = "·" }
             vim.notify("Trailing spaces visible", vim.log.levels.INFO)
         end
-    end, {desc = "· Toggle Trailing Spaces"})
+    end, {desc = "Toggle Trailing Spaces"})
 
     -- Smart quit commands with Dashboard-aware logic.
     vim.api.nvim_create_user_command(

@@ -294,7 +294,7 @@ return {
         vim.keymap.set(
             "n", "<leader>df",
             function() vim.lsp.buf.format({async = true}) end,
-            {desc = "· Format document"}
+            {desc = "Format document"}
         )
 
         -- Toggle format on save.
@@ -306,7 +306,7 @@ return {
                 print("Format on save: " ..
                     (vim.g.format_on_save and "ON" or "OFF"))
             end,
-            {desc = "· Toggle format on save"}
+            {desc = "Toggle format on save"}
         )
 
         -- Sort Python imports.
@@ -327,7 +327,7 @@ return {
                 end
                 vim.cmd("edit!")
             end,
-            {desc = "· Sort Python Imports"}
+            {desc = "Sort Python Imports"}
         )
 
         -- Create pyproject.toml.
