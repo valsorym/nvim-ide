@@ -397,7 +397,7 @@ function M.setup()
         {desc = "Workspace symbols", silent = true}
     )
 
-    -- Diagnostics (moved from <leader>x to <leader>c)
+    -- -- Diagnostics (moved from <leader>x to <leader>c)
     map(
         "n",
         "<leader>cc",
@@ -413,6 +413,19 @@ function M.setup()
             vim.diagnostic.open_float(nil, diagnostic_opts)
         end,
         {desc = "Show line diagnostics"}
+    )
+
+    map(
+        "n",
+        "gL",
+        function()
+            vim.diagnostic.setloclist()
+            vim.cmd("lopen")
+            vim.wo.cursorline = true
+            vim.wo.number = true
+            vim.wo.relativenumber = false
+        end,
+        {desc = "Open diagnostic quickfix list"}
     )
 
     map("n", "gl", function()
