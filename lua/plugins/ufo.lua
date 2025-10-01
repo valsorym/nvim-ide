@@ -73,11 +73,11 @@ return {
     },
     config = function(_, opts)
         -- Fold settings
-        vim.opt.foldcolumn = '1'
+        vim.opt.foldcolumn = '0'
         vim.opt.foldlevel = 99
         vim.opt.foldlevelstart = 99
         vim.opt.foldenable = true
-        vim.opt.foldmethod = "expr"
+        vim.opt.foldmethod = "indent" -- or "expr"
 
         -- Custom fold icons: »/◈/◉ for closed, ⌄/◇/◌ for open.
         vim.opt.fillchars = {
@@ -114,7 +114,7 @@ return {
             italic = true
         })
         vim.api.nvim_set_hl(0, "FoldColumn", {
-            fg = "#5e5e5e",
+            fg = "#47476f",
             bg = "NONE"
         })
         vim.api.nvim_set_hl(0, "FoldSuffix", {
