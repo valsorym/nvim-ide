@@ -36,7 +36,7 @@ return {
         end
     },
 
-    -- Fuzzy finder with updated keymaps
+    -- Fuzzy finder with updated keymaps and cwd detection
     {
         "nvim-telescope/telescope.nvim",
         dependencies = {
@@ -105,26 +105,36 @@ return {
 
             telescope.load_extension("fzf")
 
-            -- Updated keymaps following new structure
-            local builtin = require("telescope.builtin")
-            vim.keymap.set("n", "<leader>ff", builtin.find_files,
-                {desc = "Find files"})
-            vim.keymap.set("n", "<leader>fg", builtin.live_grep,
-                {desc = "Live grep", noremap = true, silent = true})
-            vim.keymap.set("n", "<leader>fb", builtin.buffers,
-                {desc = "Find buffers"})
-            vim.keymap.set("n", "<leader>fh", builtin.help_tags,
-                {desc = "Help tags"})
-            vim.keymap.set("n", "<leader>fo", builtin.oldfiles,
-                {desc = "Old files"})
-            vim.keymap.set("n", "<leader>fd", builtin.lsp_document_symbols,
-                {desc = "Document symbols"})
-            vim.keymap.set("n", "<leader>fw", builtin.lsp_workspace_symbols,
-                {desc = "Workspace symbols"})
+            -- Helper function to get project root.
+            local function get_project_root()
+                local bufname = vim.api.nvim_buf_get_name(0)
+                if bufname == "" then
+                    return vim.fn.getcwd()
+                end
+
+                local bufdir = vim.fn.fnamemodify(bufname, ":p:h")
+
+                -- Search for common project root markers.
+                local root_markers = {".git", "package.json", "pyproject.toml",
+                                     "setup.py", "Cargo.toml", "go.mod"}
+
+                local current = bufdir
+                while current ~= "/" do
+                    for _, marker in ipairs(root_markers) do
+                        if vim.fn.isdirectory(current .. "/" .. marker) == 1 or
+                           vim.fn.filereadable(current .. "/" .. marker) == 1 then
+                            return current
+                        end
+                    end
+                    current = vim.fn.fnamemodify(current, ":h")
+                end
+
+                return bufdir
+            end
         end
     },
 
-    -- Git integration with updated keymaps
+    -- Git integration with updated keymaps.
     {
         "lewis6991/gitsigns.nvim",
         config = function()

@@ -210,6 +210,39 @@ function M.setup()
 
     -- BASIC NAVIGATION & WINDOW MANAGEMENT
 
+    -- TELESCOPE KEYMAPS (moved here from plugin config)
+    map("n", "<leader>ff", function()
+        require("telescope.builtin").find_files({
+            cwd = vim.fn.getcwd()
+        })
+    end, {desc = "Find files"})
+
+    map("n", "<leader>fg", function()
+        require("telescope.builtin").live_grep({
+            cwd = vim.fn.getcwd()
+        })
+    end, {desc = "Live grep"})
+
+    map("n", "<leader>fb", function()
+        require("telescope.builtin").buffers()
+    end, {desc = "Find buffers"})
+
+    map("n", "<leader>fh", function()
+        require("telescope.builtin").help_tags()
+    end, {desc = "Help tags"})
+
+    map("n", "<leader>fo", function()
+        require("telescope.builtin").oldfiles()
+    end, {desc = "Old files"})
+
+    map("n", "<leader>fd", function()
+        require("telescope.builtin").lsp_document_symbols()
+    end, {desc = "Document symbols"})
+
+    map("n", "<leader>fw", function()
+        require("telescope.builtin").lsp_workspace_symbols()
+    end, {desc = "Workspace symbols"})
+
     -- Better window navigation.
     map("n", "<C-h>", "<C-w>h", {desc = "Go to left window"})
     map("n", "<C-j>", "<C-w>j", {desc = "Go to lower window"})

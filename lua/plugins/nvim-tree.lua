@@ -484,12 +484,20 @@ return {
                         vim.cmd(tostring(tab) .. "tabnext")
                         return
                     end
-                    if on_dashboard() then
-                        vim.cmd("edit " ..
-                            vim.fn.fnameescape(file))
-                    else
-                        vim.cmd("tabnew " ..
-                            vim.fn.fnameescape(file))
+
+                    local open_cmd = on_dashboard() and "edit" or "tabnew"
+                    local ok, err = pcall(function()
+                        vim.cmd(open_cmd .. " " .. vim.fn.fnameescape(file))
+                    end)
+
+                    if not ok then
+                        if err:match("E325") then
+                            vim.notify("Swap file detected. Use :e! to force open",
+                                vim.log.levels.WARN)
+                        else
+                            vim.notify("Error opening file: " .. tostring(err),
+                                vim.log.levels.ERROR)
+                        end
                     end
                 end, { buffer = bufnr, desc = "Open / toggle" })
 

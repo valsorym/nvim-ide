@@ -34,8 +34,13 @@
 Оновлення системи та встановлення основних інструментів.
 
 ```bash
+sudo apt remove -y npm;
+sudo apt autoremove -y;
+
 sudo apt update && \
 sudo apt install -y \
+  nodejs \
+  npm \
   build-essential \
   cmake \
   gettext \
@@ -55,13 +60,9 @@ sudo apt install -y \
   cargo \
   composer \
   xclip \
-  nodejs \
-  npm \
   python3-pip \
   ripgrep \
-  codespell
-  cmake \
-  pkg-config \
+  codespell \
   libssl-dev \
   libfreetype6-dev \
   libfontconfig1-dev \
@@ -69,8 +70,7 @@ sudo apt install -y \
   libxcb-xfixes0-dev \
   libxkbcommon-dev \
   libxkbcommon-x11-dev \
-  libegl1-mesa-dev \
-  libssl-dev
+  libegl1-mesa-dev
 ```
 
 ### 2. Встановлення Nerd Fonts
