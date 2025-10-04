@@ -12,6 +12,11 @@ return {
             delay = 100,
             expand = 1,
             notify = false,
+            replace = {
+                key = {
+                    { "<Space>", "SPC" },
+                },
+            },
             icons = {
                 mappings = false,
                 keys = {
@@ -50,6 +55,22 @@ return {
                 {"]", mode = "n"},
                 {"[", mode = "n"},
                 {"z", mode = "n"}
+            },
+            plugins = {
+                marks = false,
+                registers = false,
+                spelling = {
+                    enabled = false,
+                },
+                presets = {
+                    operators = false,
+                    motions = false,
+                    text_objects = false,
+                    windows = false,
+                    nav = false,
+                    z = false,
+                    g = false,
+                },
             },
             spec = {
                 -- WORKSPACE / SESSIONS
@@ -278,6 +299,20 @@ return {
                 {"zo", desc = "Open Fold"},
                 {"zc", desc = "Close Fold"},
             }
+        })
+
+        -- Force which-key to re-register on buffer change
+        vim.api.nvim_create_autocmd({"BufEnter", "BufWinEnter"}, {
+            callback = function()
+                -- Re-check leader key mapping
+                local leader_map = vim.fn.maparg("<Space>", "n", false, true)
+                if leader_map == "" or leader_map.rhs ~= "<Nop>" then
+                    -- Leader key is broken, reset it
+                    vim.keymap.set("n", "<Space>", "<Nop>",
+                        {noremap = true, silent = true})
+                end
+            end,
+            desc = "Ensure leader key stays unmapped"
         })
 
         -- Faster key timeout for responsiveness
