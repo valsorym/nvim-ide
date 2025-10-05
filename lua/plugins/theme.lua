@@ -103,9 +103,40 @@ return {
             end
 
             enforce_signs_only()
+
+            -- Muted comments for Jinja/Django templates
+            local function setup_template_colors()
+                vim.api.nvim_set_hl(0, "Comment", {
+                    fg = "#6c7086",
+                    italic = true
+                })
+                vim.api.nvim_set_hl(0, "htmlComment", {
+                    fg = "#6c7086",
+                    italic = true
+                })
+                vim.api.nvim_set_hl(0, "htmlCommentPart", {
+                    fg = "#6c7086",
+                    italic = true
+                })
+                vim.api.nvim_set_hl(0, "jinjaComment", {
+                    fg = "#6c7086",
+                    italic = true
+                })
+            end
+
+            setup_template_colors()
+
             vim.api.nvim_create_autocmd("ColorScheme", {
                 callback = enforce_signs_only
             })
+
+            vim.api.nvim_create_autocmd(
+                {"ColorScheme", "FileType"},
+                {
+                    pattern = {"htmldjango", "jinja.html", "html"},
+                    callback = setup_template_colors
+                }
+            )
         end
 
     },
