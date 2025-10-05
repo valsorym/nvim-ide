@@ -24,6 +24,12 @@ vim.g.maplocalleader = " "
 -- Load plugins.
 require("lazy").setup("plugins")
 
+vim.filetype.add({
+    extension = {
+        html = "htmldjango", -- all HTML files to use htmldjango filetype.
+    },
+})
+
 -- Basic settings.
 vim.opt.number         = true
 vim.opt.relativenumber = false
@@ -72,22 +78,3 @@ require("config.indentation").setup_commands()
 require("config.indentation").setup_keymaps()
 
 require("config.auto-reload").setup()
-
--- Auto-detect Django templates.
-vim.filetype.add({
-    extension = {
-        html = function(path, bufnr)
-            -- Check if file contains Django/Jinja tags.
-            local content = vim.api.nvim_buf_get_lines(bufnr, 0, 50, false)
-            for _, line in ipairs(content) do
-                if line:match("{%%") or line:match("{{") then
-                    return "htmldjango"
-                end
-            end
-            return "html"
-        end,
-    },
-    pattern = {
-        [".*/templates/.*%.html"] = "htmldjango",
-    },
-})
