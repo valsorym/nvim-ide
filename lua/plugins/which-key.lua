@@ -298,6 +298,26 @@ return {
                 {"zA", desc = "Toggle Fold (Recursive)"},
                 {"zo", desc = "Open Fold"},
                 {"zc", desc = "Close Fold"},
+
+                -- COMMENT PLUGIN (Comment.nvim)
+                {"gc", group = " Comment", mode = {"n", "v"}},
+                {"gcc", desc = "Toggle line comment", mode = "n"},
+                {"gbc", desc = "Toggle block comment", mode = "n"},
+                {"gc", desc = "Toggle comment", mode = {"v", "x"}},
+                {"gb", desc = "Toggle block comment", mode = {"v", "x"}},
+                {"gcO", desc = "Comment line above", mode = "n"},
+                {"gco", desc = "Comment line below", mode = "n"},
+                {"gcA", desc = "Comment end of line", mode = "n"},
+
+                -- GO TO MAPPINGS
+                {"g", group = " Go to"},
+                {"gg", desc = "Go to first line", mode = "n"},
+                {"gd", desc = "Definition"},
+                {"gD", desc = "Declaration"},
+                {"gi", desc = "Implementation"},
+                {"gr", desc = "References"},
+                {"K", desc = "Hover Info"},
+                {"gl", desc = "Line Diagnostics"},
             }
         })
 
