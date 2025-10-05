@@ -61,7 +61,24 @@ return {
                         },
                         inlay_hints = { background = true }
                     }
-                }
+                },
+                custom_highlights = function(colors)
+                    return {
+                        -- Muted comments for all filetypes.
+                        Comment = { fg = colors.overlay0, style = {"italic"} },
+
+                        -- Jinja2/Django template comments.
+                        jinjaComment = { fg = colors.overlay0, style = {"italic"} },
+                        jinjaTagDelim = { fg = colors.overlay1 },
+                        jinjaVarDelim = { fg = colors.overlay1 },
+                        jinjaString = { fg = colors.green },
+                        jinjaFilter = { fg = colors.mauve },
+
+                        -- HTML comments in templates.
+                        htmlComment = { fg = colors.overlay0, style = {"italic"} },
+                        htmlCommentPart = { fg = colors.overlay0, style = {"italic"} },
+                    }
+                end,
             })
 
             -- Enforce "signs only": no underline/undercurl/italic on text.
