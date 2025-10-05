@@ -129,14 +129,6 @@ return {
             vim.api.nvim_create_autocmd("ColorScheme", {
                 callback = enforce_signs_only
             })
-
-            vim.api.nvim_create_autocmd(
-                {"ColorScheme", "FileType"},
-                {
-                    pattern = {"htmldjango", "jinja.html", "html"},
-                    callback = setup_template_colors
-                }
-            )
         end
 
     },

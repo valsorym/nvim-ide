@@ -225,7 +225,7 @@ return {
                 runtime_condition = function(_)
                     return vim.g.enable_djlint == true
                 end,
-                filetypes = {"htmldjango","html","jinja","jinja2"},
+                filetypes = {"htmldjango", "html", "jinja", "jinja2"},
                 extra_args = {"--profile=django"},
             })
         end

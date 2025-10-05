@@ -337,10 +337,10 @@ return {
     },
 
     -- Django/Jinja2 template support
-    {
-        "Glench/Vim-Jinja2-Syntax",
-        ft = {"htmldjango", "html"}
-    },
+    -- {
+    --     "Glench/Vim-Jinja2-Syntax",
+    --     ft = {"htmldjango", "html"}
+    -- },
 
     -- Python virtual environment detection with updated keymap
     {
