@@ -266,6 +266,8 @@ function M.setup()
     -- Stay in indent mode.
     map("v", "<", "<gv", opts)
     map("v", ">", ">gv", opts)
+    map("x", "<", "<gv", opts)
+    map("x", ">", ">gv", opts)
 
     -- Better paste.
     map("v", "p", '"_dP', opts)
