@@ -104,6 +104,49 @@ return {
 
             enforce_signs_only()
 
+            -- Disable underline/italic for LSP diagnostics on text
+            local function disable_diagnostic_text_styling()
+                -- Remove underlines from diagnostics
+                vim.api.nvim_set_hl(0, "DiagnosticUnderlineError", {
+                    underline = false,
+                    undercurl = false,
+                    italic = false,
+                    sp = "NONE"
+                })
+                vim.api.nvim_set_hl(0, "DiagnosticUnderlineWarn", {
+                    underline = false,
+                    undercurl = false,
+                    italic = false,
+                    sp = "NONE"
+                })
+                vim.api.nvim_set_hl(0, "DiagnosticUnderlineInfo", {
+                    underline = false,
+                    undercurl = false,
+                    italic = false,
+                    sp = "NONE"
+                })
+                vim.api.nvim_set_hl(0, "DiagnosticUnderlineHint", {
+                    underline = false,
+                    undercurl = false,
+                    italic = false,
+                    sp = "NONE"
+                })
+
+                -- Remove italic from unnecessary/deprecated code
+                vim.api.nvim_set_hl(0, "DiagnosticUnnecessary", {
+                    fg = "#6c7086",  -- muted color
+                    italic = false,
+                    underline = false
+                })
+                vim.api.nvim_set_hl(0, "DiagnosticDeprecated", {
+                    strikethrough = true,
+                    italic = false,
+                    underline = false
+                })
+            end
+
+            disable_diagnostic_text_styling()
+
             -- Muted comments for Jinja/Django templates
             local function setup_template_colors()
                 vim.api.nvim_set_hl(0, "Comment", {
@@ -125,6 +168,10 @@ return {
             end
 
             setup_template_colors()
+
+            vim.api.nvim_create_autocmd("ColorScheme", {
+                callback = disable_diagnostic_text_styling
+            })
 
             vim.api.nvim_create_autocmd("ColorScheme", {
                 callback = enforce_signs_only
