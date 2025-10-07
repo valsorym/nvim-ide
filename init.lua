@@ -53,8 +53,8 @@ vim.g.enable_flake8    = false -- example: Flake8 (if you add it)
 -- %s - sign column (git signs, LSP diagnostics)
 -- %l - absolute line number
 -- %C - fold column (іконки ⌄ »)
-vim.opt.signcolumn = "yes"
-vim.opt.statuscolumn = "%s%l %C"
+-- vim.opt.signcolumn = "yes"
+-- vim.opt.statuscolumn = "%s%l %C"
 
 
 -- Trailing spaces.

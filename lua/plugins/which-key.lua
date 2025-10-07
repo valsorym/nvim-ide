@@ -18,6 +18,10 @@ return {
                 },
             },
             icons = {
+                breadcrumb = "»",
+                separator = "➜",
+                group = "+",
+                ellipsis = "…",
                 mappings = false,
                 keys = {
                     Up = " ",
@@ -32,10 +36,14 @@ return {
                     ScrollWheelDown = "󱕐 ",
                     ScrollWheelUp = "󱕑 ",
                     NL = "󰌑 ",
-                    BS = "↩ ",
+                    BS = " ",
                     Space = "󱁐 ",
-                    Tab = "󰌒 "
-                }
+                    Tab = "󰌒 ",
+                },
+                rules = {
+                    { pattern = "close", icon = "󱊷 " },
+                    { pattern = "back", icon = " " },
+                },
             },
             win = {
                 no_overlap = true,
@@ -318,6 +326,22 @@ return {
                 {"gr", desc = "References"},
                 {"K", desc = "Hover Info"},
                 {"gl", desc = "Line Diagnostics"},
+
+                 -- TODO COMMENTS
+                {"]t", desc = "Next TODO", mode = "n"},
+                {"[t", desc = "Previous TODO", mode = "n"},
+
+                -- AERIAL
+                {"<leader>a", group = " Aerial"},
+                {"<leader>aa", desc = "Toggle Aerial outline", mode = "n"},
+                {"<leader>aA", desc = "Toggle Aerial nav", mode = "n"},
+                {"<leader>af", desc = "Find symbols (Aerial)", mode = "n"},
+
+                -- SEARCH (update existing <leader>s group)
+                {"<leader>s", group = " Search"},
+                {"<leader>st", desc = "Find TODO comments"},
+                {"<leader>sT", desc = "Find TODO/FIX"},
+
             }
         })
 

@@ -1,6 +1,8 @@
 -- ~/.config/nvim/lua/plugins/ufo.lua
 -- Code folding with nvim-ufo and proper column width.
 
+local foldColumn = "0" -- "auto:9"
+
 return {
     "kevinhwang91/nvim-ufo",
     dependencies = {
@@ -35,39 +37,50 @@ return {
                 jumpBot = "]"
             }
         },
-        fold_virt_text_handler = function(virtText, lnum, endLnum, width,
-                                          truncate)
+        fold_virt_text_handler = function(virtText, lnum, endLnum,
+                                          width, truncate)
             local newVirtText = {}
             local foldedLines = endLnum - lnum
+            local prefix = "" --"󰞷  "
 
-            -- More informative suffix with line count
-            local suffix = (" 󰁂 %d lines "):format(foldedLines)
+            local suffix = (" 󰁂  %d lines"):format(foldedLines)
             local sufWidth = vim.fn.strdisplaywidth(suffix)
-            local targetWidth = width - sufWidth
+            local targetWidth = width - sufWidth -
+                vim.fn.strdisplaywidth(prefix)
             local curWidth = 0
+
+            -- Prefix.
+            table.insert(newVirtText, {prefix, "FoldedPrefix"})
 
             for _, chunk in ipairs(virtText) do
                 local chunkText = chunk[1]
-                local hlGroup = chunk[2]
                 local chunkWidth = vim.fn.strdisplaywidth(chunkText)
 
                 if curWidth + chunkWidth < targetWidth then
-                    table.insert(newVirtText, {chunkText, hlGroup})
+                    -- Use Folded group with background.
+                    table.insert(newVirtText, {chunkText, "Folded"})
                     curWidth = curWidth + chunkWidth
                 else
-                    -- Add ellipsis for better visual truncation
-                    chunkText = truncate(chunkText,
-                        targetWidth - curWidth - 1)
+                    chunkText = truncate(chunkText, targetWidth - curWidth - 1)
                     if chunkText ~= "" then
                         table.insert(newVirtText,
-                            {chunkText .. "…", hlGroup})
+                            {chunkText .. "…", "Folded"})
                     end
                     break
                 end
             end
 
-            -- Custom highlight group for suffix
-            table.insert(newVirtText, {suffix, "FoldSuffix"})
+            -- Suffix with background.
+            table.insert(newVirtText, {suffix, "FoldedSuffix"})
+
+            -- Use background to fill the rest of the width.
+            local fillWidth = width - curWidth -
+                vim.fn.strdisplaywidth(prefix) - sufWidth
+            if fillWidth > 0 then
+                table.insert(newVirtText,
+                    {string.rep(" ", fillWidth), "Folded"})
+            end
+
             return newVirtText
         end
     },
@@ -107,19 +120,27 @@ return {
             end
         end, {desc = "Peek fold or hover"})
 
-        -- Highlight customization for better visual appearance
+        -- Highlight customization for better visual appearance.
+        -- Folded text.
         vim.api.nvim_set_hl(0, "Folded", {
-            fg = "#a9b1d6",
+            fg = "#a9b1d6", -- "#6c7086",
+            sp = "#45475a",
             bg = "NONE",
-            italic = true
+            italic = true,
+            underline = true
         })
-        vim.api.nvim_set_hl(0, "FoldColumn", {
-            fg = "#47476f",
-            bg = "NONE"
+
+        -- Prefix.
+        vim.api.nvim_set_hl(0, "FoldedPrefix", {
+            fg = "#a6e3a1", -- "#89b4fa",
+            bg = "#1e1e2e",
+            bold = true
         })
-        vim.api.nvim_set_hl(0, "FoldSuffix", {
-            fg = "#9ece6a",
-            bg = "NONE",
+
+        -- Suffix.
+        vim.api.nvim_set_hl(0, "FoldedSuffix", {
+            fg = "#a6e3a1",
+            bg = "#1e1e2e",
             bold = true
         })
 
@@ -145,7 +166,7 @@ return {
                        filetype == "help" then
                         vim.wo.foldcolumn = "0"
                     else
-                        vim.wo.foldcolumn = "auto:9"
+                        vim.wo.foldcolumn = foldColumn
                     end
                 end
             }
