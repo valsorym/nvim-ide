@@ -200,6 +200,16 @@ On first launch, Neovim will automatically:
 - Download LSP servers through Mason
 - Configure Treesitter parsers
 
+### 6. Vim -> NVim
+
+Set NVim as default.
+
+```
+sudo update-alternatives --install /usr/bin/vim vim /usr/local/bin/nvim 60
+sudo update-alternatives --install /usr/bin/vi vi /usr/local/bin/nvim 60
+sudo update-alternatives --install /usr/bin/editor editor /usr/local/bin/nvim 60
+```
+
 ## NeoVim + Kitty.
 
 ### Install Kitty.

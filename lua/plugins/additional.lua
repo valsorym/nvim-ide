@@ -107,6 +107,19 @@ return {
 
             -- Helper function to get project root.
             local function get_project_root()
+                -- First, try to get nvim-tree root if it's available
+                local has_nvim_tree, nvim_tree_api = pcall(require, "nvim-tree.api")
+                if has_nvim_tree then
+                    local tree = nvim_tree_api.tree
+                    if tree.is_visible() then
+                        local root = tree.get_root()
+                        if root and root.absolute_path then
+                            return root.absolute_path
+                        end
+                    end
+                end
+
+                -- Fallback to current buffer's directory
                 local bufname = vim.api.nvim_buf_get_name(0)
                 if bufname == "" then
                     return vim.fn.getcwd()
@@ -116,13 +129,13 @@ return {
 
                 -- Search for common project root markers.
                 local root_markers = {".git", "package.json", "pyproject.toml",
-                                     "setup.py", "Cargo.toml", "go.mod"}
+                                    "setup.py", "Cargo.toml", "go.mod"}
 
                 local current = bufdir
                 while current ~= "/" do
                     for _, marker in ipairs(root_markers) do
                         if vim.fn.isdirectory(current .. "/" .. marker) == 1 or
-                           vim.fn.filereadable(current .. "/" .. marker) == 1 then
+                        vim.fn.filereadable(current .. "/" .. marker) == 1 then
                             return current
                         end
                     end
@@ -335,12 +348,6 @@ return {
             })
         end
     },
-
-    -- Django/Jinja2 template support
-    -- {
-    --     "Glench/Vim-Jinja2-Syntax",
-    --     ft = {"htmldjango", "html"}
-    -- },
 
     -- Python virtual environment detection with updated keymap
     {
