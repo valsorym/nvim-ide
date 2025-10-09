@@ -103,10 +103,13 @@ return {
                 {"<leader>fo", desc = "Old Files"},
                 {"<leader>fd", desc = "Document Symbols"},
                 {"<leader>fw", desc = "Workspace Symbols"},
-                {"<leader>fs", desc = "Flash Jump", mode = {"n", "x", "o"}},
-                {"<leader>fS", desc = "Flash Treesitter", mode = {"n", "x", "o"}},
+                {"<leader>fs", desc = "Flash Jump",
+                    mode = {"n", "x", "o"}},
+                {"<leader>fS", desc = "Flash Treesitter",
+                    mode = {"n", "x", "o"}},
                 {"<leader>fr", desc = "Flash Remote", mode = "o"},
-                {"<leader>fR", desc = "Flash Search", mode = {"o", "x"}},
+                {"<leader>fR", desc = "Flash Search",
+                    mode = {"o", "x"}},
 
                 -- EXPLORER / TREE / BUFFERS
                 {"<leader>e", group = " Explorer/Buffers"},
@@ -118,7 +121,6 @@ return {
                                 _G.NvimTreeModal()
                             end, 100)
                         else
-                            -- Fallback to direct API call
                             local api = require("nvim-tree.api")
                             if api.tree.is_visible() then
                                 api.tree.close()
@@ -136,7 +138,8 @@ return {
                 {
                     "<leader>eh",
                     function()
-                        if _G.NvimTreeHistory and _G.NvimTreeHistory.show_history then
+                        if _G.NvimTreeHistory and
+                            _G.NvimTreeHistory.show_history then
                             _G.NvimTreeHistory.show_history()
                         else
                             print("Project history not available")
@@ -147,10 +150,11 @@ return {
                 {
                     "<leader>et",
                     function()
-                        if _G.TabsList and _G.TabsList.show_tabs_window then
+                        if _G.TabsList and
+                            _G.TabsList.show_tabs_window then
                             _G.TabsList.show_tabs_window()
                         else
-                            print("TabsList functionality not loaded yet")
+                            print("TabsList functionality not loaded")
                         end
                     end,
                     desc = "Show Tabs List"
@@ -184,23 +188,24 @@ return {
 
                 -- Linters
                 {"<leader>ck", group = " Linters"},
-                {"<leader>ckd", "<cmd>ToggleDjlint<cr>", desc = "Toggle djlint"},
-                {"<leader>ckc", "<cmd>ToggleCodespell<cr>", desc = "Toggle Codespell"},
-                {"<leader>cke", "<cmd>ToggleESLint<cr>", desc = "Toggle ESLint"},
-                {"<leader>ckf", "<cmd>ToggleFlake8<cr>", desc = "Toggle Flake8"},
-                {"<leader>cks", "<cmd>PythonToolsStatus<cr>", desc = "Python Tools Status"},
-                {"<leader>ckp", "<cmd>CreatePyprojectToml<cr>", desc = "Create pyproject.toml"},
+                {"<leader>ckd", "<cmd>ToggleDjlint<cr>",
+                    desc = "Toggle djlint"},
+                {"<leader>ckc", "<cmd>ToggleCodespell<cr>",
+                    desc = "Toggle Codespell"},
+                {"<leader>cke", "<cmd>ToggleESLint<cr>",
+                    desc = "Toggle ESLint"},
+                {"<leader>ckf", "<cmd>ToggleFlake8<cr>",
+                    desc = "Toggle Flake8"},
+                {"<leader>cks", "<cmd>PythonToolsStatus<cr>",
+                    desc = "Python Tools Status"},
+                {"<leader>ckp", "<cmd>CreatePyprojectToml<cr>",
+                    desc = "Create pyproject.toml"},
 
                 -- SYSTEM / CONFIG / TOOLS
                 {"<leader>x", group = " System/Tools"},
                 {"<leader>xr", desc = "Reload Config"},
                 {"<leader>xm", desc = "Mason"},
                 {"<leader>xh", desc = "Clear Highlights"},
-                {"<leader>xi", desc = "Indent Info"},
-                {"<leader>xt2", desc = "Tabs → Spaces"},
-                {"<leader>xs2", desc = "Spaces → Tabs"},
-                {"<leader>x2", desc = "Set 2 Spaces"},
-                {"<leader>x4", desc = "Set 4 Spaces"},
 
                 -- Terminal
                 {"<leader>xt", group = " Terminal"},
@@ -237,18 +242,10 @@ return {
                 {"<leader>us", desc = "Set Permanent Theme"},
                 {"<leader>ub", desc = "Toggle Background"},
                 {"<leader>ui", desc = "Theme Info"},
-                {"<leader>uI", "<cmd>IBLToggle<cr>", desc = "Toggle Indent Guides"},
-                {"<leader>uG", function()
-                    if vim.wo.colorcolumn == "" then
-                        vim.wo.colorcolumn = "79"
-                        print("ColorColumn: ON")
-                    else
-                        vim.wo.colorcolumn = ""
-                        print("ColorColumn: OFF")
-                    end
-                end, desc = "Toggle ColorColumn"},
+                {"<leader>uI", "<cmd>IBLToggle<cr>",
+                    desc = "Toggle Indent Guides"},
 
-                -- TAB NAVIGATION (Alt keys)
+                -- TAB NAVIGATION
                 {"<A-Left>", desc = "Previous Tab", mode = "n"},
                 {"<A-Right>", desc = "Next Tab", mode = "n"},
                 {"<A-h>", desc = "Move Tab Left", mode = "n"},
@@ -295,7 +292,62 @@ return {
                 {"<leader>df", desc = "Format Document"},
                 {"<leader>dt", desc = "Toggle Trailing Spaces"},
 
-                -- FOLDING (Z keys)
+                -- Spaces/Indentation
+                {"<leader>ds", group = " Spaces/Indent"},
+                {"<leader>dsi", desc = "Indent Info"},
+                {"<leader>dst", function()
+                    if vim.bo.expandtab then
+                        vim.opt_local.expandtab = false
+                        vim.opt_local.tabstop = 4
+                        vim.opt_local.shiftwidth = 4
+                        vim.opt_local.softtabstop = 0
+                        print("Switched to TABS (4 width)")
+                    else
+                        vim.opt_local.expandtab = true
+                        vim.opt_local.tabstop = 4
+                        vim.opt_local.shiftwidth = 4
+                        vim.opt_local.softtabstop = 4
+                        print("Switched to SPACES (4 width)")
+                    end
+                end, desc = "Toggle Tabs ↔ Spaces"},
+                {"<leader>ds2", function()
+                    vim.opt_local.expandtab = true
+                    vim.opt_local.tabstop = 2
+                    vim.opt_local.shiftwidth = 2
+                    vim.opt_local.softtabstop = 2
+                    print("Set to 2 spaces")
+                end, desc = "Set 2 Spaces"},
+                {"<leader>ds4", function()
+                    vim.opt_local.expandtab = true
+                    vim.opt_local.tabstop = 4
+                    vim.opt_local.shiftwidth = 4
+                    vim.opt_local.softtabstop = 4
+                    print("Set to 4 spaces")
+                end, desc = "Set 4 Spaces"},
+                {"<leader>dst2", desc = "Tabs → Spaces"},
+                {"<leader>dss2", desc = "Spaces → Tabs"},
+
+                -- ColorColumn
+                {"<leader>dc", group = " ColorColumn"},
+                {"<leader>dc1", function()
+                    vim.wo.colorcolumn = "79"
+                    print("ColorColumn: 79")
+                end, desc = "79 symbols"},
+                {"<leader>dc2", function()
+                    vim.wo.colorcolumn = "120"
+                    print("ColorColumn: 120")
+                end, desc = "120 symbols"},
+                {"<leader>dc0", function()
+                    if vim.wo.colorcolumn == "" then
+                        vim.wo.colorcolumn = "79"
+                        print("ColorColumn: ON (79)")
+                    else
+                        vim.wo.colorcolumn = ""
+                        print("ColorColumn: OFF")
+                    end
+                end, desc = "Toggle Show/Hide"},
+
+                -- FOLDING
                 {"z", group = " Fold"},
                 {"zR", desc = "Open All Folds"},
                 {"zM", desc = "Close All Folds"},
@@ -307,12 +359,13 @@ return {
                 {"zo", desc = "Open Fold"},
                 {"zc", desc = "Close Fold"},
 
-                -- COMMENT PLUGIN (Comment.nvim)
+                -- COMMENT PLUGIN
                 {"gc", group = " Comment", mode = {"n", "v"}},
                 {"gcc", desc = "Toggle line comment", mode = "n"},
                 {"gbc", desc = "Toggle block comment", mode = "n"},
                 {"gc", desc = "Toggle comment", mode = {"v", "x"}},
-                {"gb", desc = "Toggle block comment", mode = {"v", "x"}},
+                {"gb", desc = "Toggle block comment",
+                    mode = {"v", "x"}},
                 {"gcO", desc = "Comment line above", mode = "n"},
                 {"gco", desc = "Comment line below", mode = "n"},
                 {"gcA", desc = "Comment end of line", mode = "n"},
@@ -320,24 +373,20 @@ return {
                 -- GO TO MAPPINGS
                 {"g", group = " Go to"},
                 {"gg", desc = "Go to first line", mode = "n"},
-                {"gd", desc = "Definition"},
-                {"gD", desc = "Declaration"},
-                {"gi", desc = "Implementation"},
-                {"gr", desc = "References"},
-                {"K", desc = "Hover Info"},
-                {"gl", desc = "Line Diagnostics"},
 
-                 -- TODO COMMENTS
+                -- TODO COMMENTS
                 {"]t", desc = "Next TODO", mode = "n"},
                 {"[t", desc = "Previous TODO", mode = "n"},
 
                 -- AERIAL
                 {"<leader>a", group = " Aerial"},
-                {"<leader>aa", desc = "Toggle Aerial outline", mode = "n"},
+                {"<leader>aa", desc = "Toggle Aerial outline",
+                    mode = "n"},
                 {"<leader>aA", desc = "Toggle Aerial nav", mode = "n"},
-                {"<leader>af", desc = "Find symbols (Aerial)", mode = "n"},
+                {"<leader>af", desc = "Find symbols (Aerial)",
+                    mode = "n"},
 
-                -- SEARCH (update existing <leader>s group)
+                -- SEARCH
                 {"<leader>s", group = " Search"},
                 {"<leader>st", desc = "Find TODO comments"},
                 {"<leader>sT", desc = "Find TODO/FIX"},
@@ -345,13 +394,13 @@ return {
             }
         })
 
-        -- Force which-key to re-register on buffer change
+        -- Force which-key to re-register on buffer change.
         vim.api.nvim_create_autocmd({"BufEnter", "BufWinEnter"}, {
             callback = function()
-                -- Re-check leader key mapping
+                -- Re-check leader key mapping.
                 local leader_map = vim.fn.maparg("<Space>", "n", false, true)
                 if leader_map == "" or leader_map.rhs ~= "<Nop>" then
-                    -- Leader key is broken, reset it
+                    -- Leader key is broken, reset it.
                     vim.keymap.set("n", "<Space>", "<Nop>",
                         {noremap = true, silent = true})
                 end
