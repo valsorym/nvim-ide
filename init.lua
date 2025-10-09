@@ -66,11 +66,11 @@ vim.g.enable_flake8    = false -- example: Flake8 (if you add it)
 -- Trailing spaces.
 vim.opt.list = true
 vim.opt.listchars = {
-    trail = "⋅",
-    -- tab = "→ ",
-    -- extends = "»",
-    -- precedes = "«",
-    -- nbsp = "␣",
+    trail = "⋅", -- "⋅" "·"
+    tab = "  ", -- "→ "
+    extends = " ", -- "»"
+    precedes = " ", -- "«"
+    nbsp = " ", -- "␣"
 }
 
 -- Local configs.
