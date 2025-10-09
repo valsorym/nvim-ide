@@ -17,13 +17,17 @@ return {
                 transparent_background = false,
                 show_end_of_buffer = false,
                 term_colors = true,
-                dim_inactive = { enabled = true, shade = "dark", percentage = 0.15 },
+                dim_inactive = {
+                    enabled = true,
+                    shade = "dark",
+                    percentage = 0.15
+                },
                 no_italic = false,
                 no_bold = false,
                 no_underline = false,
                 styles = {
                     comments = {"italic"},
-                    conditionals = {"italic"},
+                    conditionals = {},
                     loops = {},
                     functions = {},
                     keywords = {},
@@ -46,7 +50,6 @@ return {
                     markdown = true,
                     native_lsp = {
                         enabled = true,
-                        -- Do not style text for diagnostics at all.
                         virtual_text = {
                             errors = {},
                             hints = {},
@@ -65,27 +68,61 @@ return {
                 custom_highlights = function(colors)
                     return {
                         -- Muted comments for all filetypes.
-                        Comment = { fg = colors.overlay0, style = {"italic"} },
+                        Comment = {
+                            fg = colors.overlay0,
+                            style = {"italic"}
+                        },
 
                         -- Jinja2/Django template comments.
-                        jinjaComment = { fg = colors.overlay0, style = {"italic"} },
+                        jinjaComment = {
+                            fg = colors.overlay0,
+                            style = {"italic"}
+                        },
                         jinjaTagDelim = { fg = colors.overlay1 },
                         jinjaVarDelim = { fg = colors.overlay1 },
                         jinjaString = { fg = colors.green },
                         jinjaFilter = { fg = colors.mauve },
 
                         -- HTML comments in templates.
-                        htmlComment = { fg = colors.overlay0, style = {"italic"} },
-                        htmlCommentPart = { fg = colors.overlay0, style = {"italic"} },
+                        htmlComment = {
+                            fg = colors.overlay0,
+                            style = {"italic"}
+                        },
+                        htmlCommentPart = {
+                            fg = colors.overlay0,
+                            style = {"italic"}
+                        },
                     }
                 end,
             })
 
-            -- Enforce "signs only": no underline/undercurl/italic on text.
+            -- Universal function to disable Python italics
+            local function disable_python_italics()
+                local no_italic_groups = {
+                    "@lsp.type.namespace.python",
+                    "@namespace.python",
+                    "@module.python",
+                    "@lsp.type.module.python",
+                    "@field.python",
+                    "@variable.member.python",
+                    "@property.python",
+                    "@lsp.type.property.python",
+                    "@lsp.typemod.variable.readonly.python",
+                    "@lsp.type.class.python",
+                    "TSNamespace",
+                    "TSField",
+                }
+
+                for _, group in ipairs(no_italic_groups) do
+                    pcall(vim.api.nvim_set_hl, 0, group, {
+                        italic = false
+                    })
+                end
+            end
+
+            -- Enforce "signs only": no underline/undercurl
             local function enforce_signs_only()
-                -- Turn off diagnostic underlines globally.
                 vim.diagnostic.config({ underline = false })
-                -- Neutralize underline highlight groups (any colorscheme).
                 local groups = {
                     "DiagnosticUnderlineError",
                     "DiagnosticUnderlineWarn",
@@ -102,11 +139,8 @@ return {
                 end
             end
 
-            enforce_signs_only()
-
             -- Disable underline/italic for LSP diagnostics on text
             local function disable_diagnostic_text_styling()
-                -- Remove underlines from diagnostics
                 vim.api.nvim_set_hl(0, "DiagnosticUnderlineError", {
                     underline = false,
                     undercurl = false,
@@ -131,10 +165,8 @@ return {
                     italic = false,
                     sp = "NONE"
                 })
-
-                -- Remove italic from unnecessary/deprecated code
                 vim.api.nvim_set_hl(0, "DiagnosticUnnecessary", {
-                    fg = "#6c7086",  -- muted color
+                    fg = "#6c7086",
                     italic = false,
                     underline = false
                 })
@@ -144,8 +176,6 @@ return {
                     underline = false
                 })
             end
-
-            disable_diagnostic_text_styling()
 
             -- Muted comments for Jinja/Django templates
             local function setup_template_colors()
@@ -167,54 +197,84 @@ return {
                 })
             end
 
+            -- Apply immediately
+            enforce_signs_only()
+            disable_diagnostic_text_styling()
             setup_template_colors()
+            disable_python_italics()
 
+            -- Re-apply after colorscheme changes
             vim.api.nvim_create_autocmd("ColorScheme", {
-                callback = disable_diagnostic_text_styling
+                callback = function()
+                    disable_diagnostic_text_styling()
+                    enforce_signs_only()
+                    setup_template_colors()
+                    -- Delay to ensure theme is fully loaded
+                    vim.defer_fn(disable_python_italics, 50)
+                end,
             })
 
-            vim.api.nvim_create_autocmd("ColorScheme", {
-                callback = enforce_signs_only
+            -- Re-apply after LSP attaches (guarantees fix)
+            vim.api.nvim_create_autocmd("LspAttach", {
+                callback = function()
+                    vim.defer_fn(disable_python_italics, 100)
+                end,
             })
+
+            -- Re-apply when opening Python files
+            vim.api.nvim_create_autocmd("FileType", {
+                pattern = "python",
+                callback = function()
+                    vim.defer_fn(disable_python_italics, 150)
+                end,
+            })
+
+            -- Expose function globally for manual use
+            _G.DisablePythonItalics = disable_python_italics
+
+            -- Create user command
+            vim.api.nvim_create_user_command(
+                "DisablePythonItalics",
+                disable_python_italics,
+                { desc = "Disable italic for Python namespaces" }
+            )
         end
 
     },
     -- Tokyo Night theme
     {
         "folke/tokyonight.nvim",
-        lazy = false, -- Changed to false to load theme on startup
+        lazy = false,
         priority = 999,
         config = function()
-            require("tokyonight").setup(
-                {
-                    style = "night", -- storm, moon, night, day
-                    light_style = "day",
-                    transparent = false,
-                    terminal_colors = true,
-                    styles = {
-                        comments = {italic = true},
-                        keywords = {italic = true},
-                        functions = {},
-                        variables = {},
-                        sidebars = "dark",
-                        floats = "dark"
-                    },
-                    sidebars = {"qf", "help"},
-                    day_brightness = 0.3,
-                    hide_inactive_statusline = false,
-                    dim_inactive = true,
-                    lualine_bold = false
-                }
-            )
+            require("tokyonight").setup({
+                style = "night",
+                light_style = "day",
+                transparent = false,
+                terminal_colors = true,
+                styles = {
+                    comments = {italic = true},
+                    keywords = {italic = true},
+                    functions = {},
+                    variables = {},
+                    sidebars = "dark",
+                    floats = "dark"
+                },
+                sidebars = {"qf", "help"},
+                day_brightness = 0.3,
+                hide_inactive_statusline = false,
+                dim_inactive = true,
+                lualine_bold = false
+            })
         end
     },
     -- Gruvbox Material theme
     {
         "sainnhe/gruvbox-material",
-        lazy = false, -- Changed to false to load theme on startup
+        lazy = false,
         priority = 998,
         config = function()
-            vim.g.gruvbox_material_background = "medium" -- hard, medium, soft
+            vim.g.gruvbox_material_background = "medium"
             vim.g.gruvbox_material_better_performance = 1
             vim.g.gruvbox_material_enable_italic = 1
             vim.g.gruvbox_material_disable_italic_comment = 0
@@ -227,45 +287,43 @@ return {
     -- Kanagawa theme
     {
         "rebelot/kanagawa.nvim",
-        lazy = false, -- Changed to false to load theme on startup
+        lazy = false,
         priority = 997,
         config = function()
-            require("kanagawa").setup(
-                {
-                    compile = false,
-                    undercurl = true,
-                    commentStyle = {italic = true},
-                    functionStyle = {},
-                    keywordStyle = {italic = true},
-                    statementStyle = {bold = true},
-                    typeStyle = {},
-                    transparent = false,
-                    dimInactive = false,
-                    terminalColors = true,
-                    colors = {
-                        palette = {},
-                        theme = {
-                            wave = {},
-                            lotus = {},
-                            dragon = {},
-                            all = {
-                                ui = {
-                                    bg_gutter = "none"
-                                }
+            require("kanagawa").setup({
+                compile = false,
+                undercurl = true,
+                commentStyle = {italic = true},
+                functionStyle = {},
+                keywordStyle = {italic = true},
+                statementStyle = {bold = true},
+                typeStyle = {},
+                transparent = false,
+                dimInactive = false,
+                terminalColors = true,
+                colors = {
+                    palette = {},
+                    theme = {
+                        wave = {},
+                        lotus = {},
+                        dragon = {},
+                        all = {
+                            ui = {
+                                bg_gutter = "none"
                             }
                         }
-                    },
-                    overrides = function(colors)
-                        return {}
-                    end
-                }
-            )
+                    }
+                },
+                overrides = function(colors)
+                    return {}
+                end
+            })
         end
     },
     -- Nord theme
     {
         "shaunsingh/nord.nvim",
-        lazy = false, -- Changed to false to load theme on startup
+        lazy = false,
         priority = 996,
         config = function()
             vim.g.nord_contrast = true
@@ -279,30 +337,31 @@ return {
     -- One Dark theme
     {
         "navarasu/onedark.nvim",
-        lazy = false, -- Changed to false to load theme on startup
+        lazy = false,
         priority = 995,
         config = function()
-            require("onedark").setup(
-                {
-                    style = "dark", -- dark, darker, cool, deep, warm, warmer, light
-                    transparent = false,
-                    term_colors = true,
-                    ending_tildes = false,
-                    cmp_itemkind_reverse = false,
-                    toggle_style_key = nil,
-                    toggle_style_list = {"dark", "darker", "cool", "deep", "warm", "warmer", "light"},
-                    code_style = {
-                        comments = "italic",
-                        keywords = "none",
-                        functions = "none",
-                        strings = "none",
-                        variables = "none"
-                    },
-                    lualine = {
-                        transparent = false
-                    }
+            require("onedark").setup({
+                style = "dark",
+                transparent = false,
+                term_colors = true,
+                ending_tildes = false,
+                cmp_itemkind_reverse = false,
+                toggle_style_key = nil,
+                toggle_style_list = {
+                    "dark", "darker", "cool",
+                    "deep", "warm", "warmer", "light"
+                },
+                code_style = {
+                    comments = "italic",
+                    keywords = "none",
+                    functions = "none",
+                    strings = "none",
+                    variables = "none"
+                },
+                lualine = {
+                    transparent = false
                 }
-            )
+            })
         end
     },
     -- Theme switcher plugin
@@ -322,7 +381,8 @@ return {
             },
             {
                 "<leader>ud",
-                "<cmd>lua print(vim.inspect(vim.fn.getcompletion('', 'color')))<cr>",
+                "<cmd>lua print(vim.inspect(" ..
+                    "vim.fn.getcompletion('', 'color')))<cr>",
                 desc = "Debug available themes"
             },
             {
@@ -332,7 +392,6 @@ return {
             }
         },
         config = function()
-            -- Enhanced favorite themes list with all available variants
             local favorite_themes = {
                 "catppuccin",
                 "catppuccin-latte",
@@ -353,7 +412,6 @@ return {
                 "onedark"
             }
 
-            -- Function to check if theme is available and favorite
             local function is_favorite(theme_name)
                 for _, fav in ipairs(favorite_themes) do
                     if theme_name == fav then
@@ -363,9 +421,7 @@ return {
                 return false
             end
 
-            -- Function to ensure all theme plugins are loaded
             local function ensure_themes_loaded()
-                -- Force load all theme plugins if not already loaded
                 local theme_plugins = {
                     "tokyonight.nvim",
                     "gruvbox-material",
@@ -380,30 +436,22 @@ return {
                     end
                 end
 
-                -- Small delay to ensure themes are properly registered
-                vim.defer_fn(
-                    function()
-                    end,
-                    50
-                )
+                vim.defer_fn(function() end, 50)
             end
 
-            -- Custom theme switcher with favorites prioritized
             local function theme_switcher()
-                -- Ensure all themes are loaded first
                 ensure_themes_loaded()
 
                 local pickers = require("telescope.pickers")
                 local finders = require("telescope.finders")
                 local conf = require("telescope.config").values
                 local actions = require("telescope.actions")
-                local action_state = require("telescope.actions.state")
+                local action_state =
+                    require("telescope.actions.state")
                 local previewers = require("telescope.previewers")
 
-                -- Get all available colorschemes after ensuring plugins are loaded
                 local all_themes = vim.fn.getcompletion("", "color")
 
-                -- Separate favorites and others
                 local favorites = {}
                 local others = {}
 
@@ -415,130 +463,124 @@ return {
                     end
                 end
 
-                -- Sort favorites to match our preferred order
-                table.sort(
-                    favorites,
-                    function(a, b)
-                        local clean_a = a:gsub("^★ ", "")
-                        local clean_b = b:gsub("^★ ", "")
+                table.sort(favorites, function(a, b)
+                    local clean_a = a:gsub("^★ ", "")
+                    local clean_b = b:gsub("^★ ", "")
 
-                        local index_a = 999
-                        local index_b = 999
+                    local index_a = 999
+                    local index_b = 999
 
-                        for i, fav in ipairs(favorite_themes) do
-                            if clean_a == fav then
-                                index_a = i
-                            end
-                            if clean_b == fav then
-                                index_b = i
-                            end
+                    for i, fav in ipairs(favorite_themes) do
+                        if clean_a == fav then
+                            index_a = i
                         end
-
-                        return index_a < index_b
+                        if clean_b == fav then
+                            index_b = i
+                        end
                     end
-                )
 
-                -- Combine with favorites first
+                    return index_a < index_b
+                end)
+
                 local all_entries = {}
                 vim.list_extend(all_entries, favorites)
 
                 if #others > 0 then
-                    table.insert(all_entries, "") -- separator
+                    table.insert(all_entries, "")
                     table.insert(all_entries, "--- Other Themes ---")
-                    table.insert(all_entries, "") -- separator
+                    table.insert(all_entries, "")
                     vim.list_extend(all_entries, others)
                 end
 
-                pickers.new(
-                    {},
-                    {
-                        prompt_title = "Choose Colorscheme (" .. #favorites .. " favorites, " .. #others .. " others)",
-                        finder = finders.new_table(
-                            {
-                                results = all_entries,
-                                entry_maker = function(entry)
-                                    if entry == "" or entry == "--- Other Themes ---" then
-                                        return {
-                                            value = entry,
-                                            display = entry,
-                                            ordinal = entry,
-                                            selectable = false
-                                        }
-                                    end
+                pickers.new({}, {
+                    prompt_title = "Choose Colorscheme (" ..
+                        #favorites .. " favorites, " ..
+                        #others .. " others)",
+                    finder = finders.new_table({
+                        results = all_entries,
+                        entry_maker = function(entry)
+                            if entry == "" or
+                                entry == "--- Other Themes ---" then
+                                return {
+                                    value = entry,
+                                    display = entry,
+                                    ordinal = entry,
+                                    selectable = false
+                                }
+                            end
 
-                                    local clean_name = entry:gsub("^[★ ]*", "")
-                                    return {
-                                        value = clean_name,
-                                        display = entry,
-                                        ordinal = clean_name
-                                    }
-                                end
+                            local clean_name =
+                                entry:gsub("^[★ ]*", "")
+                            return {
+                                value = clean_name,
+                                display = entry,
+                                ordinal = clean_name
                             }
-                        ),
-                        sorter = conf.generic_sorter({}),
-                        previewer = previewers.new_termopen_previewer(
-                            {
-                                get_command = function(entry)
-                                    if entry and entry.selectable ~= false and entry.value ~= "" then
-                                        return {
-                                            "sh",
-                                            "-c",
-                                            string.format('echo "Theme: %s"', entry.value)
-                                        }
-                                    end
-                                    return {"echo", ""}
-                                end
-                            }
-                        ),
-                        attach_mappings = function(prompt_bufnr, map)
-                            map(
-                                "i",
-                                "<CR>",
-                                function()
-                                    local selection = action_state.get_selected_entry()
-                                    if selection and selection.value ~= "" and selection.selectable ~= false then
-                                        pcall(
-                                            function()
-                                                vim.cmd("colorscheme " .. selection.value)
-                                                local file =
-                                                    io.open(vim.fn.stdpath("config") .. "/.last_colorscheme", "w")
-                                                if file then
-                                                    file:write(selection.value)
-                                                    file:close()
-                                                    vim.notify(
-                                                        "Theme applied: " .. selection.value,
-                                                        vim.log.levels.INFO
-                                                    )
-                                                end
-                                            end
+                        end
+                    }),
+                    sorter = conf.generic_sorter({}),
+                    previewer = previewers.new_termopen_previewer({
+                        get_command = function(entry)
+                            if entry and
+                                entry.selectable ~= false and
+                                entry.value ~= "" then
+                                return {
+                                    "sh", "-c",
+                                    string.format(
+                                        'echo "Theme: %s"',
+                                        entry.value
+                                    )
+                                }
+                            end
+                            return {"echo", ""}
+                        end
+                    }),
+                    attach_mappings = function(prompt_bufnr, map)
+                        map("i", "<CR>", function()
+                            local selection =
+                                action_state.get_selected_entry()
+                            if selection and
+                                selection.value ~= "" and
+                                selection.selectable ~= false then
+                                pcall(function()
+                                    vim.cmd("colorscheme " ..
+                                        selection.value)
+                                    local file = io.open(
+                                        vim.fn.stdpath("config") ..
+                                        "/.last_colorscheme", "w"
+                                    )
+                                    if file then
+                                        file:write(selection.value)
+                                        file:close()
+                                        vim.notify(
+                                            "Theme applied: " ..
+                                            selection.value,
+                                            vim.log.levels.INFO
                                         )
                                     end
-                                    actions.close(prompt_bufnr)
-                                end
-                            )
+                                end)
+                            end
+                            actions.close(prompt_bufnr)
+                        end)
 
-                            return true
-                        end
-                    }
-                ):find()
+                        return true
+                    end
+                }):find()
             end
 
-            -- Permanent theme switcher with confirmation
             local function theme_switcher_permanent()
-                -- Ensure all themes are loaded first
                 ensure_themes_loaded()
 
                 local pickers = require("telescope.pickers")
                 local finders = require("telescope.finders")
                 local conf = require("telescope.config").values
                 local actions = require("telescope.actions")
-                local action_state = require("telescope.actions.state")
+                local action_state =
+                    require("telescope.actions.state")
                 local previewers = require("telescope.previewers")
 
-                -- Get all available colorschemes
                 local all_themes = vim.fn.getcompletion("", "color")
 
-                -- Separate favorites and others
                 local favorites = {}
                 local others = {}
 
@@ -550,123 +592,115 @@ return {
                     end
                 end
 
-                -- Sort favorites to match our preferred order
-                table.sort(
-                    favorites,
-                    function(a, b)
-                        local clean_a = a:gsub("^★ ", "")
-                        local clean_b = b:gsub("^★ ", "")
+                table.sort(favorites, function(a, b)
+                    local clean_a = a:gsub("^★ ", "")
+                    local clean_b = b:gsub("^★ ", "")
 
-                        local index_a = 999
-                        local index_b = 999
+                    local index_a = 999
+                    local index_b = 999
 
-                        for i, fav in ipairs(favorite_themes) do
-                            if clean_a == fav then
-                                index_a = i
-                            end
-                            if clean_b == fav then
-                                index_b = i
-                            end
+                    for i, fav in ipairs(favorite_themes) do
+                        if clean_a == fav then
+                            index_a = i
                         end
-
-                        return index_a < index_b
+                        if clean_b == fav then
+                            index_b = i
+                        end
                     end
-                )
 
-                -- Combine with favorites first
+                    return index_a < index_b
+                end)
+
                 local all_entries = {}
                 vim.list_extend(all_entries, favorites)
 
                 if #others > 0 then
-                    table.insert(all_entries, "") -- separator
+                    table.insert(all_entries, "")
                     table.insert(all_entries, "--- Other Themes ---")
-                    table.insert(all_entries, "") -- separator
+                    table.insert(all_entries, "")
                     vim.list_extend(all_entries, others)
                 end
 
-                pickers.new(
-                    {},
-                    {
-                        prompt_title = "Set Permanent Theme",
-                        finder = finders.new_table(
-                            {
-                                results = all_entries,
-                                entry_maker = function(entry)
-                                    if entry == "" or entry == "--- Other Themes ---" then
-                                        return {
-                                            value = entry,
-                                            display = entry,
-                                            ordinal = entry,
-                                            selectable = false
-                                        }
-                                    end
+                pickers.new({}, {
+                    prompt_title = "Set Permanent Theme",
+                    finder = finders.new_table({
+                        results = all_entries,
+                        entry_maker = function(entry)
+                            if entry == "" or
+                                entry == "--- Other Themes ---" then
+                                return {
+                                    value = entry,
+                                    display = entry,
+                                    ordinal = entry,
+                                    selectable = false
+                                }
+                            end
 
-                                    local clean_name = entry:gsub("^[★ ]*", "")
-                                    return {
-                                        value = clean_name,
-                                        display = entry,
-                                        ordinal = clean_name
-                                    }
-                                end
+                            local clean_name =
+                                entry:gsub("^[★ ]*", "")
+                            return {
+                                value = clean_name,
+                                display = entry,
+                                ordinal = clean_name
                             }
-                        ),
-                        sorter = conf.generic_sorter({}),
-                        previewer = previewers.new_termopen_previewer(
-                            {
-                                get_command = function(entry)
-                                    if entry and entry.selectable ~= false and entry.value ~= "" then
-                                        return {
-                                            "sh",
-                                            "-c",
-                                            string.format('echo "Theme: %s"', entry.value)
-                                        }
-                                    end
-                                    return {"echo", ""}
-                                end
-                            }
-                        ),
-                        attach_mappings = function(prompt_bufnr, map)
-                            map(
-                                "i",
-                                "<CR>",
-                                function()
-                                    local selection = action_state.get_selected_entry()
-                                    if selection and selection.value ~= "" and selection.selectable ~= false then
-                                        pcall(
-                                            function()
-                                                -- Apply theme
-                                                vim.cmd("colorscheme " .. selection.value)
-
-                                                -- Save permanently
-                                                local file =
-                                                    io.open(vim.fn.stdpath("config") .. "/.last_colorscheme", "w")
-                                                if file then
-                                                    file:write(selection.value)
-                                                    file:close()
-                                                end
-
-                                                -- Confirmation message
-                                                vim.notify(
-                                                    "Permanent theme set: " .. selection.value,
-                                                    vim.log.levels.INFO
-                                                )
-                                            end
-                                        )
-                                    end
-                                    actions.close(prompt_bufnr)
-                                end
-                            )
-
-                            return true
                         end
-                    }
-                ):find()
+                    }),
+                    sorter = conf.generic_sorter({}),
+                    previewer = previewers.new_termopen_previewer({
+                        get_command = function(entry)
+                            if entry and
+                                entry.selectable ~= false and
+                                entry.value ~= "" then
+                                return {
+                                    "sh", "-c",
+                                    string.format(
+                                        'echo "Theme: %s"',
+                                        entry.value
+                                    )
+                                }
+                            end
+                            return {"echo", ""}
+                        end
+                    }),
+                    attach_mappings = function(prompt_bufnr, map)
+                        map("i", "<CR>", function()
+                            local selection =
+                                action_state.get_selected_entry()
+                            if selection and
+                                selection.value ~= "" and
+                                selection.selectable ~= false then
+                                pcall(function()
+                                    vim.cmd("colorscheme " ..
+                                        selection.value)
+
+                                    local file = io.open(
+                                        vim.fn.stdpath("config") ..
+                                        "/.last_colorscheme", "w"
+                                    )
+                                    if file then
+                                        file:write(selection.value)
+                                        file:close()
+                                    end
+
+                                    vim.notify(
+                                        "Permanent theme set: " ..
+                                        selection.value,
+                                        vim.log.levels.INFO
+                                    )
+                                end)
+                            end
+                            actions.close(prompt_bufnr)
+                        end)
+
+                        return true
+                    end
+                }):find()
             end
 
-            -- Current theme info command
             local function show_current_theme()
                 local current = vim.g.colors_name or "none"
-                local saved_file = vim.fn.stdpath("config") .. "/.last_colorscheme"
+                local saved_file = vim.fn.stdpath("config") ..
+                    "/.last_colorscheme"
                 local file = io.open(saved_file, "r")
                 local saved = "none"
                 if file then
@@ -674,7 +708,6 @@ return {
                     file:close()
                 end
 
-                -- Get all available themes for debugging
                 ensure_themes_loaded()
                 local all_themes = vim.fn.getcompletion("", "color")
                 local favorite_count = 0
@@ -686,69 +719,57 @@ return {
 
                 print("Current theme: " .. current)
                 print("Saved theme: " .. saved)
-                print("Available themes: " .. #all_themes .. " (" .. favorite_count .. " favorites)")
+                print("Available themes: " .. #all_themes ..
+                    " (" .. favorite_count .. " favorites)")
 
                 if current ~= saved then
-                    print("Theme changed temporarily. Use <leader>us to make permanent.")
+                    print("Theme changed temporarily. " ..
+                        "Use <leader>us to make permanent.")
                 end
             end
 
-            -- Create commands
             vim.api.nvim_create_user_command(
                 "ThemeSwitcher",
                 theme_switcher,
-                {
-                    desc = "Open theme switcher with preview"
-                }
+                { desc = "Open theme switcher with preview" }
             )
 
             vim.api.nvim_create_user_command(
                 "ThemeSwitcherPermanent",
                 theme_switcher_permanent,
-                {
-                    desc = "Open theme switcher and save permanently"
-                }
+                { desc = "Open theme switcher and save permanently" }
             )
 
             vim.api.nvim_create_user_command(
                 "ThemeInfo",
                 show_current_theme,
-                {
-                    desc = "Show current and saved theme info"
-                }
+                { desc = "Show current and saved theme info" }
             )
 
-            -- Auto-apply last used theme on startup
-            vim.api.nvim_create_autocmd(
-                "VimEnter",
-                {
-                    callback = function()
-                        -- Ensure all theme plugins are loaded
-                        ensure_themes_loaded()
+            vim.api.nvim_create_autocmd("VimEnter", {
+                callback = function()
+                    ensure_themes_loaded()
 
-                        local last_theme_file = vim.fn.stdpath("config") .. "/.last_colorscheme"
-                        local file = io.open(last_theme_file, "r")
-                        if file then
-                            local last_theme = file:read("*all"):gsub("\n", "")
-                            file:close()
-                            if last_theme and last_theme ~= "" then
-                                pcall(
-                                    function()
-                                        vim.cmd("colorscheme " .. last_theme)
-                                    end
-                                )
-                                return
-                            end
+                    local last_theme_file =
+                        vim.fn.stdpath("config") ..
+                        "/.last_colorscheme"
+                    local file = io.open(last_theme_file, "r")
+                    if file then
+                        local last_theme =
+                            file:read("*all"):gsub("\n", "")
+                        file:close()
+                        if last_theme and last_theme ~= "" then
+                            pcall(function()
+                                vim.cmd("colorscheme " .. last_theme)
+                            end)
+                            return
                         end
-                        -- Default theme if no saved preference
-                        pcall(
-                            function()
-                                vim.cmd.colorscheme("catppuccin")
-                            end
-                        )
                     end
-                }
-            )
+                    pcall(function()
+                        vim.cmd.colorscheme("catppuccin")
+                    end)
+                end
+            })
         end
     }
 }
