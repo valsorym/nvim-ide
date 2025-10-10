@@ -469,6 +469,38 @@ return {
             on_attach = function(bufnr)
                 api.config.mappings.default_on_attach(bufnr)
 
+                -- -- Enter: folder toggle / file open with tab logic.
+                -- vim.keymap.set("n", "<CR>", function()
+                --     local node = api.tree.get_node_under_cursor()
+                --     if not node then return end
+                --     if node.type == "directory" then
+                --         api.node.open.edit()
+                --         return
+                --     end
+                --     local file = normalize(node.absolute_path)
+                --     local tab = find_tab_for_file(file)
+                --     api.tree.close()
+                --     if tab then
+                --         vim.cmd(tostring(tab) .. "tabnext")
+                --         return
+                --     end
+
+                --     local open_cmd = on_dashboard() and "edit" or "tabnew"
+                --     local ok, err = pcall(function()
+                --         vim.cmd(open_cmd .. " " .. vim.fn.fnameescape(file))
+                --     end)
+
+                --     if not ok then
+                --         if err:match("E325") then
+                --             vim.notify("Swap file detected. Use :e! to force open",
+                --                 vim.log.levels.WARN)
+                --         else
+                --             vim.notify("Error opening file: " .. tostring(err),
+                --                 vim.log.levels.ERROR)
+                --         end
+                --     end
+                -- end, { buffer = bufnr, desc = "Open / toggle" })
+
                 -- Enter: folder toggle / file open with tab logic.
                 vim.keymap.set("n", "<CR>", function()
                     local node = api.tree.get_node_under_cursor()
@@ -485,7 +517,10 @@ return {
                         return
                     end
 
-                    local open_cmd = on_dashboard() and "edit" or "tabnew"
+                    -- Always open in new tab at the end
+                    local total_tabs = vim.fn.tabpagenr("$")
+                    local open_cmd = on_dashboard() and "edit" or "tablast | tabnew"
+
                     local ok, err = pcall(function()
                         vim.cmd(open_cmd .. " " .. vim.fn.fnameescape(file))
                     end)

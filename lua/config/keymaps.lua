@@ -142,6 +142,39 @@ function M.setup()
                         if prev_attach then
                             prev_attach(prompt_bufnr, map_local)
                         end
+                        -- local function select_tab()
+                        --     local e = state.get_selected_entry()
+                        --     if not e then
+                        --         return
+                        --     end
+                        --     local file = e.path or e.filename or e.value
+                        --     if (not file or file == "") and e.bufnr then
+                        --         file = vim.api.nvim_buf_get_name(e.bufnr)
+                        --     end
+                        --     if not file or file == "" then
+                        --         return actions.select_default(prompt_bufnr)
+                        --     end
+                        --     actions.close(prompt_bufnr)
+
+                        --     -- Check if the current tab is Dashboard.
+                        --     local current_buf = vim.api.nvim_get_current_buf()
+                        --     local current_filetype = vim.bo[current_buf].filetype
+                        --     local current_name = vim.fn.bufname(current_buf)
+
+                        --     if current_filetype == "dashboard" or
+                        --     (current_name == "" and not vim.bo[current_buf].modified) then
+                        --         -- Replace the current tab instead of creating a new one.
+                        --         vim.cmd("edit " .. vim.fn.fnameescape(file))
+                        --     else
+                        --         -- Use tab drop for other cases.
+                        --         vim.cmd("tab drop " .. vim.fn.fnameescape(file))
+                        --     end
+
+                        --     local ln = e.lnum or e.row or 1
+                        --     local cl = math.max((e.col or 1) - 1, 0)
+                        --     pcall(vim.api.nvim_win_set_cursor, 0, {ln, cl})
+                        --     vim.cmd("normal! zz")
+                        -- end
                         local function select_tab()
                             local e = state.get_selected_entry()
                             if not e then
@@ -163,11 +196,11 @@ function M.setup()
 
                             if current_filetype == "dashboard" or
                             (current_name == "" and not vim.bo[current_buf].modified) then
-                                -- Replace the current tab instead of creating a new one.
+                                -- Replace the current tab instead of creating new one.
                                 vim.cmd("edit " .. vim.fn.fnameescape(file))
                             else
-                                -- Use tab drop for other cases.
-                                vim.cmd("tab drop " .. vim.fn.fnameescape(file))
+                                -- Always open at the end instead of using tab drop
+                                vim.cmd("tablast | tabnew " .. vim.fn.fnameescape(file))
                             end
 
                             local ln = e.lnum or e.row or 1
