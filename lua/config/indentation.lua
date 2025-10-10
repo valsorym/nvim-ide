@@ -158,6 +158,18 @@ function M.setup()
             vim.opt_local.softtabstop = 4
         end
     })
+
+    -- Makefile - MUST use real tabs
+    vim.api.nvim_create_autocmd("FileType", {
+        group = indent_group,
+        pattern = "make",
+        callback = function()
+            vim.opt_local.expandtab = false    -- real tabs required
+            vim.opt_local.tabstop = 4          -- tab width = 4 spaces
+            vim.opt_local.shiftwidth = 4       -- indent width = 4 spaces
+            vim.opt_local.softtabstop = 0      -- no mixing
+        end
+    })
 end
 
 -- Utility functions for indentation conversion

@@ -50,13 +50,12 @@ local function tab_label(n, style)
     return string.format(" %d. %s ", n, label)
 end
 
--- Tabline renderer.
+-- Tabline renderer with fully balanced scroll window.
 local function tab_name(style)
-    local s = ""
     local tabs = vim.fn.tabpagenr("$")
     local current = vim.fn.tabpagenr()
 
-    -- Always show tabline if more than one tab OR if current tab is not dashboard
+    -- Determine visibility.
     local should_show = true
     if tabs == 1 then
         local buf = vim.fn.tabpagebuflist(1)[1]
@@ -64,27 +63,81 @@ local function tab_name(style)
             should_show = false
         end
     end
-
     if not should_show then
-        local current_buf = vim.api.nvim_get_current_buf()
-        local filetype = vim.bo[current_buf].filetype
-        local bufname = vim.fn.bufname(current_buf)
-        should_show = filetype ~= "Dashboard" or bufname ~= ""
+        local buf = vim.api.nvim_get_current_buf()
+        should_show = vim.bo[buf].filetype ~= "Dashboard"
+    end
+    if not should_show then
+        return ""
     end
 
-    if should_show then
-        for i = 1, tabs do
-            if i == current then
-                s = s .. "%#TabLineSel#"
-            else
-                s = s .. "%#TabLine#"
-            end
-            s = s .. "%" .. i .. "T" .. tab_label(i, style) .. " ▕"
+    -- Layout parameters.
+    local visible_width = vim.o.columns
+    local tab_est_width = 25
+    local reserved = 8 -- space for indicators
+    local max_tabs_visible = math.floor((visible_width - reserved) / tab_est_width)
+
+    local start_tab, end_tab
+    if tabs <= max_tabs_visible then
+        start_tab = 1
+        end_tab = tabs
+    else
+        local context_left = math.floor(max_tabs_visible / 2)
+        local context_right = max_tabs_visible - context_left - 1
+        start_tab = math.max(1, current - context_left)
+        end_tab = math.min(tabs, current + context_right)
+
+        -- Compensation if there is a left indicator.
+        if start_tab > 1 then
+            start_tab = start_tab + 0 -- keep as is
         end
-        s = s .. "%#TabLineFill#%T"
+        -- Compensation if there is a right indicator.
+        if end_tab < tabs then
+            local visible = end_tab - start_tab + 1
+            if visible < max_tabs_visible then
+                end_tab = math.min(tabs, start_tab + max_tabs_visible - 1)
+            end
+        end
+        -- Adjust left if still not enough tabs are visible.
+        if end_tab - start_tab + 1 < max_tabs_visible and start_tab > 1 then
+            start_tab = math.max(1, end_tab - max_tabs_visible + 1)
+        end
     end
 
-    return s
+    local parts = {}
+
+    -- Left indicator.
+    if start_tab > 1 then
+        -- Show only if there are hidden tabs on the left.
+        if current > start_tab then
+            table.insert(parts, "%#TabLineFill#<" .. (start_tab - 1) .. " ")
+        else
+            table.insert(parts, "%#TabLineFill# ") -- empty space without arrow
+        end
+    else
+        table.insert(parts, "%#TabLineFill# ")
+    end
+
+    -- Tabs.
+    for i = start_tab, end_tab do
+        table.insert(parts, i == current and "%#TabLineSel#" or "%#TabLine#")
+        table.insert(parts, "%" .. i .. "T" .. tab_label(i, style))
+        if i < end_tab then
+            table.insert(parts, " |")
+        end
+    end
+
+    -- Right indicator.
+    if end_tab < tabs then
+        table.insert(parts, "%#TabLineFill# " .. (tabs - end_tab) .. ">")
+    end
+
+    -- Close tab targets, but do NOT fill full width.
+    table.insert(parts, "%T")
+    table.insert(parts, "%#TabLineFill#")
+    local line = table.concat(parts, "")
+    line = line:gsub("%s+$", "") -- remove trailing spaces
+    return line
 end
 
 -- Auto-move modified tab to the right with protection.
@@ -196,6 +249,15 @@ function M.setup()
             vim.defer_fn(close_duplicate_tabs, 100)
         end,
         desc = "Close duplicate tabs"
+    })
+
+    -- Update tabline when switching tabs to show active tab
+    vim.api.nvim_create_autocmd("TabEnter", {
+        group = tab_group,
+        callback = function()
+            vim.cmd("redrawtabline")
+        end,
+        desc = "Update tabline scroll position"
     })
 end
 

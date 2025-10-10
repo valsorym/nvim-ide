@@ -292,11 +292,24 @@ function M.setup()
     map("n", "<A-l>", ":+tabmove<CR>", {desc = "Move tab right"})
 
     -- Tab navigation with F keys.
-    map("n", "<F5>", ":tabprevious<CR>", {desc = "Previous tab"})
-    map("n", "<F6>", ":tabnext<CR>", {desc = "Next tab"})
+    -- map("n", "<F5>", ":tabprevious<CR>", {desc = "Previous tab"})
+    -- map("n", "<F6>", ":tabnext<CR>", {desc = "Next tab"})
+    map("n", "<F5>", function()
+        local current = vim.fn.tabpagenr()
+        if current > 1 then
+            vim.cmd("tabprevious")
+        end
+    end, {desc = "Previous tab"})
+
+    map("n", "<F6>", function()
+        local current = vim.fn.tabpagenr()
+        local total = vim.fn.tabpagenr("$")
+        if current < total then
+            vim.cmd("tabnext")
+        end
+    end, {desc = "Next tab"})
 
     -- WORKSPACE / SESSIONS (<leader>w)
-
     map("n", "<leader>wq", smart_tab_close, {desc = "Smart close tab"})
     map("n", "<leader>wA", ":qa<CR>", {desc = "Close all tabs and exit"})
     map("n", "<leader>wQ", force_close_tab, {desc = "Force close tab"})
