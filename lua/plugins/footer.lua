@@ -13,16 +13,18 @@ return {
 
         -- ICONS
         local icons = {
-            branch = "",     -- nf-dev-git_branch
-            added = "",      -- nf-fa-plus
-            changed = "",    -- nf-fa-exclamation_circle
-            removed = "",    -- nf-fa-minus
-            lock = "",       -- nf-fa-lock
+            branch = "",     -- nf-dev-git_branch
+            added = "",      -- nf-fa-plus
+            changed = "",    -- nf-fa-exclamation_circle
+            removed = "",    -- nf-fa-minus
+            lock = "",       -- nf-fa-lock
             new = "󰎔",        -- nf-md-new_box
-            python = "",     -- nf-dev-python
-            line = "",       -- nf-pom-line
-            col = "",        -- nf-pom-col
-            lsp = "",        -- nf-fa-cog
+            python = "",     -- nf-dev-python
+            line = "",       -- nf-pom-line
+            col = "",        -- nf-pom-col
+            lsp = "",        -- nf-fa-cog
+            spaces = "󱁐",    -- nf-md-space
+            tab = "󰌒",       -- nf-md-tab
             sep = "│",
         }
 
@@ -37,13 +39,15 @@ return {
                 table.insert(parts, icons.added .. " " .. gs.added)
             end
             if (gs.changed or 0) > 0 then
-                table.insert(parts, icons.changed .. " " .. gs.changed)
+                table.insert(parts,
+                    icons.changed .. " " .. gs.changed)
             end
             if (gs.removed or 0) > 0 then
-                table.insert(parts, icons.removed .. " " .. gs.removed)
+                table.insert(parts,
+                    icons.removed .. " " .. gs.removed)
             end
-            local tail = (#parts > 0) and (" [" .. table.concat(parts, " ")
-                .. "]") or ""
+            local tail = (#parts > 0) and
+                (" [" .. table.concat(parts, " ") .. "]") or ""
             return " " .. icons.branch .. " " .. gs.head .. tail
         end
 
@@ -88,7 +92,9 @@ return {
             if not st or not st.size then return "" end
             local sz = st.size
             if sz < 1024 then return sz .. "B" end
-            if sz < 1048576 then return string.format("%.1fK", sz / 1024) end
+            if sz < 1048576 then
+                return string.format("%.1fK", sz / 1024)
+            end
             return string.format("%.1fM", sz / 1048576)
         end
 
@@ -96,7 +102,8 @@ return {
         local function python_venv()
             local v = vim.fn.getenv("VIRTUAL_ENV")
             if v and v ~= "" and v ~= vim.NIL then
-                return icons.python .. " " .. vim.fn.fnamemodify(v, ":t")
+                return icons.python .. " " ..
+                    vim.fn.fnamemodify(v, ":t")
             end
             if vim.fn.isdirectory(".venv") == 1 then
                 return icons.python .. " .venv"
@@ -105,6 +112,17 @@ return {
                 return icons.python .. " venv"
             end
             return ""
+        end
+
+        -- INDENT INFO
+        local function indent_info()
+            local expandtab = vim.bo.expandtab
+            local size = vim.bo.shiftwidth
+            if expandtab then
+                return icons.spaces .. " " .. size .. " "
+            else
+                return icons.tab .. " " .. size .. " "
+            end
         end
 
         -- LOCATION
@@ -126,11 +144,18 @@ return {
                 },
                 always_divide_middle = true,
                 globalstatus = false,
-                refresh = { statusline = 1000, tabline = 1000, winbar = 1000 },
+                refresh = {
+                    statusline = 1000,
+                    tabline = 1000,
+                    winbar = 1000
+                },
             },
             sections = {
                 lualine_a = {
-                    { "mode", fmt = function(s) return s:sub(1, 3) end },
+                    {
+                        "mode",
+                        fmt = function(s) return s:sub(1, 3) end
+                    },
                 },
                 lualine_b = {
                     {
@@ -157,15 +182,16 @@ return {
                 lualine_x = {
                     { selection_info, color = { fg = "#f9e2af" } },
                     { python_venv, color = { fg = "#89b4fa" } },
+                    { indent_info, color = { fg = "#a6e3a1" } },
                     {
                         "diagnostics",
                         sources = { "nvim_diagnostic" },
                         colored = true,
                         symbols = {
-                            error = " ",
-                            warn = " ",
-                            info = " ",
-                            hint = " ",
+                            error = " ",
+                            warn = " ",
+                            info = " ",
+                            hint = " ",
                         },
                         update_in_insert = false,
                     },
@@ -180,7 +206,9 @@ return {
             inactive_sections = {
                 lualine_a = {},
                 lualine_b = {},
-                lualine_c = { { "filename", file_status = true, path = 1 } },
+                lualine_c = {
+                    { "filename", file_status = true, path = 1 }
+                },
                 lualine_x = { "location" },
                 lualine_y = {},
                 lualine_z = {},
