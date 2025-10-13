@@ -273,6 +273,31 @@ return {
             end, vim.tbl_extend("force", opts, {desc = "Format buffer"}))
         end
 
+        -- Force disable underlines for all diagnostic types
+        vim.api.nvim_set_hl(0, "DiagnosticUnderlineError", {
+            underline = false,
+            undercurl = false,
+            sp = "NONE"
+        })
+
+        vim.api.nvim_set_hl(0, "DiagnosticUnderlineWarn", {
+            underline = false,
+            undercurl = false,
+            sp = "NONE"
+        })
+
+        vim.api.nvim_set_hl(0, "DiagnosticUnderlineInfo", {
+            underline = false,
+            undercurl = false,
+            sp = "NONE"
+        })
+
+        vim.api.nvim_set_hl(0, "DiagnosticUnderlineHint", {
+            underline = false,
+            undercurl = false,
+            sp = "NONE"
+        })
+
         -- Diagnostic configuration with modern API.
         vim.diagnostic.config({
             -- Disable virtual text (text at end of line).
@@ -287,7 +312,7 @@ return {
                 }
             },
             -- Enable underlines for errors.
-            underline = true,
+            underline = false,
             -- Don't update in insert mode for performance.
             update_in_insert = false,
             -- Sort by severity

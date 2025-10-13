@@ -347,6 +347,10 @@ return {
                     end
                 end, desc = "Toggle Show/Hide"},
 
+                -- TAB NAVIGATION (Alt keys)
+                {"<A-Left>", desc = "Previous Tab", mode = "n"},
+                {"<A-Right>", desc = "Next Tab", mode = "n"},
+
                 -- FOLDING
                 {"z", group = " Fold"},
                 {"zR", desc = "Open All Folds"},

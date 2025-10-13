@@ -276,6 +276,23 @@ function M.setup()
         require("telescope.builtin").lsp_workspace_symbols()
     end, {desc = "Workspace symbols"})
 
+    -- Move current tab.
+    map("n", "<S-Left>", ":-tabmove<CR>", {desc = "Move tab left"})
+    map("n", "<S-Right>", ":+tabmove<CR>", {desc = "Move tab right"})
+
+    -- Move current tab to the end.
+    map("n", "<S-A-Right>", function()
+        local total = vim.fn.tabpagenr("$")
+        vim.cmd("tabmove " .. total)
+        vim.notify("Tab moved to end", vim.log.levels.INFO)
+    end, {desc = "Move tab to end"})
+
+    -- Move current tab to the beginning.
+    map("n", "<S-A-Left>", function()
+        vim.cmd("tabmove 0")
+        vim.notify("Tab moved to start", vim.log.levels.INFO)
+    end, {desc = "Move tab to start"})
+
     -- Better window navigation.
     map("n", "<C-h>", "<C-w>h", {desc = "Go to left window"})
     map("n", "<C-j>", "<C-w>j", {desc = "Go to lower window"})
