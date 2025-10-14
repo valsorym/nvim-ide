@@ -107,19 +107,26 @@ return {
 
             -- Helper function to get project root.
             local function get_project_root()
-                -- First, try to get nvim-tree root if it's available
-                local has_nvim_tree, nvim_tree_api = pcall(require, "nvim-tree.api")
+                -- First, try to get nvim-tree root if it's available.
+                local has_nvim_tree, nvim_tree_api = pcall(require,
+                    "nvim-tree.api")
                 if has_nvim_tree then
                     local tree = nvim_tree_api.tree
                     if tree.is_visible() then
-                        local root = tree.get_root()
-                        if root and root.absolute_path then
-                            return root.absolute_path
+                        local root_node = tree.get_root()
+                        if root_node and root_node.absolute_path then
+                            return root_node.absolute_path
                         end
                     end
                 end
 
-                -- Fallback to current buffer's directory
+                -- Second, try current working directory.
+                local cwd = vim.fn.getcwd()
+                if cwd and cwd ~= "" then
+                    return cwd
+                end
+
+                -- Fallback to current buffer's directory.
                 local bufname = vim.api.nvim_buf_get_name(0)
                 if bufname == "" then
                     return vim.fn.getcwd()
@@ -128,8 +135,10 @@ return {
                 local bufdir = vim.fn.fnamemodify(bufname, ":p:h")
 
                 -- Search for common project root markers.
-                local root_markers = {".git", "package.json", "pyproject.toml",
-                                    "setup.py", "Cargo.toml", "go.mod"}
+                local root_markers = {
+                    ".git", "package.json", "pyproject.toml",
+                    "setup.py", "Cargo.toml", "go.mod"
+                }
 
                 local current = bufdir
                 while current ~= "/" do
