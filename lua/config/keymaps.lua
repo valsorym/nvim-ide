@@ -679,6 +679,12 @@ function M.setup()
         vim.cmd("startinsert")
     end, {desc = "Save and format file"})
 
+    -- Undo/Redo shortcuts (additional comfort mappings)
+    map("n", "<C-z>", "u", {desc = "Undo"})
+    map("n", "<C-y>", "<C-r>", {desc = "Redo"})
+    map("i", "<C-z>", "<C-o>u", {desc = "Undo (insert mode)"})
+    map("i", "<C-y>", "<C-o><C-r>", {desc = "Redo (insert mode)"})
+
     -- FORCE LSP TAB BEHAVIOR
 
     -- Force LSP tab behavior for mouse clicks (global fallback)

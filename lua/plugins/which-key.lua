@@ -206,6 +206,7 @@ return {
                 {"<leader>xr", desc = "Reload Config"},
                 {"<leader>xm", desc = "Mason"},
                 {"<leader>xh", desc = "Clear Highlights"},
+                {"<leader>xu", desc = "Undotree"},
 
                 -- Terminal
                 {"<leader>xt", group = " Terminal"},
