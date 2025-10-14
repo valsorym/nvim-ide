@@ -399,6 +399,30 @@ return {
             }
         })
 
+        -- Fix "translate ..." descriptions from langmapper.nvim in which-key.
+        vim.api.nvim_create_autocmd("User", {
+            pattern = "WhichKeyOpened",
+            callback = function()
+                local maps = vim.api.nvim_get_keymap("n")
+                for _, m in ipairs(maps) do
+                    if m.lhs:match("[%аА-яґҐїЇєЄіІ]") then
+                        local lhs = m.lhs:gsub("й","q"):gsub("ц","w"):gsub("у","e")
+                        lhs = lhs:gsub("к","r"):gsub("е","t"):gsub("н","y")
+                        lhs = lhs:gsub("г","u"):gsub("ш","i"):gsub("щ","o")
+                        lhs = lhs:gsub("з","p"):gsub("х","["):gsub("ї","]")
+                        lhs = lhs:gsub("ф","a"):gsub("і","s"):gsub("в","d")
+                        lhs = lhs:gsub("а","f"):gsub("п","g"):gsub("р","h")
+                        lhs = lhs:gsub("о","j"):gsub("л","k"):gsub("д","l")
+                        lhs = lhs:gsub("ж",";"):gsub("є","'")
+                        lhs = lhs:gsub("я","z"):gsub("ч","x"):gsub("с","c")
+                        lhs = lhs:gsub("м","v"):gsub("и","b"):gsub("т","n")
+                        lhs = lhs:gsub("ь","m"):gsub("б",","):gsub("ю",".")
+                        m.lhs = lhs
+                    end
+                end
+            end,
+        })
+
         -- Force which-key to re-register on buffer change.
         vim.api.nvim_create_autocmd({"BufEnter", "BufWinEnter"}, {
             callback = function()
