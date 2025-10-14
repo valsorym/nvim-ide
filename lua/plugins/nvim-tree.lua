@@ -347,9 +347,11 @@ return {
 
         require("nvim-tree").setup({
             sync_root_with_cwd = true,
+            respect_buf_cwd = true,
+            reload_on_bufenter = true,
             update_focused_file = {
                 enable = true,
-                update_root = false,
+                update_root = true,
                 ignore_list = {},
             },
             view = {
@@ -545,6 +547,10 @@ return {
                 local function change_root_to(path)
                     local rp = normalize(path)
                     api.tree.change_root(rp)
+
+                    -- Sync Neovim cwd with nvim-tree root
+                    vim.cmd("cd " .. vim.fn.fnameescape(rp))
+
                     update_title()
                     push_history(rp)
                     recenter_tree_top()

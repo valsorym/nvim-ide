@@ -245,14 +245,30 @@ function M.setup()
 
     -- TELESCOPE KEYMAPS (moved here from plugin config)
     map("n", "<leader>ff", function()
+        local cwd = vim.fn.getcwd()
+        local ok, api = pcall(require, "nvim-tree.api")
+        if ok and api.tree.is_visible() then
+            local root = api.tree.get_root()
+            if root and root.absolute_path then
+                cwd = root.absolute_path
+            end
+        end
         require("telescope.builtin").find_files({
-            cwd = vim.fn.getcwd()
+            cwd = cwd
         })
     end, {desc = "Find files"})
 
     map("n", "<leader>fg", function()
+        local cwd = vim.fn.getcwd()
+        local ok, api = pcall(require, "nvim-tree.api")
+        if ok and api.tree.is_visible() then
+            local root = api.tree.get_root()
+            if root and root.absolute_path then
+                cwd = root.absolute_path
+            end
+        end
         require("telescope.builtin").live_grep({
-            cwd = vim.fn.getcwd()
+            cwd = cwd
         })
     end, {desc = "Live grep"})
 
