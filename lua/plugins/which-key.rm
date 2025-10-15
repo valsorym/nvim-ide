@@ -1,10 +1,32 @@
 -- ~/.config/nvim/lua/plugins/which-key.lua
--- Key bindings helper - clean reorganized structure.
+-- Key bindings helper with layout-aware filtering (fixed version)
+
 return {
     "folke/which-key.nvim",
     event = "VeryLazy",
     config = function()
         local wk = require("which-key")
+
+        -- Helper function to detect current layout
+        local function get_current_layout()
+            if _G.LangmapHelper and _G.LangmapHelper.current_layout then
+                return _G.LangmapHelper.current_layout
+            end
+            return "en"
+        end
+
+        -- Helper to check if string contains Ukrainian characters
+        local function has_ukrainian_chars(str)
+            if not str then return false end
+            -- Check for Ukrainian letters (excluding Space/leader)
+            return str:match("[йцукенгшщзхїфівапролджєячсмитьбюЙЦУКЕНГШЩЗХЇФІВАПРОЛДЖЄЯЧСМИТЬБЮ]") ~= nil
+        end
+
+        -- Helper to check if string contains English letters
+        local function has_english_chars(str)
+            if not str then return false end
+            return str:match("[a-zA-Z]") ~= nil
+        end
 
         wk.setup({
             preset = "modern",
@@ -79,6 +101,53 @@ return {
                     g = false,
                 },
             },
+            -- Fixed filter: only filter AFTER leader key, not the leader itself
+            filter = function(mapping)
+                local lhs = mapping.lhs or ""
+
+                -- NEVER filter out leader key itself, special keys, or triggers
+                if lhs == "<leader>" or lhs == " " or lhs == "<Space>" then
+                    return true
+                end
+
+                -- Never filter special keys (function keys, arrows, etc.)
+                if lhs:match("^<F%d+>$") or lhs:match("^<A%-") or
+                   lhs:match("^<C%-") or lhs:match("^<S%-") then
+                    return true
+                end
+
+                -- Never filter single character triggers like 'g', 'z', '[', ']'
+                if #lhs == 1 and not lhs:match("[a-zA-Zа-яА-ЯіїєґІЇЄҐ]") then
+                    return true
+                end
+
+                -- Only filter leader-based mappings (second level)
+                if lhs:match("^<leader>") or lhs:match("^ ") then
+                    local layout = get_current_layout()
+
+                    -- Extract the key AFTER leader
+                    local after_leader = lhs:gsub("^<leader>", ""):gsub("^ ", "")
+
+                    if after_leader == "" then
+                        return true  -- Just leader, always show
+                    end
+
+                    local has_ua = has_ukrainian_chars(after_leader)
+                    local has_en = has_english_chars(after_leader)
+
+                    -- Filter logic
+                    if layout == "ua" then
+                        -- In Ukrainian layout: show Ukrainian keys only
+                        return has_ua and not has_en
+                    else
+                        -- In English layout: show English keys only
+                        return has_en and not has_ua
+                    end
+                end
+
+                -- For all other mappings (g*, z*, etc.), don't filter
+                return true
+            end,
             spec = {
                 -- WORKSPACE / SESSIONS
                 {"<leader>w", group = " Workspaces"},
@@ -347,10 +416,6 @@ return {
                     end
                 end, desc = "Toggle Show/Hide"},
 
-                -- TAB NAVIGATION (Alt keys)
-                {"<A-Left>", desc = "Previous Tab", mode = "n"},
-                {"<A-Right>", desc = "Next Tab", mode = "n"},
-
                 -- FOLDING
                 {"z", group = " Fold"},
                 {"zR", desc = "Open All Folds"},
@@ -394,8 +459,23 @@ return {
                 {"<leader>s", group = " Search"},
                 {"<leader>st", desc = "Find TODO comments"},
                 {"<leader>sT", desc = "Find TODO/FIX"},
-
             }
+        })
+
+        -- Refresh which-key on layout change
+        vim.api.nvim_create_autocmd("User", {
+            pattern = "LayoutChanged",
+            callback = function()
+                local layout = get_current_layout()
+                -- Only show notification in verbose mode (optional)
+                -- vim.notify("🧭 Layout: " .. (layout == "ua" and "🇺🇦" or "🇬🇧"), vim.log.levels.INFO)
+
+                -- Force which-key to update if it's visible
+                vim.schedule(function()
+                    vim.cmd("redraw")
+                end)
+            end,
+            desc = "Refresh which-key display on layout change"
         })
 
         -- Faster key timeout for responsiveness
