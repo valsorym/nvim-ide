@@ -1,0 +1,63 @@
+-- ~/.config/nvim/lua/plugins/langmapper.lua
+-- Auto-duplicate mappings for Ukrainian layout and
+-- hide duplicates in which-key dynamically.
+
+return {
+  "Wansmer/langmapper.nvim",
+  lazy = false,
+  priority = 1,
+  config = function()
+    local ok, langmapper = pcall(require, "langmapper")
+    if not ok then
+      vim.notify("langmapper not found", vim.log.levels.ERROR)
+      return
+    end
+
+    langmapper.setup({
+      -- For Linux, use ibus/xkb; change to "mac" for macOS
+      os = "linux",
+      enable_im_select = false,
+    })
+
+    -- Automatically duplicate all mappings
+    langmapper.automapping({ global = true, buffer = false })
+
+    -- Detect layout state safely (uses global variable)
+    local current_layout = vim.g.langmapper_current or "en"
+    local function is_ukr()
+      return current_layout:find("uk") or current_layout:find("ua")
+    end
+
+    -- Track layout changes
+    vim.api.nvim_create_autocmd("User", {
+      pattern = "LangmapperLayoutChange",
+      callback = function()
+        current_layout = vim.g.langmapper_current or "en"
+      end,
+    })
+
+    -- Integrate with which-key if available
+    local ok_wk, wk = pcall(require, "which-key")
+    if ok_wk then
+      local old_filter = wk.config.filter or function(_) return true end
+
+      wk.setup({
+        filter = function(mapping)
+          local lhs = mapping.lhs or ""
+
+          -- Hide Ukrainian duplicates on English layout
+          if (not is_ukr()) and lhs:find("[йцукенгшщзхїфівапролджєячсмитьбю]") then
+            return false
+          end
+
+          -- Hide English duplicates on Ukrainian layout
+          if is_ukr() and lhs:find("[abcdefghijklmnopqrstuvwxyz]") then
+            return false
+          end
+
+          return old_filter(mapping)
+        end,
+      })
+    end
+  end,
+}

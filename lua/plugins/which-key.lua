@@ -36,19 +36,19 @@ return {
                     ScrollWheelDown = "󱕐 ",
                     ScrollWheelUp = "󱕑 ",
                     NL = "󰌑 ",
-                    BS = " ",
+                    BS = " ",
                     Space = "󱁐 ",
                     Tab = "󰌒 ",
                 },
                 rules = {
                     { pattern = "close", icon = "󱊷 " },
-                    { pattern = "back", icon = " " },
+                    { pattern = "back", icon = " " },
                 },
             },
             win = {
                 no_overlap = true,
                 padding = {3, 3},
-                title = true,
+                title = " :) ",
                 title_pos = "center",
                 zindex = 1000,
                 wo = {winblend = 10}
@@ -64,6 +64,34 @@ return {
                 {"[", mode = "n"},
                 {"z", mode = "n"}
             },
+            -- Disable showing langmapper duplicates
+            show_keys = true,
+            show_help = true,
+            filter = function(mapping)
+                -- Filter out Ukrainian keyboard duplicates
+                -- langmapper creates automatic mappings, but we don't
+                -- want to show them in which-key
+                local key = mapping.lhs or ""
+
+                -- List of Ukrainian characters that are auto-mapped
+                local ua_chars = {
+                    'й', 'ц', 'у', 'к', 'е', 'н', 'г', 'ш', 'щ', 'з',
+                    'ф', 'і', 'в', 'а', 'п', 'р', 'о', 'л', 'д',
+                    'я', 'ч', 'с', 'м', 'і', 'т', 'ь',
+                    'Й', 'Ц', 'У', 'К', 'Е', 'Н', 'Г', 'Ш', 'Щ', 'З',
+                    'Ф', 'І', 'В', 'А', 'П', 'Р', 'О', 'Л', 'Д',
+                    'Я', 'Ч', 'С', 'М', 'І', 'Т', 'Ь',
+                }
+
+                -- Check if key contains Ukrainian characters
+                for _, ua_char in ipairs(ua_chars) do
+                    if key:find(ua_char, 1, true) then
+                        return false -- Hide this mapping
+                    end
+                end
+
+                return true -- Show this mapping
+            end,
             plugins = {
                 marks = false,
                 registers = false,
@@ -396,52 +424,10 @@ return {
                 {"<leader>st", desc = "Find TODO comments"},
                 {"<leader>sT", desc = "Find TODO/FIX"},
 
-            }
+            },
+
         })
 
-        -- Dynamic layout indicator for which-key
-        local function get_keyboard_layout()
-            -- Try to detect current layout by checking a test character
-            local test_char = vim.fn.nr2char(vim.fn.getchar(0))
-
-            -- If we got a Ukrainian character, we're on Ukrainian layout
-            local ua_chars = "йцукенгшщзхїфівапролджєячсмитьбю"
-            if test_char and ua_chars:find(test_char, 1, true) then
-                return " 🇺🇦 UA"
-            end
-
-            return ""
-        end
-
-        -- Add layout indicator to which-key window title
-        local original_show = require("which-key.view").show
-        require("which-key.view").show = function(...)
-            local result = original_show(...)
-
-            -- Add layout indicator to window title
-            vim.defer_fn(function()
-                for _, win in ipairs(vim.api.nvim_list_wins()) do
-                    local buf = vim.api.nvim_win_get_buf(win)
-                    if vim.bo[buf].filetype == "WhichKey" then
-                        local config = vim.api.nvim_win_get_config(win)
-                        if config.title then
-                            -- Check if we're on Ukrainian layout
-                            local layout_indicator = " 🇺🇦"
-                            if not config.title[1][1]:find("🇺🇦") then
-                                -- Add indicator to title
-                                config.title = {
-                                    {config.title[1][1] .. layout_indicator,
-                                     config.title[1][2] or ""}
-                                }
-                                pcall(vim.api.nvim_win_set_config, win, config)
-                            end
-                        end
-                    end
-                end
-            end, 10)
-
-            return result
-        end
 
         -- Force which-key to re-register on buffer change.
         vim.api.nvim_create_autocmd({"BufEnter", "BufWinEnter"}, {

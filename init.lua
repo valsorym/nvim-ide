@@ -84,5 +84,4 @@ require("config.indentation").setup_commands()
 require("config.indentation").setup_keymaps()
 
 require("config.auto-reload").setup()
-
 require("config.langmap").setup()
