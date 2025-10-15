@@ -1,6 +1,5 @@
 -- ~/.config/nvim/lua/plugins/which-key.lua
--- Key bindings helper - clean reorganized structure
-
+-- Key bindings helper - clean reorganized structure.
 return {
     "folke/which-key.nvim",
     event = "VeryLazy",
@@ -48,7 +47,7 @@ return {
             win = {
                 no_overlap = true,
                 padding = {3, 3},
-                title = " :) ",
+                title = true,
                 title_pos = "center",
                 zindex = 1000,
                 wo = {winblend = 10}
@@ -64,34 +63,6 @@ return {
                 {"[", mode = "n"},
                 {"z", mode = "n"}
             },
-            -- Disable showing langmapper duplicates
-            show_keys = true,
-            show_help = true,
-            filter = function(mapping)
-                -- Filter out Ukrainian keyboard duplicates
-                -- langmapper creates automatic mappings, but we don't
-                -- want to show them in which-key
-                local key = mapping.lhs or ""
-
-                -- List of Ukrainian characters that are auto-mapped
-                local ua_chars = {
-                    'й', 'ц', 'у', 'к', 'е', 'н', 'г', 'ш', 'щ', 'з',
-                    'ф', 'і', 'в', 'а', 'п', 'р', 'о', 'л', 'д',
-                    'я', 'ч', 'с', 'м', 'і', 'т', 'ь',
-                    'Й', 'Ц', 'У', 'К', 'Е', 'Н', 'Г', 'Ш', 'Щ', 'З',
-                    'Ф', 'І', 'В', 'А', 'П', 'Р', 'О', 'Л', 'Д',
-                    'Я', 'Ч', 'С', 'М', 'І', 'Т', 'Ь',
-                }
-
-                -- Check if key contains Ukrainian characters
-                for _, ua_char in ipairs(ua_chars) do
-                    if key:find(ua_char, 1, true) then
-                        return false -- Hide this mapping
-                    end
-                end
-
-                return true -- Show this mapping
-            end,
             plugins = {
                 marks = false,
                 registers = false,
@@ -424,23 +395,7 @@ return {
                 {"<leader>st", desc = "Find TODO comments"},
                 {"<leader>sT", desc = "Find TODO/FIX"},
 
-            },
-
-        })
-
-
-        -- Force which-key to re-register on buffer change.
-        vim.api.nvim_create_autocmd({"BufEnter", "BufWinEnter"}, {
-            callback = function()
-                -- Re-check leader key mapping.
-                local leader_map = vim.fn.maparg("<Space>", "n", false, true)
-                if leader_map == "" or leader_map.rhs ~= "<Nop>" then
-                    -- Leader key is broken, reset it.
-                    vim.keymap.set("n", "<Space>", "<Nop>",
-                        {noremap = true, silent = true})
-                end
-            end,
-            desc = "Ensure leader key stays unmapped"
+            }
         })
 
         -- Faster key timeout for responsiveness

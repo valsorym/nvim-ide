@@ -74,6 +74,7 @@ vim.opt.listchars = {
 }
 
 -- Local configs.
+require("config.langmap").setup()
 require("config.nvim-tabs").setup()
 require("config.keymaps").setup()
 require("config.line-numbers").setup()
@@ -84,4 +85,3 @@ require("config.indentation").setup_commands()
 require("config.indentation").setup_keymaps()
 
 require("config.auto-reload").setup()
-require("config.langmap").setup()
