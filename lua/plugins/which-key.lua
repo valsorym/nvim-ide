@@ -399,29 +399,49 @@ return {
             }
         })
 
-        -- Fix "translate ..." descriptions from langmapper.nvim in which-key.
-        vim.api.nvim_create_autocmd("User", {
-            pattern = "WhichKeyOpened",
-            callback = function()
-                local maps = vim.api.nvim_get_keymap("n")
-                for _, m in ipairs(maps) do
-                    if m.lhs:match("[%аА-яґҐїЇєЄіІ]") then
-                        local lhs = m.lhs:gsub("й","q"):gsub("ц","w"):gsub("у","e")
-                        lhs = lhs:gsub("к","r"):gsub("е","t"):gsub("н","y")
-                        lhs = lhs:gsub("г","u"):gsub("ш","i"):gsub("щ","o")
-                        lhs = lhs:gsub("з","p"):gsub("х","["):gsub("ї","]")
-                        lhs = lhs:gsub("ф","a"):gsub("і","s"):gsub("в","d")
-                        lhs = lhs:gsub("а","f"):gsub("п","g"):gsub("р","h")
-                        lhs = lhs:gsub("о","j"):gsub("л","k"):gsub("д","l")
-                        lhs = lhs:gsub("ж",";"):gsub("є","'")
-                        lhs = lhs:gsub("я","z"):gsub("ч","x"):gsub("с","c")
-                        lhs = lhs:gsub("м","v"):gsub("и","b"):gsub("т","n")
-                        lhs = lhs:gsub("ь","m"):gsub("б",","):gsub("ю",".")
-                        m.lhs = lhs
+        -- Dynamic layout indicator for which-key
+        local function get_keyboard_layout()
+            -- Try to detect current layout by checking a test character
+            local test_char = vim.fn.nr2char(vim.fn.getchar(0))
+
+            -- If we got a Ukrainian character, we're on Ukrainian layout
+            local ua_chars = "йцукенгшщзхїфівапролджєячсмитьбю"
+            if test_char and ua_chars:find(test_char, 1, true) then
+                return " 🇺🇦 UA"
+            end
+
+            return ""
+        end
+
+        -- Add layout indicator to which-key window title
+        local original_show = require("which-key.view").show
+        require("which-key.view").show = function(...)
+            local result = original_show(...)
+
+            -- Add layout indicator to window title
+            vim.defer_fn(function()
+                for _, win in ipairs(vim.api.nvim_list_wins()) do
+                    local buf = vim.api.nvim_win_get_buf(win)
+                    if vim.bo[buf].filetype == "WhichKey" then
+                        local config = vim.api.nvim_win_get_config(win)
+                        if config.title then
+                            -- Check if we're on Ukrainian layout
+                            local layout_indicator = " 🇺🇦"
+                            if not config.title[1][1]:find("🇺🇦") then
+                                -- Add indicator to title
+                                config.title = {
+                                    {config.title[1][1] .. layout_indicator,
+                                     config.title[1][2] or ""}
+                                }
+                                pcall(vim.api.nvim_win_set_config, win, config)
+                            end
+                        end
                     end
                 end
-            end,
-        })
+            end, 10)
+
+            return result
+        end
 
         -- Force which-key to re-register on buffer change.
         vim.api.nvim_create_autocmd({"BufEnter", "BufWinEnter"}, {
