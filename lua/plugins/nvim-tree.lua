@@ -471,38 +471,6 @@ return {
             on_attach = function(bufnr)
                 api.config.mappings.default_on_attach(bufnr)
 
-                -- -- Enter: folder toggle / file open with tab logic.
-                -- vim.keymap.set("n", "<CR>", function()
-                --     local node = api.tree.get_node_under_cursor()
-                --     if not node then return end
-                --     if node.type == "directory" then
-                --         api.node.open.edit()
-                --         return
-                --     end
-                --     local file = normalize(node.absolute_path)
-                --     local tab = find_tab_for_file(file)
-                --     api.tree.close()
-                --     if tab then
-                --         vim.cmd(tostring(tab) .. "tabnext")
-                --         return
-                --     end
-
-                --     local open_cmd = on_dashboard() and "edit" or "tabnew"
-                --     local ok, err = pcall(function()
-                --         vim.cmd(open_cmd .. " " .. vim.fn.fnameescape(file))
-                --     end)
-
-                --     if not ok then
-                --         if err:match("E325") then
-                --             vim.notify("Swap file detected. Use :e! to force open",
-                --                 vim.log.levels.WARN)
-                --         else
-                --             vim.notify("Error opening file: " .. tostring(err),
-                --                 vim.log.levels.ERROR)
-                --         end
-                --     end
-                -- end, { buffer = bufnr, desc = "Open / toggle" })
-
                 -- Enter: folder toggle / file open with tab logic.
                 vim.keymap.set("n", "<CR>", function()
                     local node = api.tree.get_node_under_cursor()
@@ -538,10 +506,6 @@ return {
                     end
                 end, { buffer = bufnr, desc = "Open / toggle" })
 
-                vim.keymap.set("n", "<Esc>", api.tree.close,
-                    { buffer = bufnr, desc = "Close tree" })
-                vim.keymap.set("n", "q", api.tree.close,
-                    { buffer = bufnr, desc = "Close tree" })
 
                 -- Change root to node (or its dir if file) + history.
                 local function change_root_to(path)
@@ -557,7 +521,7 @@ return {
                     print("Root: " .. vim.fn.fnamemodify(rp, ":~"))
                 end
 
-                vim.keymap.set("n", "C", function()
+                vim.keymap.set("n", "<S-c>", function()
                     local node = api.tree.get_node_under_cursor()
                     if not node then return end
                     local new_root = node.type == "directory"
@@ -565,13 +529,13 @@ return {
                         or vim.fn.fnamemodify(
                             node.absolute_path, ":h")
                     change_root_to(new_root)
-                end, { buffer = bufnr, desc = "Root to node" })
+                end, { buffer = bufnr, desc = "Choose root dir" })
 
-                vim.keymap.set("n", "B", function()
+                vim.keymap.set("n", "<S-b>", function()
                     change_root_to(vim.fn.getcwd())
                 end, { buffer = bufnr, desc = "Root to CWD" })
 
-                vim.keymap.set("n", "R", function()
+                vim.keymap.set("n", "<S-p>", function()
                     vim.ui.input({
                         prompt = "New root: ",
                         default = vim.fn.getcwd(),
@@ -584,7 +548,7 @@ return {
                             print("No such dir: " .. input)
                         end
                     end)
-                end, { buffer = bufnr, desc = "Pick root" })
+                end, { buffer = bufnr, desc = "Parent root" })
 
                 vim.keymap.set("n", "P", function()
                     local cur = vim.fn.getcwd()
@@ -595,14 +559,67 @@ return {
                     recenter_tree_top()
                 end, { buffer = bufnr, desc = "Parent dir" })
 
-                -- File ops / filters.
-                vim.keymap.set("n", "r", api.tree.reload,
+                vim.keymap.set("n", "<Esc>", api.tree.close,
+                    { buffer = bufnr, desc = "Close tree" })
+
+                vim.keymap.set("n", "<S-r>", api.tree.reload,
                     { buffer = bufnr, desc = "Refresh" })
-                vim.keymap.set("n", "a", api.fs.create,
-                    { buffer = bufnr, desc = "Create" })
+                vim.keymap.set("n", "<S-h>", api.tree.toggle_hidden_filter,
+                    { buffer = bufnr, desc = "Hidden files" })
+                vim.keymap.set("n", "<S-f>", api.live_filter.start,
+                    { buffer = bufnr, desc = "Filter" })
+                vim.keymap.set("n", "<S-x>", api.live_filter.clear,
+                    { buffer = bufnr, desc = "Clear filter" })
+
+
+                vim.keymap.set("n", "t", function()
+                    local node = api.tree.get_node_under_cursor()
+                    if not node then return end
+
+                    local target_node
+
+                    -- If we're on a file, get its parent directory
+                    if node.type ~= "directory" then
+                        target_node = node.parent
+                    else
+                        target_node = node
+                    end
+
+                    if not target_node then return end
+
+                    -- Recursive function to close all child directories
+                    local function close_all_children(dir_node)
+                        if not dir_node or dir_node.type ~= "directory" then return end
+
+                        if dir_node.nodes then
+                            for _, child in ipairs(dir_node.nodes) do
+                                if child.type == "directory" and child.open then
+                                    close_all_children(child)
+                                    api.node.open.edit(child)
+                                end
+                            end
+                        end
+                    end
+
+                    -- Close all subdirectories first
+                    if target_node.open then
+                        close_all_children(target_node)
+                        -- Then close the target directory
+                        api.node.open.edit(target_node)
+                        -- Move cursor to the closed directory
+                        vim.schedule(function()
+                            api.tree.find_file(target_node.absolute_path)
+                        end)
+                    else
+                        -- If closed, open it
+                        api.node.open.edit(target_node)
+                    end
+                end, { buffer = bufnr, desc = "Toggle folder" })
+                vim.keymap.set("n", "n", api.fs.create,
+                    { buffer = bufnr, desc = "New object" })
                 vim.keymap.set("n", "d", api.fs.remove,
                     { buffer = bufnr, desc = "Delete" })
-                vim.keymap.set("n", "rn", api.fs.rename,
+                vim.keymap.set("n", "r", api.fs.rename,
                     { buffer = bufnr, desc = "Rename" })
                 vim.keymap.set("n", "c", api.fs.copy.node,
                     { buffer = bufnr, desc = "Copy" })
@@ -610,13 +627,6 @@ return {
                     { buffer = bufnr, desc = "Cut" })
                 vim.keymap.set("n", "p", api.fs.paste,
                     { buffer = bufnr, desc = "Paste" })
-                vim.keymap.set("n", "H",
-                    api.tree.toggle_hidden_filter,
-                    { buffer = bufnr, desc = "Hidden files" })
-                vim.keymap.set("n", "f", api.live_filter.start,
-                    { buffer = bufnr, desc = "Filter" })
-                vim.keymap.set("n", "F", api.live_filter.clear,
-                    { buffer = bufnr, desc = "Clear filter" })
             end,
         })
 
