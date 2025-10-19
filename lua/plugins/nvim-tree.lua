@@ -699,6 +699,16 @@ return {
             end,
         })
 
+        -- Crash protection when reloading.
+        vim.api.nvim_create_autocmd("BufEnter", {
+            pattern = "NvimTree_*",
+            callback = function()
+                if vim.fn.winnr("$") == 1 then
+                    vim.cmd "quit"
+                end
+            end,
+        })
+
         vim.api.nvim_create_user_command(
             "NvimTreeModal", open_tree_modal,
             { desc = "Open tree as modal" }

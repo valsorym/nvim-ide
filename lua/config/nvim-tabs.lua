@@ -224,7 +224,7 @@ function M.setup()
     vim.o.showtabline = 2
     vim.o.tabline = "%!v:lua.require'config.nvim-tabs'.render()"
 
-    -- Auto-move modified tabs to the right
+    -- Auto-move modified tabs to the right.
     local tab_group = vim.api.nvim_create_augroup(
         "SmartTabMovement",
         {clear = true}
@@ -235,14 +235,14 @@ function M.setup()
         {
             group = tab_group,
             callback = function()
-                -- Debounce: only move after 500ms of inactivity
+                -- Debounce: only move after 500ms of inactivity.
                 vim.defer_fn(auto_move_tab_right, 500)
             end,
             desc = "Auto-move modified tab to right"
         }
     )
 
-    -- Close duplicate tabs when opening new files
+    -- Close duplicate tabs when opening new files.
     vim.api.nvim_create_autocmd("BufEnter", {
         group = tab_group,
         callback = function()
@@ -251,7 +251,7 @@ function M.setup()
         desc = "Close duplicate tabs"
     })
 
-    -- Update tabline when switching tabs to show active tab
+    -- Update tabline when switching tabs to show active tab.
     vim.api.nvim_create_autocmd("TabEnter", {
         group = tab_group,
         callback = function()
