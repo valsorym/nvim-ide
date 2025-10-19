@@ -578,7 +578,7 @@ return {
 
                     local target_node
 
-                    -- If we're on a file, get its parent directory
+                    -- If we're on a file, get its parent directory.
                     if node.type ~= "directory" then
                         target_node = node.parent
                     else
@@ -587,7 +587,7 @@ return {
 
                     if not target_node then return end
 
-                    -- Recursive function to close all child directories
+                    -- Recursive function to close all child directories.
                     local function close_all_children(dir_node)
                         if not dir_node or dir_node.type ~= "directory" then return end
 
@@ -601,12 +601,12 @@ return {
                         end
                     end
 
-                    -- Close all subdirectories first
+                    -- Close all subdirectories first.
                     if target_node.open then
                         close_all_children(target_node)
-                        -- Then close the target directory
+                        -- Then close the target directory.
                         api.node.open.edit(target_node)
-                        -- Move cursor to the closed directory
+                        -- Move cursor to the closed directory.
                         vim.schedule(function()
                             api.tree.find_file(target_node.absolute_path)
                         end)
@@ -615,6 +615,55 @@ return {
                         api.node.open.edit(target_node)
                     end
                 end, { buffer = bufnr, desc = "Toggle folder" })
+
+                vim.keymap.set("n", "<S-t>", function()
+                    -- Get current node under cursor.
+                    local current_node = api.tree.get_node_under_cursor()
+
+                    -- Find root node by going up the tree.
+                    local root = current_node
+                    while root and root.parent do
+                        root = root.parent
+                    end
+
+                    -- If root not found via cursor, try via API.
+                    if not root then
+                        local nodes = api.tree.get_nodes()
+                        if nodes then
+                            root = nodes
+                        else
+                            vim.notify("nvim-tree: root not found", vim.log.levels.WARN)
+                            return
+                        end
+                    end
+
+                    -- Recursively close all open directories.
+                    local function close_all_dirs(node)
+                        if not node or not node.nodes then return end
+                        for _, child in ipairs(node.nodes) do
+                            if child.type == "directory" then
+                                -- First close subdirectories.
+                                close_all_dirs(child)
+                                if child.open then
+                                    api.node.open.edit(child) -- toggle off
+                                end
+                            end
+                        end
+                    end
+
+                    close_all_dirs(root)
+
+                    -- Move cursor to root directory.
+                    vim.schedule(function()
+                        local win = api.tree.winid()
+                        if win and vim.api.nvim_win_is_valid(win) then
+                            vim.api.nvim_win_set_cursor(win, {1, 0})
+                        end
+                    end)
+
+                    vim.notify("  All folders closed", vim.log.levels.INFO, { title = "NvimTree" })
+                end, { buffer = bufnr, desc = "Close all folders recursively and go root" })
+
                 vim.keymap.set("n", "n", api.fs.create,
                     { buffer = bufnr, desc = "New object" })
                 vim.keymap.set("n", "d", api.fs.remove,
@@ -631,7 +680,6 @@ return {
         })
 
         -- AUTOCMDS / COMMANDS
-
         local aug = vim.api.nvim_create_augroup(
             "NvimTreeEx", { clear = true }
         )
