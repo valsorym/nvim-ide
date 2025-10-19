@@ -1,5 +1,5 @@
 -- ~/.config/nvim/lua/plugins/legendary.lua
--- Centralized command palette with layout-aware keymaps and Telescope UI
+-- Centralized command palette with layout-aware keymaps and Telescope UI.
 
 return {
     "mrjones2014/legendary.nvim",
@@ -106,7 +106,7 @@ return {
         },
     },
     config = function()
-        -- Configure Telescope UI for legendary
+        -- Configure Telescope UI for legendary.
         require("telescope").setup({
             extensions = {},
             defaults = {
@@ -124,7 +124,7 @@ return {
             },
         })
 
-        -- Setup vim.ui.select to use Telescope dropdown
+        -- Setup vim.ui.select to use Telescope dropdown.
         vim.ui.select = function(items, opts, on_choice)
             local pickers = require("telescope.pickers")
             local finders = require("telescope.finders")
@@ -174,7 +174,7 @@ return {
             }):find()
         end
 
-        -- Helper to get current layout
+        -- Helper to get current layout.
         local function get_current_layout()
             if _G.LangmapHelper and _G.LangmapHelper.current_layout then
                 return _G.LangmapHelper.current_layout
@@ -182,17 +182,17 @@ return {
             return "en"
         end
 
-        -- Make it globally available
+        -- Make it globally available.
         _G.get_current_layout = get_current_layout
 
-        -- Helper to translate keys
+        -- Helper to translate keys.
         local function translate_key(key, en_to_ua)
             return key:gsub(".", function(char)
                 return en_to_ua[char] or char
             end)
         end
 
-        -- Group definitions matching which-key
+        -- Group definitions matching which-key.
         local group_info = {
             w = { icon = "", name = "Workspaces" },
             f = { icon = "", name = "Find/Search" },
@@ -211,7 +211,7 @@ return {
             s = { icon = "", name = "Search" },
         }
 
-        -- Base keymaps (English version)
+        -- Base keymaps (English version).
         local base_keymaps = {
             -- WORKSPACE
             { "<leader>ws", ":SessionSave<CR>", description = "Save Session" },
@@ -405,7 +405,7 @@ return {
             { "<leader>sT", ":TodoTelescope keywords=TODO,FIX<CR>", description = "Find TODO/FIX" },
         }
 
-        -- Static keymaps
+        -- Static keymaps.
         local static_keymaps = {
             { "<A-Left>", ":tabprevious<CR>", description = "Previous Tab", mode = { "n" } },
             { "<A-Right>", ":tabnext<CR>", description = "Next Tab", mode = { "n" } },
@@ -441,7 +441,7 @@ return {
             { "<F10>", ":Telescope buffers<CR>", description = "Buffers List" },
         }
 
-        -- Generate keymaps
+        -- Generate keymaps.
         local function generate_keymaps()
             local layout = get_current_layout()
             local all_keymaps = vim.deepcopy(static_keymaps)
@@ -465,8 +465,10 @@ return {
             return all_keymaps
         end
 
-        -- Popup menu
+        -- Popup menu.
         local function show_leader_menu()
+            if vim.v.count > 0 then return end
+
             local layout = get_current_layout()
             local en_to_ua = _G.LangmapHelper and _G.LangmapHelper.en_to_ua or {}
 
@@ -519,10 +521,11 @@ return {
             vim.api.nvim_buf_set_option(buf, "modifiable", false)
             vim.api.nvim_win_set_option(win, "winblend", 10)
 
-            local char = vim.fn.getchar()
-            vim.api.nvim_win_close(win, true)
+            local ok, char = pcall(vim.fn.getchar)
 
-            if char == 27 then return end
+            pcall(vim.api.nvim_win_close, win, true)
+
+            if not ok or char == 27 then return end
 
             if char == string.byte("?") then
                 vim.schedule(function()
@@ -536,19 +539,43 @@ return {
             for _, group in ipairs(groups) do
                 if key_pressed == group.key then
                     vim.schedule(function()
-                        require("legendary").find({
-                            filters = {
-                                function(item)
-                                    if item.kind ~= "legendary.keymaps" then return false end
-                                    local itemkey = item.keys or item.key or ""
-                                    return itemkey:match("^<leader>" .. vim.pesc(key_pressed))
-                                end
-                            }
-                        })
+                        -- We receive all keys (including translated ones).
+                        local all_keymaps = generate_keymaps()
+
+                        -- Check if there are commands for this group.
+                        local has_matches = false
+                        for _, keymap in ipairs(all_keymaps) do
+                            local lhs = keymap[1] or ""
+                            if lhs:match("^<leader>" .. vim.pesc(key_pressed)) then
+                                has_matches = true
+                                break
+                            end
+                        end
+
+                        if has_matches then
+                            -- If there is a match, open Legendary with a filter.
+                            require("legendary").find({
+                                filters = {
+                                    function(item)
+                                        if not item.keys and not item.key then return false end
+                                        local itemkey = item.keys or item.key or ""
+                                        return itemkey:match("^<leader>" .. vim.pesc(key_pressed))
+                                    end,
+                                },
+                            })
+                        else
+                            -- If there are no matches, we simply show the message below.
+                            vim.cmd('echohl WarningMsg | echom "❌ Unknown leader command: <leader>' ..
+                                    key_pressed .. '" | echohl None')
+                        end
                     end)
                     return
                 end
             end
+
+            -- If the group is not found at all.
+            vim.cmd('echohl ErrorMsg | echom "❌ Wrong hotkey: <leader>' ..
+                    key_pressed .. '" | echohl None')
         end
 
         vim.keymap.set("n", "<Space>", show_leader_menu, { noremap = true, silent = true, desc = "Show Leader Menu" })
@@ -558,7 +585,7 @@ return {
                 lazy_nvim = true,
                 which_key = false,
             },
-            select_prompt = " Legendary",
+            select_prompt = "  Legendary ",
             include_builtin = false,
             include_legendary_cmds = true,
             keymaps = generate_keymaps(),
@@ -579,6 +606,7 @@ return {
             desc = "Update legendary keymaps on layout change"
         })
 
-        vim.opt.timeoutlen = 1000  -- 1 секунда (більше часу для введення команд)
+        vim.opt.timeout = true
+        vim.opt.timeoutlen = 1000
     end
 }
