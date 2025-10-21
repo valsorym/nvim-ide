@@ -291,6 +291,9 @@ function M.setup()
     map("n", "<leader>fw", function()
         require("telescope.builtin").lsp_workspace_symbols()
     end, {desc = "Workspace symbols"})
+    map("n", "<leader>fc", function()
+        require("spectre").toggle()
+    end, {desc = "Live Change (Find & Replace)"})
 
     -- Move current tab.
     map("n", "<S-Left>", ":-tabmove<CR>", {desc = "Move tab left"})
