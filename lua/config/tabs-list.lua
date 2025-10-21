@@ -1,5 +1,5 @@
 -- ~/.config/nvim/lua/config/tabs-list.lua
--- Independent tabs list window.
+-- Independent tabs list window with search filtering.
 
 local M = {}
 
@@ -72,16 +72,17 @@ end
 function M.show_tabs_window()
     M.close_existing_window()
 
-    local tabs = M.get_open_tabs()
+    local all_tabs = M.get_open_tabs()
 
-    if #tabs == 0 then
+    if #all_tabs == 0 then
         print("No tabs open")
         return
     end
 
+    -- Create main buffer
     local buf = vim.api.nvim_create_buf(false, true)
-    local width = math.min(60, vim.o.columns - 10)
-    local height = math.min(15, #tabs + 7)
+    local width = math.min(70, vim.o.columns - 10)
+    local height = math.min(20, #all_tabs + 10)
     local row = math.floor((vim.o.lines - height) / 2)
     local col = math.floor((vim.o.columns - width) / 2)
 
@@ -100,45 +101,153 @@ function M.show_tabs_window()
 
     M.current_win = win
 
-    local lines = {}
+    -- Create prompt buffer for search
+    local prompt_buf = vim.api.nvim_create_buf(false, true)
+    local prompt_height = 1
+    local prompt_win = vim.api.nvim_open_win(prompt_buf, false, {
+        relative = "win",
+        win = win,
+        width = width - 4,
+        height = prompt_height,
+        row = 3,
+        col = 1,
+        style = "minimal",
+        border = "none",
+        zindex = 1001
+    })
+
+    vim.bo[prompt_buf].buftype = "prompt"
+    vim.fn.prompt_setprompt(prompt_buf, " 🔍 Filter: ")
+
+    -- State
+    local filter_text = ""
+    local filtered_tabs = all_tabs
     local line_to_tab = {}
     local current_tab_line = nil
 
-    table.insert(lines, "")
-    table.insert(lines, string.format(
-        " 󰮰  Number of open tabs: %d", #tabs))
-    table.insert(lines, string.rep("─", width))
-    table.insert(lines, "")
+    -- Function to filter tabs
+    local function filter_tabs(text)
+        if text == "" then
+            return all_tabs
+        end
 
-    for i, tab in ipairs(tabs) do
-        local prefix = tab.is_current and " ⚬ " or "   "
-        local status = tab.is_modified and "" or ""
-        local line = string.format("%s%d. %s%s",
-            prefix, tab.tab_nr, tab.display_name, status)
-        table.insert(lines, line)
+        local results = {}
+        local lower_text = string.lower(text)
 
-        local line_nr = #lines
-        line_to_tab[line_nr] = tab.tab_nr
+        for _, tab in ipairs(all_tabs) do
+            local lower_display = string.lower(tab.display_name)
+            if lower_display:find(lower_text, 1, true) then
+                table.insert(results, tab)
+            end
+        end
 
-        if tab.is_current then
-            current_tab_line = line_nr
+        return results
+    end
+
+    -- Function to render tabs list
+    local function render_list()
+        filtered_tabs = filter_tabs(filter_text)
+        line_to_tab = {}
+        current_tab_line = nil
+
+        local lines = {}
+
+        -- Header with tabs count
+        table.insert(lines, "")
+        table.insert(lines, string.format(
+            " 󰮰  Tabs: %d/%d", #filtered_tabs, #all_tabs))
+        table.insert(lines, "")
+        -- Prompt placeholder (will be covered by prompt window)
+        table.insert(lines, "")
+        -- Separator line (full width)
+        table.insert(lines, string.rep("─", width))
+        table.insert(lines, "")
+
+        if #filtered_tabs == 0 then
+            table.insert(lines, "   No matching tabs")
+        else
+            for i, tab in ipairs(filtered_tabs) do
+                local prefix = tab.is_current and " ⚬ " or "   "
+                local status = tab.is_modified and "" or ""
+                local line = string.format("%s%d. %s%s",
+                    prefix, tab.tab_nr, tab.display_name, status)
+                table.insert(lines, line)
+
+                local line_nr = #lines
+                line_to_tab[line_nr] = tab.tab_nr
+
+                if tab.is_current then
+                    current_tab_line = line_nr
+                end
+            end
+        end
+
+        -- Make buffer modifiable before updating
+        vim.bo[buf].modifiable = true
+        vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+        vim.bo[buf].modifiable = false
+
+        -- Move cursor to first result or current tab
+        local target_line = current_tab_line or 7
+        if target_line <= #lines and vim.api.nvim_win_is_valid(win) then
+            pcall(vim.api.nvim_win_set_cursor, win, {target_line, 0})
         end
     end
 
-    vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-    vim.bo[buf].modifiable = false
     vim.bo[buf].buftype = "nofile"
     vim.bo[buf].bufhidden = "wipe"
     vim.wo[win].cursorline = true
+    vim.wo[win].number = false
+    vim.wo[win].relativenumber = false
+
+    -- Initial render
+    render_list()
+
+    -- Prompt callback for filtering
+    vim.fn.prompt_setcallback(prompt_buf, function(text)
+        filter_text = text
+        render_list()
+    end)
+
+    -- Update filter on text change
+    vim.api.nvim_create_autocmd("TextChangedI", {
+        buffer = prompt_buf,
+        callback = function()
+            local line = vim.api.nvim_buf_get_lines(
+                prompt_buf, 0, 1, false)[1]
+            filter_text = line:gsub("^%s*🔍%s*Filter:%s*", "")
+            render_list()
+        end
+    })
 
     local function close_window()
+        if vim.api.nvim_win_is_valid(prompt_win) then
+            pcall(vim.api.nvim_win_close, prompt_win, true)
+        end
         if vim.api.nvim_win_is_valid(win) then
-            vim.api.nvim_win_close(win, true)
+            pcall(vim.api.nvim_win_close, win, true)
         end
         M.current_win = nil
     end
 
+    -- Keymaps for main window
     local km = {buffer = buf, nowait = true, silent = true}
+
+    -- Enter prompt mode with 'i', '/' or Tab
+    vim.keymap.set("n", "i", function()
+        vim.api.nvim_set_current_win(prompt_win)
+        vim.cmd("startinsert")
+    end, km)
+
+    vim.keymap.set("n", "/", function()
+        vim.api.nvim_set_current_win(prompt_win)
+        vim.cmd("startinsert")
+    end, km)
+
+    vim.keymap.set("n", "<Tab>", function()
+        vim.api.nvim_set_current_win(prompt_win)
+        vim.cmd("startinsert")
+    end, km)
 
     vim.keymap.set("n", "<CR>", function()
         local line_nr = vim.fn.line(".")
@@ -169,7 +278,8 @@ function M.show_tabs_window()
     vim.keymap.set("n", "j", function()
         local current_line = vim.fn.line(".")
         local next_line = current_line + 1
-        while next_line <= #lines and not line_to_tab[next_line] do
+        while next_line <= vim.api.nvim_buf_line_count(buf) and
+              not line_to_tab[next_line] do
             next_line = next_line + 1
         end
         if line_to_tab[next_line] then
@@ -188,18 +298,118 @@ function M.show_tabs_window()
         end
     end, km)
 
-    vim.api.nvim_create_autocmd("WinLeave", {
+    -- Keymaps for prompt window
+    local prompt_km = {
+        buffer = prompt_buf,
+        nowait = true,
+        silent = true
+    }
+
+    -- Esc - exit search, go to list
+    vim.keymap.set("i", "<Esc>", function()
+        vim.cmd("stopinsert")
+        vim.api.nvim_set_current_win(win)
+    end, prompt_km)
+
+    -- Tab - exit search, go to list (alternative)
+    vim.keymap.set("i", "<Tab>", function()
+        vim.cmd("stopinsert")
+        vim.api.nvim_set_current_win(win)
+    end, prompt_km)
+
+    -- Ctrl-C - close window completely
+    vim.keymap.set("i", "<C-c>", function()
+        vim.cmd("stopinsert")
+        close_window()
+    end, prompt_km)
+
+    -- Enter - select current item
+    vim.keymap.set("i", "<CR>", function()
+        vim.cmd("stopinsert")
+        vim.api.nvim_set_current_win(win)
+        local line_nr = vim.api.nvim_win_get_cursor(win)[1]
+        local tab_nr = line_to_tab[line_nr]
+        if tab_nr then
+            close_window()
+            vim.cmd(tab_nr .. "tabnext")
+        end
+    end, prompt_km)
+
+    -- Arrow Down - move to next item (stay in search)
+    vim.keymap.set("i", "<Down>", function()
+        local current_line = vim.api.nvim_win_get_cursor(win)[1]
+        local next_line = current_line + 1
+        local max_lines = vim.api.nvim_buf_line_count(buf)
+
+        while next_line <= max_lines and
+              not line_to_tab[next_line] do
+            next_line = next_line + 1
+        end
+
+        if line_to_tab[next_line] then
+            vim.api.nvim_win_set_cursor(win, {next_line, 0})
+        end
+    end, prompt_km)
+
+    vim.keymap.set("i", "<C-n>", function()
+        local current_line = vim.api.nvim_win_get_cursor(win)[1]
+        local next_line = current_line + 1
+        local max_lines = vim.api.nvim_buf_line_count(buf)
+
+        while next_line <= max_lines and
+              not line_to_tab[next_line] do
+            next_line = next_line + 1
+        end
+
+        if line_to_tab[next_line] then
+            vim.api.nvim_win_set_cursor(win, {next_line, 0})
+        end
+    end, prompt_km)
+
+    -- Arrow Up - move to previous item (stay in search)
+    vim.keymap.set("i", "<Up>", function()
+        local current_line = vim.api.nvim_win_get_cursor(win)[1]
+        local prev_line = current_line - 1
+
+        while prev_line >= 1 and not line_to_tab[prev_line] do
+            prev_line = prev_line - 1
+        end
+
+        if line_to_tab[prev_line] then
+            vim.api.nvim_win_set_cursor(win, {prev_line, 0})
+        end
+    end, prompt_km)
+
+    vim.keymap.set("i", "<C-p>", function()
+        local current_line = vim.api.nvim_win_get_cursor(win)[1]
+        local prev_line = current_line - 1
+
+        while prev_line >= 1 and not line_to_tab[prev_line] do
+            prev_line = prev_line - 1
+        end
+
+        if line_to_tab[prev_line] then
+            vim.api.nvim_win_set_cursor(win, {prev_line, 0})
+        end
+    end, prompt_km)
+
+    -- Auto-close when main window loses focus
+    vim.api.nvim_create_autocmd({"WinLeave", "BufLeave"}, {
         buffer = buf,
         once = true,
         callback = function()
-            vim.defer_fn(close_window, 100)
+            vim.defer_fn(function()
+                local current = vim.api.nvim_get_current_win()
+                if current ~= win and current ~= prompt_win then
+                    close_window()
+                end
+            end, 100)
         end
     })
 
-    local start_line = current_tab_line or 5
-    if start_line <= #lines then
-        vim.api.nvim_win_set_cursor(win, {start_line, 0})
-    end
+    -- Start in prompt mode
+    vim.api.nvim_set_current_win(prompt_win)
+    vim.cmd("startinsert")
 end
 
 function M.setup()
