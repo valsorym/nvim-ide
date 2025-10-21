@@ -233,7 +233,10 @@ return {
             { "<leader>fo", ":Telescope oldfiles<CR>", description = "Old Files", mode = { "n" } },
             { "<leader>fd", ":Telescope lsp_document_symbols<CR>", description = "Document Symbols", mode = { "n" } },
             { "<leader>fw", ":Telescope lsp_workspace_symbols<CR>", description = "Workspace Symbols", mode = { "n" } },
-            { "<leader>fc", function() require("spectre").toggle() end, description = "Live Change (Find & Replace)", mode = { "n" } },
+
+            { "<leader>fc", description = "Live Change (Find & Replace)", mode = { "n", "v" } },
+            { "<leader>fC", description = "Replace current word", mode = { "n" } },
+
             { "<leader>fs", function() require("flash").jump() end, description = "Flash Jump", mode = { "n", "x", "o" } },
             { "<leader>fS", function() require("flash").treesitter() end, description = "Flash Treesitter", mode = { "n", "x", "o" } },
             { "<leader>fr", function() require("flash").remote() end, description = "Flash Remote", mode = { "o" } },
