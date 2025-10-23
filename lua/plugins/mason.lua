@@ -1,5 +1,5 @@
 -- ~/.config/nvim/lua/plugins/mason.lua
--- Fixed Mason configuration without UI errors
+-- Optimized Mason configuration with resource limits
 
 return {
     {
@@ -7,7 +7,7 @@ return {
         config = function()
             require("mason").setup({
                 ui = {
-                    check_outdated_packages_on_open = true,
+                    check_outdated_packages_on_open = false,
                     border = "rounded",
                     icons = {
                         package_installed = "✓",
@@ -30,8 +30,8 @@ return {
                 pip = {
                     upgrade_pip = false,
                 },
-                log_level = vim.log.levels.INFO,
-                max_concurrent_installers = 4,
+                log_level = vim.log.levels.WARN,
+                max_concurrent_installers = 2,
             })
         end
     },
@@ -52,7 +52,7 @@ return {
                     "lua_ls",
                     "bashls"
                 },
-                automatic_installation = true,
+                automatic_installation = false,
                 handlers = nil,
             })
         end
