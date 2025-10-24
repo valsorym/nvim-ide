@@ -22,17 +22,10 @@ vim.g.mapleader = " "
 vim.g.maplocalleader = " "
 
 -- Load plugins.
--- require("lazy").setup("plugins")
 require("lazy").setup("plugins", {
     rocks = {
         enabled = true,
         hererocks = true,
-    },
-})
-
-vim.filetype.add({
-    extension = {
-        html = "htmldjango", -- all HTML files to use htmldjango filetype.
     },
 })
 
@@ -49,40 +42,41 @@ vim.opt.smartcase      = true
 vim.opt.termguicolors  = true
 
 -- Linters toggles.
-vim.g.enable_mypy      = false -- MyPy (Python type checker)
-vim.g.enable_djlint    = false -- djlint (Django/Jinja linter)
-vim.g.enable_codespell = true  -- spelling (safe default)
-vim.g.enable_eslint    = false -- example: ESLint (if you add it)
-vim.g.enable_flake8    = false -- example: Flake8 (if you add it)
-
--- Single column for git/LSP signs
--- %s - sign column (git signs, LSP diagnostics)
--- %l - absolute line number
--- %C - fold column (іконки ⌄ »)
--- vim.opt.signcolumn = "yes"
--- vim.opt.statuscolumn = "%s%l %C"
-
+vim.g.enable_mypy      = false
+vim.g.enable_djlint    = false
+vim.g.enable_codespell = true
+vim.g.enable_eslint    = false
+vim.g.enable_flake8    = false
 
 -- Trailing spaces.
 vim.opt.list = true
 vim.opt.listchars = {
-    trail = "⋅", -- "⋅" "·"
-    tab = "  ", -- "→ "
-    extends = " ", -- "»"
-    precedes = " ", -- "«"
-    nbsp = " ", -- "␣"
+    trail = "⋅",
+    tab = "  ",
+    extends = " ",
+    precedes = " ",
+    nbsp = " ",
 }
+
+-- -- Debug: track who changes wrap option
+-- vim.api.nvim_create_autocmd("OptionSet", {
+--     pattern = "wrap",
+--     callback = function()
+--         local trace = debug.traceback("", 2)
+--         print("!!! WRAP CHANGED to " .. tostring(vim.wo.wrap))
+--         print(trace)
+--     end
+-- })
 
 -- Local configs.
 require("config.langmap").setup()
 require("config.nvim-tabs").setup()
 require("config.keymaps").setup()
 require("config.line-numbers").setup()
-require("config.colorcolumn").setup()
 
-require("config.indentation").setup()
-require("config.indentation").setup_commands()
-require("config.indentation").setup_keymaps()
+require("config.filetype-settings").setup()
+require("config.filetype-settings").setup_commands()
+require("config.filetype-settings").setup_keymaps()
 
 require("config.auto-reload").setup()
 require("config.tabs-list").setup()
