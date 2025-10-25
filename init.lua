@@ -58,15 +58,34 @@ vim.opt.listchars = {
     nbsp = " ",
 }
 
--- -- Debug: track who changes wrap option
--- vim.api.nvim_create_autocmd("OptionSet", {
---     pattern = "wrap",
---     callback = function()
---         local trace = debug.traceback("", 2)
---         print("!!! WRAP CHANGED to " .. tostring(vim.wo.wrap))
---         print(trace)
---     end
--- })
+
+-- Preserve original notify.
+local original_notify = vim.notify
+
+---@diagnostic disable-next-line: duplicate-set-field
+vim.notify = function(msg, level, opts)
+  if type(msg) ~= "string" then
+    return original_notify(msg, level, opts)
+  end
+
+  -- Common noisy or redundant messages to ignore.
+  local ignored_patterns = {
+    "no matching language servers",
+    "request textdocument/formatting failed", -- lowercase for consistency
+    "the only change was a new completion item",
+    "warning: multiple different client offset_encodings",
+  }
+
+  local msg_lower = msg:lower()
+  for _, pattern in ipairs(ignored_patterns) do
+    if msg_lower:find(pattern, 1, true) then
+      return
+    end
+  end
+
+  return original_notify(msg, level, opts)
+end
+
 
 -- Local configs.
 require("config.langmap").setup()
