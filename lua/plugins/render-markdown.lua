@@ -62,12 +62,6 @@ return {
             end
         end, { desc = "Toggle Rendering (Markdown/RST)" })
 
-        -- Refresh rendering on write.
-        vim.api.nvim_create_autocmd("BufWritePost", {
-            pattern = "*.md",
-            callback = function() render.refresh() end,
-        })
-
         -- Optional highlight tuning.
         vim.api.nvim_set_hl(0, "RenderMarkdownCode", { fg = "#a6adc8" })
         vim.api.nvim_set_hl(0, "RenderMarkdownHeading", {
