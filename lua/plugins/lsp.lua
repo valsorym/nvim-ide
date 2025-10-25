@@ -557,11 +557,27 @@ return {
                 },
                 root_markers = {".luarc.json", ".git"}
             },
-            -- Bash
+            -- Bash.
             bashls = {
                 filetypes = {"sh", "bash"},
                 root_markers = {".git"}
-            }
+            },
+            -- Markdown.
+            marksman = {
+                filetypes = {"markdown", "markdown.mdx"},
+                settings = {
+                    marksman = {
+                        -- Enable/disable features.
+                        completion = {
+                            enabled = true,
+                        },
+                        hover = {
+                            enabled = true,
+                        },
+                    }
+                },
+                root_markers = {".git", ".marksman.toml"}
+            },
         }
 
         -- Setup servers using modern vim.lsp.config API.
