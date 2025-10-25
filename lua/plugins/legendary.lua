@@ -350,10 +350,23 @@ return {
             { "<leader>df", function() vim.lsp.buf.format({ async = true }) end, description = "Format Document" },
             { "<leader>dt", ":ToggleTrailingSpaces<CR>", description = "Toggle Trailing Spaces" },
             { "<leader>dsi", ":IndentInfo<CR>", description = "Indent Info" },
-            { "<leader>dr", function()
-                    require("render-markdown").toggle()
+            {
+                "<leader>dr",
+                function()
+                    local ft = vim.bo.filetype
+                    if ft == "markdown" then
+                        require("render-markdown").toggle()
+                    elseif ft == "rst" or ft == "restructuredtext" then
+                        if _G.rst_render_toggle then
+                            _G.rst_render_toggle()
+                        else
+                            vim.notify("RST renderer not loaded", vim.log.levels.WARN)
+                        end
+                    else
+                        vim.notify("No renderer available for ." .. ft, vim.log.levels.WARN)
+                    end
                 end,
-                description = "Rendering (markdown)"
+                description = "Toggle Rendering (Markdown/RST)"
             },
             { "<leader>dst", function()
                 if vim.bo.expandtab then
