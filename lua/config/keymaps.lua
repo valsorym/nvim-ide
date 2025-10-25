@@ -338,6 +338,24 @@ function M.setup()
     -- Better paste.
     map("v", "p", '"_dP', opts)
 
+    -- Delete without yanking.
+    map("n", "D",  '"_D',  { noremap = true, silent = true })
+    map("n", "dd", '"_dd', { noremap = true, silent = true })
+    map("n", "dw", '"_dw', { noremap = true, silent = true })
+
+    -- Delete with yanking (classic behavior).
+    map("n", "yD",  function()
+        vim.cmd('normal! D')
+    end, { noremap = true, silent = true })
+
+    map("n", "ydd", function()
+        vim.cmd('normal! dd')
+    end, { noremap = true, silent = true })
+
+    map("n", "ydw", function()
+        vim.cmd('normal! dw')
+    end, { noremap = true, silent = true })
+
     -- TAB NAVIGATION
 
     -- Tabs navigation.
