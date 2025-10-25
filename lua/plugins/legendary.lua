@@ -350,6 +350,11 @@ return {
             { "<leader>df", function() vim.lsp.buf.format({ async = true }) end, description = "Format Document" },
             { "<leader>dt", ":ToggleTrailingSpaces<CR>", description = "Toggle Trailing Spaces" },
             { "<leader>dsi", ":IndentInfo<CR>", description = "Indent Info" },
+            { "<leader>dr", function()
+                    require("render-markdown").toggle()
+                end,
+                description = "Rendering (markdown)"
+            },
             { "<leader>dst", function()
                 if vim.bo.expandtab then
                     vim.opt_local.expandtab = false
