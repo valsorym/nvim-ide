@@ -392,6 +392,6 @@ return {
             })
         end, {desc = "Replace selected text"})
 
-        vim.notify("✅ Telescope Replace loaded", vim.log.levels.INFO)
+        -- vim.notify("✅ Telescope Replace loaded", vim.log.levels.INFO)
     end,
 }

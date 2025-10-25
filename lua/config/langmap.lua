@@ -266,13 +266,13 @@ function M.setup()
             -- Setup operator mappings
             local op_count = setup_operator_mappings()
 
-            vim.notify(
-                string.format(
-                    "🇺🇦 Ukrainian keymaps: %d leader + %d operators = %d total",
-                    count, op_count, count + op_count
-                ),
-                vim.log.levels.INFO
-            )
+            -- vim.notify(
+            --     string.format(
+            --         "🇺🇦 Ukrainian keymaps: %d leader + %d operators = %d total",
+            --         count, op_count, count + op_count
+            --     ),
+            --     vim.log.levels.INFO
+            -- )
         end)
     end
 
