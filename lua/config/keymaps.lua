@@ -553,9 +553,15 @@ function M.setup()
         function()
             vim.diagnostic.setloclist()
             vim.cmd("lopen")
+            -- vim.cmd("wincmd p")
+
             vim.wo.cursorline = true
             vim.wo.number = true
             vim.wo.relativenumber = false
+            vim.keymap.set("n", "q", "<cmd>lclose<CR>", {
+                buffer = true,
+                silent = true,
+            })
         end,
         {desc = "Open diagnostic quickfix list"}
     )

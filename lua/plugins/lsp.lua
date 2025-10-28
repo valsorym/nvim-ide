@@ -596,19 +596,73 @@ return {
             )
         end
 
-        -- Enable the configured servers.
-        for server_name, _ in pairs(servers) do
-            vim.lsp.enable(server_name)
-        end
+        -- Enable LSP only when relevant filetype is opened.
+        vim.api.nvim_create_autocmd("FileType", {
+            callback = function(args)
+                local ft = vim.bo[args.buf].filetype
+                for name, cfg in pairs(servers) do
+                    if cfg.filetypes and vim.tbl_contains(
+                        cfg.filetypes, ft) then
+                        local existing = vim.lsp.get_clients({
+                            name = name,
+                            bufnr = args.buf,
+                        })
+                        if #existing == 0 then
+                            vim.lsp.enable(name)
+                        end
+                        break
+                    end
+                end
+            end,
+        })
+
+        -- Auto-stop unused LSP clients when buffer is deleted.
+        vim.api.nvim_create_autocmd("BufDelete", {
+            callback = function(args)
+                vim.defer_fn(function()
+                    for _, client in ipairs(vim.lsp.get_clients(
+                        { bufnr = args.buf })) do
+                        local bufs = vim.lsp.get_buffers_by_client_id(
+                            client.id)
+                        if #bufs == 0 then
+                            vim.lsp.stop_client(client.id)
+                        end
+                    end
+                end, 200)
+            end,
+        })
 
         -- Force set handlers after LSP is loaded (double insurance).
         vim.api.nvim_create_autocmd("LspAttach", {
-            callback = function()
-                -- Re-apply our custom handlers to ensure they're not overridden.
-                vim.lsp.handlers["textDocument/definition"] = handle_locations_in_tabs
-                vim.lsp.handlers["textDocument/declaration"] = handle_locations_in_tabs
-                vim.lsp.handlers["textDocument/typeDefinition"] = handle_locations_in_tabs
-                vim.lsp.handlers["textDocument/implementation"] = handle_locations_in_tabs
+            callback = function(args)
+                -- Prevent multiple LSP clients of same type for same
+                -- root dir.
+                local client = vim.lsp.get_client_by_id(
+                    args.data.client_id)
+                if client then
+                    local root = client.config.root_dir
+                    for _, c in pairs(vim.lsp.get_clients()) do
+                        if c.name == client.name and
+                           c.config.root_dir == root and
+                           c.id ~= client.id then
+                            vim.schedule(function()
+                                vim.lsp.stop_client(client.id)
+                            end)
+                            break
+                        end
+                    end
+                end
+
+                -- Re-apply our custom handlers to ensure they're not
+                -- overridden.
+                vim.lsp.handlers["textDocument/definition"] =
+                    handle_locations_in_tabs
+                vim.lsp.handlers["textDocument/declaration"] =
+                    handle_locations_in_tabs
+                vim.lsp.handlers["textDocument/typeDefinition"] =
+                    handle_locations_in_tabs
+                vim.lsp.handlers["textDocument/implementation"] =
+                    handle_locations_in_tabs
             end
         })
     end
