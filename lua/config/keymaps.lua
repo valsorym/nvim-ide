@@ -330,6 +330,20 @@ function M.setup()
         })
     end, {desc = "Find files"})
 
+    -- map("n", "<leader>fg", function()
+    --     local cwd = vim.fn.getcwd()
+    --     local ok, api = pcall(require, "nvim-tree.api")
+    --     if ok and api.tree.is_visible() then
+    --         local root = api.tree.get_root()
+    --         if root and root.absolute_path then
+    --             cwd = root.absolute_path
+    --         end
+    --     end
+    --     require("telescope.builtin").live_grep({
+    --         cwd = cwd
+    --     })
+    -- end, {desc = "Live grep"})
+
     map("n", "<leader>fg", function()
         local cwd = vim.fn.getcwd()
         local ok, api = pcall(require, "nvim-tree.api")
@@ -340,9 +354,12 @@ function M.setup()
             end
         end
         require("telescope.builtin").live_grep({
-            cwd = cwd
+            cwd = cwd,
+            additional_args = function()
+                return {"--no-ignore", "--hidden", "--glob", "!.git/"}
+            end
         })
-    end, {desc = "Live grep"})
+    end, {desc = "Live grep (all files)"})
 
     map("n", "<leader>fb", function()
         require("telescope.builtin").buffers()

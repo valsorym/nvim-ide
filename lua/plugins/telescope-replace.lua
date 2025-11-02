@@ -142,6 +142,93 @@ return {
         end
 
         -- Custom Telescope find & replace
+        -- vim.keymap.set("n", "<leader>fc", function()
+        --     local telescope_ok, telescope =
+        --         pcall(require, "telescope.builtin")
+        --     if not telescope_ok then
+        --         vim.notify("Telescope not loaded",
+        --             vim.log.levels.ERROR)
+        --         return
+        --     end
+
+        --     local actions = require("telescope.actions")
+        --     local action_state = require("telescope.actions.state")
+
+        --     telescope.live_grep({
+        --         prompt_title = "🔍 Find & Replace (Ctrl-R)",
+        --         cwd = get_cwd(),
+        --         attach_mappings = function(prompt_bufnr, map)
+        --             -- Ctrl-R to start replacement
+        --             map("i", "<C-r>", function()
+        --                 local picker = action_state
+        --                     .get_current_picker(prompt_bufnr)
+        --                 local search_query = picker:_get_prompt()
+
+        --                 -- Get all results
+        --                 local manager = picker.manager
+        --                 local results = {}
+        --                 for entry in manager:iter() do
+        --                     table.insert(results, entry)
+        --                 end
+
+        --                 if #results == 0 then
+        --                     vim.notify("No results found",
+        --                         vim.log.levels.WARN)
+        --                     return
+        --                 end
+
+        --                 actions.close(prompt_bufnr)
+
+        --                 -- Store results
+        --                 _G.TelescopeReplace.results = results
+        --                 _G.TelescopeReplace.search_term = search_query
+
+        --                 -- Show replacement dialog
+        --                 vim.schedule(function()
+        --                     vim.ui.input({
+        --                         prompt = string.format(
+        --                             "Replace '%s' with: ",
+        --                             search_query
+        --                         ),
+        --                         default = "",
+        --                     }, function(replacement)
+        --                         if not replacement then
+        --                             return
+        --                         end
+
+        --                         -- Ask for confirmation
+        --                         vim.ui.select(
+        --                             {
+        --                                 "Yes, replace all",
+        --                                 "No, cancel"
+        --                             },
+        --                             {
+        --                                 prompt = string.format(
+        --                                     "Replace %d occurrences?",
+        --                                     #results
+        --                                 ),
+        --                             },
+        --                             function(choice)
+        --                                 if choice ==
+        --                                     "Yes, replace all" then
+        --                                     do_replace(
+        --                                         search_query,
+        --                                         replacement,
+        --                                         {
+        --                                             case_sensitive = false
+        --                                         }
+        --                                     )
+        --                                 end
+        --                             end
+        --                         )
+        --                     end)
+        --                 end)
+        --             end)
+
+        --             return true
+        --         end,
+        --     })
+        -- end, {desc = "Live Change (Find & Replace)"})
         vim.keymap.set("n", "<leader>fc", function()
             local telescope_ok, telescope =
                 pcall(require, "telescope.builtin")
@@ -154,9 +241,25 @@ return {
             local actions = require("telescope.actions")
             local action_state = require("telescope.actions.state")
 
+            -- Get CWD (same logic as in keymaps.lua)
+            local function get_cwd()
+                local cwd = vim.fn.getcwd()
+                local ok, api = pcall(require, "nvim-tree.api")
+                if ok and api.tree.is_visible() then
+                    local root = api.tree.get_root()
+                    if root and root.absolute_path then
+                        cwd = root.absolute_path
+                    end
+                end
+                return cwd
+            end
+
             telescope.live_grep({
                 prompt_title = "🔍 Find & Replace (Ctrl-R)",
                 cwd = get_cwd(),
+                additional_args = function()
+                    return {"--no-ignore", "--hidden", "--glob", "!.git/"}
+                end,
                 attach_mappings = function(prompt_bufnr, map)
                     -- Ctrl-R to start replacement
                     map("i", "<C-r>", function()
@@ -229,6 +332,86 @@ return {
                 end,
             })
         end, {desc = "Live Change (Find & Replace)"})
+
+        -- Visual mode: replace selected text
+        vim.keymap.set("v", "<leader>fc", function()
+            -- Get selected text
+            vim.cmd('noau normal! "vy"')
+            local selected = vim.fn.getreg("v")
+            selected = vim.fn.escape(selected, "\n")
+
+            local telescope_ok, telescope =
+                pcall(require, "telescope.builtin")
+            if not telescope_ok then
+                return
+            end
+
+            local actions = require("telescope.actions")
+            local action_state = require("telescope.actions.state")
+
+            telescope.grep_string({
+                prompt_title = string.format(
+                    "🔍 Replace '%s' (Ctrl-R)",
+                    selected
+                ),
+                search = selected,
+                cwd = get_cwd(),
+                attach_mappings = function(prompt_bufnr, map)
+                    map("i", "<C-r>", function()
+                        local picker = action_state
+                            .get_current_picker(prompt_bufnr)
+                        local manager = picker.manager
+                        local results = {}
+                        for entry in manager:iter() do
+                            table.insert(results, entry)
+                        end
+
+                        actions.close(prompt_bufnr)
+                        _G.TelescopeReplace.results = results
+                        _G.TelescopeReplace.search_term = selected
+
+                        vim.schedule(function()
+                            vim.ui.input({
+                                prompt = string.format(
+                                    "Replace '%s' with: ",
+                                    selected
+                                ),
+                                default = "",
+                            }, function(replacement)
+                                if not replacement then
+                                    return
+                                end
+
+                                vim.ui.select(
+                                    {
+                                        "Yes, replace all",
+                                        "No, cancel"
+                                    },
+                                    {
+                                        prompt = string.format(
+                                            "Replace %d occurrences?",
+                                            #results
+                                        ),
+                                    },
+                                    function(choice)
+                                        if choice ==
+                                            "Yes, replace all" then
+                                            do_replace(
+                                                selected,
+                                                replacement,
+                                                {case_sensitive = true}
+                                            )
+                                        end
+                                    end
+                                )
+                            end)
+                        end)
+                    end)
+
+                    return true
+                end,
+            })
+        end, {desc = "Replace selected text"})
 
         -- Quick replace current word
         vim.keymap.set("n", "<leader>fC", function()
@@ -311,86 +494,6 @@ return {
                 end,
             })
         end, {desc = "Replace current word"})
-
-        -- Visual mode: replace selected text
-        vim.keymap.set("v", "<leader>fc", function()
-            -- Get selected text
-            vim.cmd('noau normal! "vy"')
-            local selected = vim.fn.getreg("v")
-            selected = vim.fn.escape(selected, "\n")
-
-            local telescope_ok, telescope =
-                pcall(require, "telescope.builtin")
-            if not telescope_ok then
-                return
-            end
-
-            local actions = require("telescope.actions")
-            local action_state = require("telescope.actions.state")
-
-            telescope.grep_string({
-                prompt_title = string.format(
-                    "🔍 Replace '%s' (Ctrl-R)",
-                    selected
-                ),
-                search = selected,
-                cwd = get_cwd(),
-                attach_mappings = function(prompt_bufnr, map)
-                    map("i", "<C-r>", function()
-                        local picker = action_state
-                            .get_current_picker(prompt_bufnr)
-                        local manager = picker.manager
-                        local results = {}
-                        for entry in manager:iter() do
-                            table.insert(results, entry)
-                        end
-
-                        actions.close(prompt_bufnr)
-                        _G.TelescopeReplace.results = results
-                        _G.TelescopeReplace.search_term = selected
-
-                        vim.schedule(function()
-                            vim.ui.input({
-                                prompt = string.format(
-                                    "Replace '%s' with: ",
-                                    selected
-                                ),
-                                default = "",
-                            }, function(replacement)
-                                if not replacement then
-                                    return
-                                end
-
-                                vim.ui.select(
-                                    {
-                                        "Yes, replace all",
-                                        "No, cancel"
-                                    },
-                                    {
-                                        prompt = string.format(
-                                            "Replace %d occurrences?",
-                                            #results
-                                        ),
-                                    },
-                                    function(choice)
-                                        if choice ==
-                                            "Yes, replace all" then
-                                            do_replace(
-                                                selected,
-                                                replacement,
-                                                {case_sensitive = true}
-                                            )
-                                        end
-                                    end
-                                )
-                            end)
-                        end)
-                    end)
-
-                    return true
-                end,
-            })
-        end, {desc = "Replace selected text"})
 
         -- vim.notify("✅ Telescope Replace loaded", vim.log.levels.INFO)
     end,
