@@ -235,19 +235,16 @@ return {
             -- FIND
             { "<leader>ff", ":Telescope find_files<CR>", description = "Find Files", mode = { "n" } },
             { "<leader>fg", ":Telescope live_grep<CR>", description = "Live Grep", mode = { "n" } },
+            { "<leader>fG", description = "Live Grep (include ignored)", mode = { "n" } },
             { "<leader>fb", ":Telescope buffers<CR>", description = "Find Buffers", mode = { "n" } },
             { "<leader>fh", ":Telescope help_tags<CR>", description = "Help Tags", mode = { "n" } },
             { "<leader>fo", ":Telescope oldfiles<CR>", description = "Old Files", mode = { "n" } },
             { "<leader>fd", ":Telescope lsp_document_symbols<CR>", description = "Document Symbols", mode = { "n" } },
             { "<leader>fw", ":Telescope lsp_workspace_symbols<CR>", description = "Workspace Symbols", mode = { "n" } },
 
-            { "<leader>fc", description = "Live Change (Find & Replace)", mode = { "n", "v" } },
-            { "<leader>fC", description = "Replace current word", mode = { "n" } },
-
-            { "<leader>fs", function() require("flash").jump() end, description = "Flash Jump", mode = { "n", "x", "o" } },
-            { "<leader>fS", function() require("flash").treesitter() end, description = "Flash Treesitter", mode = { "n", "x", "o" } },
-            { "<leader>fr", function() require("flash").remote() end, description = "Flash Remote", mode = { "o" } },
-            { "<leader>fR", function() require("flash").treesitter_search() end, description = "Flash Search", mode = { "o", "x" } },
+            { "<leader>fc", description = "Find & Replace", mode = { "n", "v" } },
+            { "<leader>fC", description = "Find & Replace (include ignored)", mode = { "n" } },
+            { "<leader>fx", description = "Replace current Word", mode = { "n" } },
 
             -- EXPLORER
             {

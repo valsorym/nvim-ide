@@ -330,21 +330,24 @@ function M.setup()
         })
     end, {desc = "Find files"})
 
-    -- map("n", "<leader>fg", function()
-    --     local cwd = vim.fn.getcwd()
-    --     local ok, api = pcall(require, "nvim-tree.api")
-    --     if ok and api.tree.is_visible() then
-    --         local root = api.tree.get_root()
-    --         if root and root.absolute_path then
-    --             cwd = root.absolute_path
-    --         end
-    --     end
-    --     require("telescope.builtin").live_grep({
-    --         cwd = cwd
-    --     })
-    -- end, {desc = "Live grep"})
-
+    -- Live grep (respects .gitignore)
     map("n", "<leader>fg", function()
+        local cwd = vim.fn.getcwd()
+        local ok, api = pcall(require, "nvim-tree.api")
+        if ok and api.tree.is_visible() then
+            local root = api.tree.get_root()
+            if root and root.absolute_path then
+                cwd = root.absolute_path
+            end
+        end
+        require("telescope.builtin").live_grep({
+            cwd = cwd
+            -- Default: respects .gitignore
+        })
+    end, {desc = "Live grep"})
+
+    -- Live grep (include ignored files)
+    map("n", "<leader>fG", function()
         local cwd = vim.fn.getcwd()
         local ok, api = pcall(require, "nvim-tree.api")
         if ok and api.tree.is_visible() then
@@ -359,7 +362,7 @@ function M.setup()
                 return {"--no-ignore", "--hidden", "--glob", "!.git/"}
             end
         })
-    end, {desc = "Live grep (all files)"})
+    end, {desc = "Live grep (include ignored)"})
 
     map("n", "<leader>fb", function()
         require("telescope.builtin").buffers()
@@ -376,10 +379,6 @@ function M.setup()
     map("n", "<leader>fd", function()
         require("telescope.builtin").lsp_document_symbols()
     end, {desc = "Document symbols"})
-
-    map("n", "<leader>fw", function()
-        require("telescope.builtin").lsp_workspace_symbols()
-    end, {desc = "Workspace symbols"})
 
     -- Move current tab.
     map("n", "<S-Left>", ":-tabmove<CR>", {desc = "Move tab left"})
