@@ -89,6 +89,78 @@ local function force_close_tab()
     end
 end
 
+-- Close all saved tabs and return to Dashboard.
+local function close_saved_tabs()
+    local total_tabs = vim.fn.tabpagenr("$")
+    local modified_tabs = 0
+    local tabs_to_close = {}
+
+    -- Identify which tabs to close.
+    for tab_nr = 1, total_tabs do
+        local buflist = vim.fn.tabpagebuflist(tab_nr)
+        local has_modified = false
+
+        -- Check if any buffer in this tab is modified.
+        for _, buf in ipairs(buflist) do
+            if vim.bo[buf].modified then
+                has_modified = true
+                break
+            end
+        end
+
+        if has_modified then
+            modified_tabs = modified_tabs + 1
+        else
+            -- Mark for closing.
+            table.insert(tabs_to_close, tab_nr)
+        end
+    end
+
+    -- If nothing to close.
+    if #tabs_to_close == 0 then
+        vim.notify(
+            string.format(
+                "All %d tabs have unsaved changes. Nothing to close.",
+                modified_tabs
+            ),
+            vim.log.levels.WARN
+        )
+        return
+    end
+
+    -- If ALL tabs are saved - show Dashboard first, then close all.
+    if #tabs_to_close == total_tabs then
+        vim.cmd("Dashboard")
+        cleanup_orphan_buffers(false)
+
+        vim.notify(
+            string.format(
+                "All %d tabs closed. Dashboard opened.",
+                #tabs_to_close
+            ),
+            vim.log.levels.INFO
+        )
+        return
+    end
+
+    -- Some tabs have unsaved changes - close only saved tabs.
+    local closed_count = 0
+    for i = #tabs_to_close, 1, -1 do
+        local tab_nr = tabs_to_close[i]
+        vim.cmd(tab_nr .. "tabclose")
+        closed_count = closed_count + 1
+    end
+
+    vim.notify(
+        string.format(
+            "Closed %d saved tabs. %d tabs with unsaved changes remain.",
+            closed_count,
+            modified_tabs
+        ),
+        vim.log.levels.WARN
+    )
+end
+
 -- Setup conditional abbreviations for command line.
 local function setup_conditional_abbreviations()
     vim.api.nvim_create_autocmd(
@@ -338,23 +410,33 @@ function M.setup()
     -- Better paste.
     map("v", "p", '"_dP', opts)
 
-    -- Delete without yanking.
-    map("n", "D",  '"_D',  { noremap = true, silent = true })
-    map("n", "dd", '"_dd', { noremap = true, silent = true })
-    map("n", "dw", '"_dw', { noremap = true, silent = true })
+    -- -- Delete without yanking.
+    -- map("n", "D",  '"_D',  { noremap = true, silent = true })
+    -- map("n", "dd", '"_dd', { noremap = true, silent = true })
+    -- map("n", "dw", '"_dw', { noremap = true, silent = true })
 
-    -- Delete with yanking (classic behavior).
-    map("n", "yD",  function()
-        vim.cmd('normal! D')
-    end, { noremap = true, silent = true })
+    -- -- Delete with yanking (classic behavior).
+    -- map("n", "yD",  function()
+    --     vim.cmd('normal! D')
+    -- end, { noremap = true, silent = true })
 
-    map("n", "ydd", function()
-        vim.cmd('normal! dd')
-    end, { noremap = true, silent = true })
+    -- map("n", "ydd", function()
+    --     vim.cmd('normal! dd')
+    -- end, { noremap = true, silent = true })
 
-    map("n", "ydw", function()
-        vim.cmd('normal! dw')
-    end, { noremap = true, silent = true })
+    -- map("n", "ydw", function()
+    --     vim.cmd('normal! dw')
+    -- end, { noremap = true, silent = true })
+
+    -- Delete without yanking (capital letters).
+    map("n", "DD", '"_dd', {desc = "Delete line without yank"})
+    map("n", "DW", '"_dw', {desc = "Delete word without yank"})
+    map("n", "D$", '"_D', {desc = "Delete to end without yank"})
+    map("n", "C$", '"_C', {desc = "Change to end without yank"})
+
+    -- Visual mode delete without yanking.
+    map("v", "D", '"_d', {desc = "Delete selection without yank"})
+    map("v", "C", '"_c', {desc = "Change selection without yank"})
 
     -- TAB NAVIGATION
 
@@ -393,10 +475,27 @@ function M.setup()
         end
     end, {desc = "Next tab"})
 
-    -- WORKSPACE / SESSIONS (<leader>w)
-    map("n", "<leader>wq", smart_tab_close, {desc = "Smart close tab"})
-    map("n", "<leader>wA", ":qa<CR>", {desc = "Close all tabs and exit"})
-    map("n", "<leader>wQ", force_close_tab, {desc = "Force close tab"})
+    -- TABS MANAGEMENT
+    map("n", "<leader>tC", close_saved_tabs, {desc = "Close all saved tabs"})
+    map("n", "<leader>tQ", force_close_tab, {desc = "Force close tab"})
+    map("n", "<leader>tA", ":qa<CR>", {desc = "Close all tabs and exit"})
+    map("n", "<leader>tO", ":tabonly<CR>", {desc = "Close other tabs"})
+
+    map("n", "<leader>tq", smart_tab_close, {desc = "Smart close tab"})
+    map("n", "<leader>tn", function()
+        local current_buf = vim.api.nvim_get_current_buf()
+        local current_filetype = vim.bo[current_buf].filetype
+        local current_name = vim.fn.bufname(current_buf)
+
+        -- If current tab is Dashboard or empty, just create new buffer here.
+        if current_filetype == "dashboard" or
+        (current_name == "" and not vim.bo[current_buf].modified) then
+            vim.cmd("enew")
+        else
+            -- Otherwise create new tab at the end.
+            vim.cmd("tablast | tabnew")
+        end
+    end, {desc = "New tab"})
 
     -- EXPLORER / TREE / BUFFERS (<leader>e)
 
@@ -472,7 +571,7 @@ function M.setup()
     map("n", "<leader>ep", ":bprevious<CR>", {desc = "Previous buffer"})
 
     -- New tab
-    map("n", "<leader>eT", ":tabnew<CR>", {desc = "New tab"})
+    -- map("n", "<leader>eT", ":tabnew<CR>", {desc = "New tab"})
     map("n", "<C-t>", ":tabnew<CR>", {desc = "New tab"})
 
     -- CODE / LSP / DIAGNOSTICS (<leader>c)
@@ -642,6 +741,13 @@ function M.setup()
     )
 
     -- SYSTEM / CONFIG / TOOLS (<leader>x)
+
+    -- Clear search highlighting (moved to <leader>x).
+    map("n", "<leader>xh", ":nohlsearch<CR>", {desc = "Clear highlights"})
+
+    -- Also make Esc clear highlights in normal mode.
+    map("n", "<Esc>", ":nohlsearch<CR>",
+        {desc = "Clear search highlights", silent = true})
 
     -- Clear search highlighting (moved to <leader>x).
     map("n", "<leader>xh", ":nohlsearch<CR>", {desc = "Clear highlights"})
@@ -822,5 +928,15 @@ function M.setup()
     -- Override :new to create new tab instead of split.
     vim.cmd("cabbrev new tabnew")
 end
+
+-- User command for closing saved tabs.
+vim.api.nvim_create_user_command(
+    "CloseSavedTabs",
+    close_saved_tabs,
+    {desc = "Close all saved tabs and return to Dashboard"}
+)
+
+-- Export function for use in legendary.
+M.close_saved_tabs = close_saved_tabs
 
 return M

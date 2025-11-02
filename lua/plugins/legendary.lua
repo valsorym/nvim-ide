@@ -55,6 +55,7 @@ return {
                 local en_to_ua = _G.LangmapHelper and _G.LangmapHelper.en_to_ua or {}
 
                 local groups = {
+                    { key = "t", icon = "", name = "Tabs", desc = "Tab management" },
                     { key = "w", icon = "", name = "Workspaces", desc = "Sessions & workspaces" },
                     { key = "f", icon = "", name = "Find/Search", desc = "File and text search" },
                     { key = "e", icon = "", name = "Explorer", desc = "Files & buffers" },
@@ -194,6 +195,7 @@ return {
 
         -- Group definitions matching which-key.
         local group_info = {
+            t = { icon = "", name = "Tabs" },
             w = { icon = "", name = "Workspaces" },
             f = { icon = "", name = "Find/Search" },
             e = { icon = "", name = "Explorer" },
@@ -213,6 +215,14 @@ return {
 
         -- Base keymaps (English version).
         local base_keymaps = {
+            -- TABS
+            { "<leader>tq", ":SmartCloseTab<CR>", description = "Smart Close Tab" },
+            { "<leader>tc", ":CloseSavedTabs<CR>", description = "Close All Saved Tabs" },
+            { "<leader>tQ", ":ForceCloseTab<CR>", description = "Force Close Tab" },
+            { "<leader>tA", ":qa<CR>", description = "Close All & Exit" },
+            { "<leader>tn", ":tabnew<CR>", description = "New Tab" },
+            { "<leader>to", ":tabonly<CR>", description = "Close Other Tabs" },
+
             -- WORKSPACE
             { "<leader>ws", ":SessionSave<CR>", description = "Save Session" },
             { "<leader>wr", ":SessionRestore<CR>", description = "Restore Session" },
@@ -221,9 +231,6 @@ return {
             { "<leader>wF", ":Telescope sessions<CR>", description = "Find Sessions" },
             { "<leader>ww", ":Telescope workspaces<CR>", description = "Find Workspaces" },
             { "<leader>wa", ":WorkspaceAdd<CR>", description = "Add Workspace" },
-            { "<leader>wq", ":SmartCloseTab<CR>", description = "Smart Close Tab" },
-            { "<leader>wQ", ":ForceCloseTab<CR>", description = "Force Close Tab" },
-            { "<leader>wA", ":CloseAllExit<CR>", description = "Close All & Exit" },
 
             -- FIND
             { "<leader>ff", ":Telescope find_files<CR>", description = "Find Files", mode = { "n" } },
