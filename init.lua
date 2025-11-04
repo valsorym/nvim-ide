@@ -99,6 +99,7 @@ require("config.filetype-settings").setup_keymaps()
 
 require("config.auto-reload").setup()
 require("config.tabs-list").setup()
+require("config.highlights").setup()
 
 
 vim.notify(" 🇺🇦 Glory to Ukraine!", vim.log.levels.INFO)
