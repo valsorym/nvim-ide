@@ -307,7 +307,7 @@ return {
                 text = {
                     [vim.diagnostic.severity.ERROR] = "☣",
                     [vim.diagnostic.severity.WARN] = "⚠",
-                    [vim.diagnostic.severity.HINT] = "↯",
+                    [vim.diagnostic.severity.HINT] = "💡", -- "↯",
                     [vim.diagnostic.severity.INFO] = "🛈"
                 }
             },
@@ -335,7 +335,8 @@ return {
             local diagnostics = vim.diagnostic.get(0)
             print("Diagnostics count:", #diagnostics)
             print("Signcolumn setting:", vim.wo.signcolumn)
-            print("Testing icons: ☣ ⚠ 💡 ℹ")
+            print("Testing icons: ☣ ⚠ 💡 🛈")
+
 
             -- Force refresh signs.
             vim.diagnostic.show(0, 0, diagnostics)
