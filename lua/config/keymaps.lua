@@ -890,6 +890,10 @@ function M.setup()
         end
     end, {desc = "Toggle Trailing Spaces"})
 
+    -- Show signature help with Ctrl+K
+    map("n", "<C-k>", vim.lsp.buf.signature_help, {desc = "Signature Help"})
+    map("i", "<C-k>", vim.lsp.buf.signature_help, {desc = "Signature Help"})
+
     -- Smart quit commands with Dashboard-aware logic.
     vim.api.nvim_create_user_command(
         "Q",
