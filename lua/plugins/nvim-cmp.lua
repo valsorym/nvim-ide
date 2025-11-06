@@ -1,5 +1,5 @@
 -- ~/.config/nvim/lua/plugins/completion.lua
--- Fast, flat (Nerd Fonts) UI; tuned sorting; safe tab-jump; cmdline.
+-- Code autocomplete in Neovim!
 
 return {
     "hrsh7th/nvim-cmp",
@@ -68,7 +68,7 @@ return {
                 ["<Tab>"] = cmp.mapping(function(fallback)
                     if cmp.visible() then
                         cmp.confirm({
-                            select = true,  -- Auto-select first item
+                            select = true,  -- auto-select first item
                             behavior = cmp.ConfirmBehavior.Insert,
                         })
                     elseif luasnip.expand_or_jumpable() then
