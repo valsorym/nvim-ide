@@ -3,10 +3,10 @@
 
 local M = {}
 
--- Store current window
+-- Store current window.
 M.current_win = nil
 
--- Function to close any existing tabs window
+-- Function to close any existing tabs window.
 function M.close_existing_window()
     if M.current_win and vim.api.nvim_win_is_valid(M.current_win) then
         pcall(vim.api.nvim_win_close, M.current_win, true)
@@ -14,15 +14,69 @@ function M.close_existing_window()
     M.current_win = nil
 end
 
--- Function to get list of open tabs with their files
+-- Function to get list of open tabs with their files.
 function M.get_open_tabs()
+    -- Use current working directory as root.
+    local root_dir = vim.fn.getcwd()
+
+    -- Get last N directories + filename relative to root if possible.
+    local function get_short_path(full_path)
+        if full_path == "" then
+            return ""
+        end
+
+        local path = full_path
+
+        -- Make path relative to cwd.
+        if root_dir then
+            -- Normalize both paths.
+            local normalized_root = root_dir:gsub("/$", "")
+            local normalized_path = path:gsub("/$", "")
+
+            -- Check if file is under the root
+            if normalized_path:sub(1, #normalized_root) == normalized_root then
+                -- Make relative path
+                local relative = normalized_path:sub(#normalized_root + 2)  -- +2 to skip root and "/"
+
+                if relative ~= "" then
+                    path = relative
+                end
+            end
+        end
+
+        -- Split path into components.
+        local parts = {}
+        for part in string.gmatch(path, "[^/]+") do
+            table.insert(parts, part)
+        end
+
+        -- If path is now short (relative to root), show it all.
+        if #parts <= 3 then
+            -- Remove filename from parts.
+            local dirs = {}
+            for i = 1, #parts - 1 do
+                table.insert(dirs, parts[i])
+            end
+            return table.concat(dirs, "/")
+        end
+
+        -- Otherwise, take last 3 directories.
+        local start_idx = math.max(1, #parts - 3)
+        local short_parts = {}
+        for i = start_idx, #parts - 1 do  -- -1 to exclude filename
+            table.insert(short_parts, parts[i])
+        end
+
+        return table.concat(short_parts, "/")
+    end
+
     local tabs = {}
     for tab_nr = 1, vim.fn.tabpagenr("$") do
         local buflist = vim.fn.tabpagebuflist(tab_nr)
         local winnr = vim.fn.tabpagewinnr(tab_nr)
         local buf = buflist[winnr]
 
-        -- Find first normal buffer
+        -- Find first normal buffer.
         for _, b in ipairs(buflist) do
             local name = vim.fn.bufname(b)
             if not name:match("NvimTree_") and
@@ -35,7 +89,7 @@ function M.get_open_tabs()
 
         local file_path = vim.fn.bufname(buf)
         local file_name = vim.fn.fnamemodify(file_path, ":t")
-        local dir_name = vim.fn.fnamemodify(file_path, ":h:t")
+        local dir_name = get_short_path(file_path)
 
         if file_name == "" then
             file_name = "[No Name]"
@@ -68,7 +122,7 @@ function M.get_open_tabs()
     return tabs
 end
 
--- Function to create floating window with tabs list
+-- Function to create floating window with tabs list.
 function M.show_tabs_window()
     M.close_existing_window()
 
@@ -79,7 +133,7 @@ function M.show_tabs_window()
         return
     end
 
-    -- Create main buffer
+    -- Create main buffer.
     local buf = vim.api.nvim_create_buf(false, true)
     local width = math.min(70, vim.o.columns - 10)
     local height = math.min(20, #all_tabs + 10)
@@ -101,7 +155,7 @@ function M.show_tabs_window()
 
     M.current_win = win
 
-    -- Create prompt buffer for search
+    -- Create prompt buffer for search.
     local prompt_buf = vim.api.nvim_create_buf(false, true)
     local prompt_height = 1
     local prompt_win = vim.api.nvim_open_win(prompt_buf, false, {
@@ -125,7 +179,7 @@ function M.show_tabs_window()
     local line_to_tab = {}
     local current_tab_line = nil
 
-    -- Function to filter tabs
+    -- Function to filter tabs.
     local function filter_tabs(text)
         if text == "" then
             return all_tabs
@@ -144,7 +198,7 @@ function M.show_tabs_window()
         return results
     end
 
-    -- Function to render tabs list
+    -- Function to render tabs list.
     local function render_list()
         filtered_tabs = filter_tabs(filter_text)
         line_to_tab = {}
@@ -152,14 +206,14 @@ function M.show_tabs_window()
 
         local lines = {}
 
-        -- Header with tabs count
+        -- Header with tabs count.
         table.insert(lines, "")
         table.insert(lines, string.format(
             " 󰮰  Tabs: %d/%d", #filtered_tabs, #all_tabs))
         table.insert(lines, "")
-        -- Prompt placeholder (will be covered by prompt window)
+        -- Prompt placeholder (will be covered by prompt window).
         table.insert(lines, "")
-        -- Separator line (full width)
+        -- Separator line (full width).
         table.insert(lines, string.rep("─", width))
         table.insert(lines, "")
 
@@ -182,7 +236,7 @@ function M.show_tabs_window()
             end
         end
 
-        -- Make buffer modifiable before updating
+        -- Make buffer modifiable before updating.
         vim.bo[buf].modifiable = true
         vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
         vim.bo[buf].modifiable = false
@@ -200,16 +254,16 @@ function M.show_tabs_window()
     vim.wo[win].number = false
     vim.wo[win].relativenumber = false
 
-    -- Initial render
+    -- Initial render.
     render_list()
 
-    -- Prompt callback for filtering
+    -- Prompt callback for filtering.
     vim.fn.prompt_setcallback(prompt_buf, function(text)
         filter_text = text
         render_list()
     end)
 
-    -- Update filter on text change
+    -- Update filter on text change.
     vim.api.nvim_create_autocmd("TextChangedI", {
         buffer = prompt_buf,
         callback = function()
@@ -230,10 +284,10 @@ function M.show_tabs_window()
         M.current_win = nil
     end
 
-    -- Keymaps for main window
+    -- Keymaps for main window.
     local km = {buffer = buf, nowait = true, silent = true}
 
-    -- Enter prompt mode with 'i', '/' or Tab
+    -- Enter prompt mode with 'i', '/' or Tab.
     vim.keymap.set("n", "i", function()
         vim.api.nvim_set_current_win(prompt_win)
         vim.cmd("startinsert")
@@ -298,32 +352,32 @@ function M.show_tabs_window()
         end
     end, km)
 
-    -- Keymaps for prompt window
+    -- Keymaps for prompt window.
     local prompt_km = {
         buffer = prompt_buf,
         nowait = true,
         silent = true
     }
 
-    -- Esc - exit search, go to list
+    -- Esc - exit search, go to list.
     vim.keymap.set("i", "<Esc>", function()
         vim.cmd("stopinsert")
         vim.api.nvim_set_current_win(win)
     end, prompt_km)
 
-    -- Tab - exit search, go to list (alternative)
+    -- Tab - exit search, go to list (alternative).
     vim.keymap.set("i", "<Tab>", function()
         vim.cmd("stopinsert")
         vim.api.nvim_set_current_win(win)
     end, prompt_km)
 
-    -- Ctrl-C - close window completely
+    -- Ctrl-C - close window completely.
     vim.keymap.set("i", "<C-c>", function()
         vim.cmd("stopinsert")
         close_window()
     end, prompt_km)
 
-    -- Enter - select current item
+    -- Enter - select current item.
     vim.keymap.set("i", "<CR>", function()
         vim.cmd("stopinsert")
         vim.api.nvim_set_current_win(win)
@@ -335,7 +389,7 @@ function M.show_tabs_window()
         end
     end, prompt_km)
 
-    -- Arrow Down - move to next item (stay in search)
+    -- Arrow Down - move to next item (stay in search).
     vim.keymap.set("i", "<Down>", function()
         local current_line = vim.api.nvim_win_get_cursor(win)[1]
         local next_line = current_line + 1
@@ -366,7 +420,7 @@ function M.show_tabs_window()
         end
     end, prompt_km)
 
-    -- Arrow Up - move to previous item (stay in search)
+    -- Arrow Up - move to previous item (stay in search).
     vim.keymap.set("i", "<Up>", function()
         local current_line = vim.api.nvim_win_get_cursor(win)[1]
         local prev_line = current_line - 1
@@ -393,7 +447,7 @@ function M.show_tabs_window()
         end
     end, prompt_km)
 
-    -- Auto-close when main window loses focus
+    -- Auto-close when main window loses focus.
     vim.api.nvim_create_autocmd({"WinLeave", "BufLeave"}, {
         buffer = buf,
         once = true,
@@ -407,7 +461,7 @@ function M.show_tabs_window()
         end
     })
 
-    -- Start in prompt mode
+    -- Start in prompt mode.
     vim.api.nvim_set_current_win(prompt_win)
     vim.cmd("startinsert")
 end
