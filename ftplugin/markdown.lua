@@ -7,22 +7,23 @@ vim.wo.linebreak = true
 vim.wo.breakindent = true
 vim.wo.showbreak = "↪ "
 vim.bo.expandtab = true
-vim.bo.tabstop = 2
-vim.bo.shiftwidth = 2
-vim.bo.softtabstop = 2
+vim.opt_local.tabstop = 4
+vim.opt_local.shiftwidth = 4
+vim.opt_local.softtabstop = 4
 
--- Dynamic wrap: either at window edge or at 120, whichever is smaller
+
+-- Dynamic wrap: either at window edge or at 120, whichever is smaller.
 local function update_wrap_margin()
     local win_width = vim.api.nvim_win_get_width(0)
     local target_width = math.min(win_width - 2, 120)
 
-    -- Use breakindentopt to set soft wrap at desired width
+    -- Use breakindentopt to set soft wrap at desired width.
     if win_width < 120 then
-        -- Wrap at window edge
+        -- Wrap at window edge.
         vim.wo.wrap = true
         vim.wo.linebreak = true
     else
-        -- Wrap at 120
+        -- Wrap at 120.
         vim.wo.wrap = true
         vim.wo.linebreak = true
     end

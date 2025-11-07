@@ -426,33 +426,29 @@ function M.setup()
     -- Better paste.
     map("v", "p", '"_dP', opts)
 
-    -- -- Delete without yanking.
-    -- map("n", "D",  '"_D',  { noremap = true, silent = true })
-    -- map("n", "dd", '"_dd', { noremap = true, silent = true })
-    -- map("n", "dw", '"_dw', { noremap = true, silent = true })
+    -- Delete without yanking (underscore prefix).
+    -- Standard behavior: dd, dw, D (delete and yank).
+    -- Underscore prefix: _dd, _dw, _D (delete without yank).
+    map("n", "zdd", '"_dd', {desc = "Delete line without yank"})
+    map("n", "zdw", '"_dw', {desc = "Delete word without yank"})
+    map("n", "zD", '"_D', {desc = "Delete to end without yank"})
+    map("n", "zx", '"_x', {desc = "Delete char without yank"})
+    map("n", "zcc", '"_cc', {desc = "Change line without yank"})
+    map("n", "zcw", '"_cw', {desc = "Change word without yank"})
+    map("n", "zC", '"_C', {desc = "Change to end without yank"})
+    map("v", "zd", '"_d', {desc = "Delete selection without yank"})
+    map("v", "zc", '"_c', {desc = "Change selection without yank"})
 
-    -- -- Delete with yanking (classic behavior).
-    -- map("n", "yD",  function()
-    --     vim.cmd('normal! D')
-    -- end, { noremap = true, silent = true })
-
-    -- map("n", "ydd", function()
-    --     vim.cmd('normal! dd')
-    -- end, { noremap = true, silent = true })
-
-    -- map("n", "ydw", function()
-    --     vim.cmd('normal! dw')
-    -- end, { noremap = true, silent = true })
-
-    -- Delete without yanking (capital letters).
-    map("n", "DD", '"_dd', {desc = "Delete line without yank"})
-    map("n", "DW", '"_dw', {desc = "Delete word without yank"})
-    map("n", "D$", '"_D', {desc = "Delete to end without yank"})
-    map("n", "C$", '"_C', {desc = "Change to end without yank"})
-
-    -- Visual mode delete without yanking.
-    map("v", "D", '"_d', {desc = "Delete selection without yank"})
-    map("v", "C", '"_c', {desc = "Change selection without yank"})
+    -- VSCode-style indentation with Ctrl+< and Ctrl+>.
+    -- Works in Normal, Visual, and Insert modes.
+    map("n", "<S-<>", "<<", {desc = "Outdent line"})
+    map("n", "<S->>", ">>", {desc = "Indent line"})
+    map("v", "<S-<>", "<gv", {desc = "Outdent selection"})
+    map("v", "<S->>", ">gv", {desc = "Indent selection"})
+    map("i", "<S-<>", "<C-o><<", {desc = "Outdent line (insert mode)"})
+    map("i", "<S->>", "<C-o>>>", {desc = "Indent line (insert mode)"})
+    map("s", "<S-<>", "<C-o><gv", {desc = "Outdent selection"})
+    map("s", "<S->>", "<C-o>>gv", {desc = "Indent selection"})
 
     -- TAB NAVIGATION
 
