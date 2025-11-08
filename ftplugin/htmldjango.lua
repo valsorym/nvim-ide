@@ -15,7 +15,7 @@ vim.opt_local.autoindent = true
 vim.opt_local.smartindent = true
 
 -- CRITICAL: Disable all auto-formatting
-vim.b.autoformat = true
+vim.b.autoformat = false
 vim.bo.formatexpr = ""
 
 -- Disable formatting capability for HTML LSP servers
@@ -78,24 +78,15 @@ map("n", "<leader>ch", function()
     vim.api.nvim_set_current_line(new_line)
 end, vim.tbl_extend("force", opts, {desc = "HTML comment"}))
 
--- Override format command to do nothing (with helpful message)
-map("n", "<leader>cf", function()
-    vim.notify(
-        "⚠️  Formatting disabled for Django templates\n" ..
-        "💡 Use manual indentation instead",
-        vim.log.levels.WARN
-    )
-end, vim.tbl_extend("force", opts, {desc = "Format (disabled)"}))
-
 -- Override F2 to just save (no format)
 map("n", "<F2>", function()
     vim.cmd("write")
-    vim.notify("💾 Saved (no format)", vim.log.levels.INFO)
+    vim.notify(" Saved (no format)", vim.log.levels.INFO)
 end, vim.tbl_extend("force", opts, {desc = "Save without format"}))
 
 map("i", "<F2>", function()
     vim.cmd("stopinsert")
     vim.cmd("write")
-    vim.notify("💾 Saved (no format)", vim.log.levels.INFO)
+    vim.notify(" Saved (no format)", vim.log.levels.INFO)
     vim.cmd("startinsert")
 end, vim.tbl_extend("force", opts, {desc = "Save without format"}))
