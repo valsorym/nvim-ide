@@ -1,5 +1,5 @@
 -- ~/.config/nvim/ftplugin/htmldjango.lua
--- Django template settings.
+-- Django template settings with formatting protection.
 
 -- 4 spaces indentation
 vim.opt_local.expandtab = true
@@ -13,6 +13,32 @@ vim.opt_local.commentstring = "{# %s #}"
 -- Enable auto-indent
 vim.opt_local.autoindent = true
 vim.opt_local.smartindent = true
+
+-- CRITICAL: Disable all auto-formatting
+vim.b.autoformat = true
+vim.bo.formatexpr = ""
+
+-- Disable formatting capability for HTML LSP servers
+vim.api.nvim_create_autocmd("LspAttach", {
+    buffer = 0,
+    callback = function(args)
+        local client = vim.lsp.get_client_by_id(args.data.client_id)
+        if client then
+            -- Disable formatting for HTML-related LSP servers
+            if client.name == "html" or
+               client.name == "emmet_ls" or
+               client.name == "htmldjango" or
+               client.name == "jinja_lsp" then
+                client.server_capabilities.documentFormattingProvider = false
+                client.server_capabilities.documentRangeFormattingProvider = false
+                vim.notify(
+                    string.format("🚫 Formatting disabled for %s", client.name),
+                    vim.log.levels.INFO
+                )
+            end
+        end
+    end,
+})
 
 -- Django-specific keymaps for comments
 local map = vim.keymap.set
@@ -35,14 +61,10 @@ end, vim.tbl_extend("force", opts, {desc = "Django block comment"}))
 
 -- Visual mode: wrap selection in {% comment %}
 map("v", "<leader>cb", function()
-    -- Get visual selection range
     local start_line = vim.fn.line("'<")
     local end_line = vim.fn.line("'>")
 
-    -- Add {% comment %} before
     vim.api.nvim_buf_set_lines(0, start_line - 1, start_line - 1, false, {"{% comment %}"})
-
-    -- Add {% endcomment %} after (adjust for new line)
     vim.api.nvim_buf_set_lines(0, end_line + 1, end_line + 1, false, {"{% endcomment %}"})
 
     vim.cmd("normal! gv")
@@ -54,3 +76,25 @@ map("n", "<leader>ch", function()
     local new_line = "<!-- " .. line .. " -->"
     vim.api.nvim_set_current_line(new_line)
 end, vim.tbl_extend("force", opts, {desc = "HTML comment"}))
+
+-- Override format command to do nothing (with helpful message)
+map("n", "<leader>cf", function()
+    vim.notify(
+        "⚠️  Formatting disabled for Django templates\n" ..
+        "💡 Use manual indentation instead",
+        vim.log.levels.WARN
+    )
+end, vim.tbl_extend("force", opts, {desc = "Format (disabled)"}))
+
+-- Override F2 to just save (no format)
+map("n", "<F2>", function()
+    vim.cmd("write")
+    vim.notify("💾 Saved (no format)", vim.log.levels.INFO)
+end, vim.tbl_extend("force", opts, {desc = "Save without format"}))
+
+map("i", "<F2>", function()
+    vim.cmd("stopinsert")
+    vim.cmd("write")
+    vim.notify("💾 Saved (no format)", vim.log.levels.INFO)
+    vim.cmd("startinsert")
+end, vim.tbl_extend("force", opts, {desc = "Save without format"}))
