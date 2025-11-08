@@ -380,6 +380,31 @@ function M.setup()
         require("telescope.builtin").lsp_document_symbols()
     end, {desc = "Document symbols"})
 
+    -- Copy file paths to clipboard.
+    map("n", "<leader>fp", function()
+        local path = vim.fn.expand("%:p")
+        vim.fn.setreg("+", path)
+        vim.notify("Copied: " .. path, vim.log.levels.INFO)
+    end, {desc = "Copy absolute file path"})
+
+    -- map("n", "<leader>f???", function()
+    --     local path = vim.fn.expand("%")
+    --     vim.fn.setreg("+", path)
+    --     vim.notify("Copied: " .. path, vim.log.levels.INFO)
+    -- end, {desc = "Copy relative path"})
+
+    -- map("n", "<leader>f???", function()
+    --     local path = vim.fn.expand("%:t")
+    --     vim.fn.setreg("+", path)
+    --     vim.notify("Copied: " .. path, vim.log.levels.INFO)
+    -- end, {desc = "Copy filename"})
+
+    -- map("n", "<leader>f???", function()
+    --     local path = vim.fn.expand("%:p:h")
+    --     vim.fn.setreg("+", path)
+    --     vim.notify("Copied: " .. path, vim.log.levels.INFO)
+    -- end, {desc = "Copy directory path"})
+
     -- Move current tab.
     map("n", "<S-Left>", ":-tabmove<CR>", {desc = "Move tab left"})
     map("n", "<S-Right>", ":+tabmove<CR>", {desc = "Move tab right"})
