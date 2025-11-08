@@ -188,46 +188,88 @@ return {
             debug = false,
             timeout = 5000,
 
-            on_attach = function(client, bufnr)
-                if client.supports_method("textDocument/formatting") then
-                    -- Optimization.
-                    -- local grp = vim.api.nvim_create_augroup(
-                    --     "LspFormatting", {clear = false}
-                    -- )
-                    -- Create unique group per buffer.
-                    local grp = vim.api.nvim_create_augroup(
-                        "LspFormatting_" .. bufnr, {clear = true}
-                    )
-                    vim.api.nvim_clear_autocmds({
-                        group = grp, buffer = bufnr
-                    })
-                    vim.api.nvim_create_autocmd("BufWritePre", {
-                        group = grp,
-                        buffer = bufnr,
-                        callback = function()
-                            -- Filetype check (protection for Django).
-                            local ft = vim.bo[bufnr].filetype
-                            if ft == "htmldjango" or ft == "jinja" or ft == "jinja2" then
-                                return  -- don't format Django templates
-                            end
+            -- on_attach = function(client, bufnr)
+            --     if client.supports_method("textDocument/formatting") then
+            --         -- Optimization.
+            --         -- local grp = vim.api.nvim_create_augroup(
+            --         --     "LspFormatting", {clear = false}
+            --         -- )
+            --         -- Create unique group per buffer.
+            --         local grp = vim.api.nvim_create_augroup(
+            --             "LspFormatting_" .. bufnr, {clear = true}
+            --         )
+            --         vim.api.nvim_clear_autocmds({
+            --             group = grp, buffer = bufnr
+            --         })
+            --         vim.api.nvim_create_autocmd("BufWritePre", {
+            --             group = grp,
+            --             buffer = bufnr,
+            --             callback = function()
+            --                 -- Filetype check (protection for Django).
+            --                 local ft = vim.bo[bufnr].filetype
+            --                 if ft == "htmldjango" or ft == "jinja" or ft == "jinja2" then
+            --                     return  -- don't format Django templates
+            --                 end
 
-                            if vim.g.format_on_save then
-                                -- Async formatting with error protection.
-                                pcall(function()
-                                    vim.lsp.buf.format({
-                                        async = false,  -- sync for BufWritePre
-                                        timeout_ms = 3000,  -- 3 sec max
-                                        filter = function(c)
-                                            return c.name == "null-ls"
-                                        end,
-                                        bufnr = bufnr
-                                    })
-                                end)
-                            end
-                        end
-                    })
+            --                 if vim.g.format_on_save then
+            --                     -- Async formatting with error protection.
+            --                     pcall(function()
+            --                         vim.lsp.buf.format({
+            --                             async = false,  -- sync for BufWritePre
+            --                             timeout_ms = 3000,  -- 3 sec max
+            --                             filter = function(c)
+            --                                 return c.name == "null-ls"
+            --                             end,
+            --                             bufnr = bufnr
+            --                         })
+            --                     end)
+            --                 end
+            --             end
+            --         })
+            --     end
+            -- end
+        })
+
+        -- Add auto-format AFTER setup
+        vim.api.nvim_create_autocmd("BufWritePre", {
+            group = vim.api.nvim_create_augroup("NullLsFormat", {clear = true}),
+            pattern = "*",
+            callback = function()
+                local bufnr = vim.api.nvim_get_current_buf()
+                local ft = vim.bo[bufnr].filetype
+
+                -- Skip Django templates
+                if ft == "htmldjango" or ft == "jinja" or ft == "jinja2" then
+                    return
                 end
-            end
+
+                -- Skip if disabled
+                if vim.g.format_on_save == false then
+                    return
+                end
+
+                -- Check if null-ls is attached
+                local clients = vim.lsp.get_active_clients({
+                    bufnr = bufnr,
+                    name = "null-ls"
+                })
+
+                if #clients == 0 then
+                    return
+                end
+
+                -- Format
+                pcall(function()
+                    vim.lsp.buf.format({
+                        async = false,
+                        timeout_ms = 3000,
+                        filter = function(c)
+                            return c.name == "null-ls"
+                        end,
+                        bufnr = bufnr
+                    })
+                end)
+            end,
         })
 
         -- Global null-ls error filter.
