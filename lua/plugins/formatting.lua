@@ -154,68 +154,7 @@ return {
             return vim.fn.getcwd()
         end
 
-        -- COMMENTED OUT: MyPy functionality completely disabled.
-        --[[
-        local function build_mypy()
-            return null_ls.builtins.diagnostics.mypy.with({
-                condition = function()
-                    -- Only register if tool exists at all
-                    local py = get_python_executable()
-                    local exe = py:gsub("/python$", "/mypy")
-                    local ok = (vim.fn.executable("mypy") == 1) or
-                            (vim.fn.executable(exe) == 1)
-                    if not ok and vim.fn.filereadable("pyproject.toml") == 1
-                    and not vim.g.mypy_warning_shown then
-                        vim.g.mypy_warning_shown = true
-                        vim.notify(
-                            "MyPy not found. Install: pip install mypy",
-                            vim.log.levels.WARN
-                        )
-                    end
-                    return ok
-                end,
-                -- Per-run guard: OFF flag, and skip vendor/venv files
-                runtime_condition = function(params)
-                    if vim.g.enable_mypy ~= true then return false end
-                    local bufnr = params.bufnr or 0
-                    local name = vim.api.nvim_buf_get_name(bufnr)
-                    if name == nil or name == "" then return false end
 
-                    -- Skip all virtual environment and package files
-                    if name:match("/site%-packages/") then return false end
-                    if name:match("/%.venv/") then return false end
-                    if name:match("/venv/") then return false end
-                    if name:match("/lib/python") then return false end
-                    if name:match("typing_extensions%.py") then return false end
-                    if name:match("mypy_extensions%.py") then return false end
-
-                    -- Only process files in project directory
-                    local cwd = vim.fn.getcwd()
-                    if not name:match("^" .. vim.pesc(cwd)) then
-                        return false
-                    end
-
-                    return true
-                end,
-                -- Run from project root to respect local config
-                cwd = function(params)
-                    return get_project_root(params.bufnr or 0)
-                end,
-                command = function()
-                    local py = get_python_executable()
-                    local exe = py:gsub("/python$", "/mypy")
-                    if vim.fn.executable(exe) == 1 then return exe end
-                    return "mypy"
-                end,
-                extra_args = {
-                    "--exclude",
-                    "(^%.venv/|^venv/|site%-packages/|" ..
-                    "lib/python.*/|typing_extensions%.py$|" ..
-                    "mypy_extensions%.py$)"
-                },
-            })
-        end
-        --]]
 
         local function build_djlint()
             return null_ls.builtins.diagnostics.djlint.with({
@@ -230,15 +169,7 @@ return {
             })
         end
 
-        -- Helpers to register/disable by name.
-        --[[
-        local function ensure_mypy_registered()
-            if not mypy_registered then
-                null_ls.register(build_mypy())
-                mypy_registered = true
-            end
-        end
-        --]]
+
         local function ensure_djlint_registered()
             if not djlint_registered then
                 null_ls.register(build_djlint())
@@ -254,10 +185,18 @@ return {
         -- Initial setup: do NOT add mypy/djlint unless enabled.
         null_ls.setup({
             sources = sources,
+            debug = false,
+            timeout = 5000,
+
             on_attach = function(client, bufnr)
-                if client:supports_method("textDocument/formatting") then
+                if client.supports_method("textDocument/formatting") then
+                    -- Optimization.
+                    -- local grp = vim.api.nvim_create_augroup(
+                    --     "LspFormatting", {clear = false}
+                    -- )
+                    -- Create unique group per buffer.
                     local grp = vim.api.nvim_create_augroup(
-                        "LspFormatting", {clear = false}
+                        "LspFormatting_" .. bufnr, {clear = true}
                     )
                     vim.api.nvim_clear_autocmds({
                         group = grp, buffer = bufnr
@@ -266,13 +205,24 @@ return {
                         group = grp,
                         buffer = bufnr,
                         callback = function()
+                            -- Filetype check (protection for Django).
+                            local ft = vim.bo[bufnr].filetype
+                            if ft == "htmldjango" or ft == "jinja" or ft == "jinja2" then
+                                return  -- don't format Django templates
+                            end
+
                             if vim.g.format_on_save then
-                                vim.lsp.buf.format({
-                                    filter = function(c)
-                                        return c.name == "null-ls"
-                                    end,
-                                    bufnr = bufnr
-                                })
+                                -- Async formatting with error protection.
+                                pcall(function()
+                                    vim.lsp.buf.format({
+                                        async = false,  -- sync for BufWritePre
+                                        timeout_ms = 3000,  -- 3 sec max
+                                        filter = function(c)
+                                            return c.name == "null-ls"
+                                        end,
+                                        bufnr = bufnr
+                                    })
+                                end)
                             end
                         end
                     })
@@ -280,15 +230,26 @@ return {
             end
         })
 
-        -- IMPORTANT: DO NOT register mypy automatically at startup!
-        -- Check that mypy is really disabled.
-        --[[
-        if vim.g.enable_mypy == true then
-            vim.notify("WARNING: MyPy enabled at startup - disabling",
-                vim.log.levels.WARN)
-            vim.g.enable_mypy = false
+        -- Global null-ls error filter.
+        local original_notify = vim.notify
+        vim.notify = function(msg, level, opts)
+            -- Ignore null-ls/none-ls errors.
+            if type(msg) == "string" then
+                if msg:match("null%-ls") or
+                msg:match("none%-ls") or
+                msg:match("failed to run generator") or
+                msg:match("command.*iso$") then
+                    -- Log silently (for debug).
+                    if vim.g.null_ls_debug then
+                        vim.api.nvim_echo({{
+                            "[null-ls] " .. msg, "WarningMsg"
+                        }}, false, {})
+                    end
+                    return
+                end
+            end
+            original_notify(msg, level, opts)
         end
-        --]]
 
         -- Manual format.
         vim.keymap.set(
@@ -403,32 +364,6 @@ exclude = "(^\\.venv/|site-packages/|typing_extensions\\.py$|"
                 pcall(vim.lsp.buf.clear_references)
             end, 10)
         end
-
-        -- COMMENTED OUT: MyPy toggle command completely disabled
-        --[[
-        vim.api.nvim_create_user_command(
-            "ToggleMyPy",
-            function()
-                local sources_mod = require("null-ls.sources")
-
-                -- Debug info
-                print("Current mypy state before toggle:", vim.g.enable_mypy)
-
-                vim.g.enable_mypy = not vim.g.enable_mypy
-                if vim.g.enable_mypy then
-                    print("Registering mypy...")
-                    ensure_mypy_registered()
-                else
-                    print("Disabling mypy...")
-                    pcall(sources_mod.disable, { name = "mypy" })
-                    mypy_registered = false
-                end
-                print("mypy: " .. (vim.g.enable_mypy and "ON" or "OFF"))
-                pcall(vim.diagnostic.reset, nil, 0)
-            end,
-            {desc = "Toggle null-ls mypy diagnostics"}
-        )
-        --]]
 
         vim.api.nvim_create_user_command(
             "ToggleDjlint",
