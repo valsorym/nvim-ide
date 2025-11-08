@@ -24,17 +24,18 @@ vim.api.nvim_create_autocmd("LspAttach", {
     callback = function(args)
         local client = vim.lsp.get_client_by_id(args.data.client_id)
         if client then
-            -- Disable formatting for HTML-related LSP servers
             if client.name == "html" or
                client.name == "emmet_ls" or
                client.name == "htmldjango" or
                client.name == "jinja_lsp" then
                 client.server_capabilities.documentFormattingProvider = false
                 client.server_capabilities.documentRangeFormattingProvider = false
-                vim.notify(
-                    string.format("🚫 Formatting disabled for %s", client.name),
-                    vim.log.levels.INFO
-                )
+
+                -- Silent log (only in :messages)
+                vim.api.nvim_echo({{
+                    string.format("[htmldjango] Disabled formatting for %s", client.name),
+                    "Comment"
+                }}, false, {})
             end
         end
     end,
