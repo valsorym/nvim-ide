@@ -31,11 +31,11 @@ vim.api.nvim_create_autocmd("LspAttach", {
                 client.server_capabilities.documentFormattingProvider = false
                 client.server_capabilities.documentRangeFormattingProvider = false
 
-                -- Silent log (only in :messages)
-                vim.api.nvim_echo({{
-                    string.format("[htmldjango] Disabled formatting for %s", client.name),
-                    "Comment"
-                }}, false, {})
+                -- -- Silent log (only in :messages)
+                -- vim.api.nvim_echo({{
+                --     string.format("[htmldjango] Disabled formatting for %s", client.name),
+                --     "Comment"
+                -- }}, false, {})
             end
         end
     end,
