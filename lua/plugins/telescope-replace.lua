@@ -5,30 +5,68 @@ local history_file = vim.fn.stdpath("data") .. "/telescope_replace_history.txt"
 local max_history = 10
 local search_history = {}
 
+-- Ensure data directory exists
+local function ensure_data_dir()
+    local data_dir = vim.fn.stdpath("data")
+    if vim.fn.isdirectory(data_dir) == 0 then
+        vim.fn.mkdir(data_dir, "p")
+    end
+end
+
 -- Load history from file.
 local function load_search_history()
     search_history = {}
-    local file = io.open(history_file, "r")
-    if not file then return end
 
+    -- Ensure directory exists
+    ensure_data_dir()
+
+    local file = io.open(history_file, "r")
+    if not file then
+        -- Try to create empty file if it doesn't exist
+        local create_file = io.open(history_file, "w")
+        if create_file then
+            create_file:close()
+            vim.notify("Created history file: " .. history_file, vim.log.levels.INFO)
+        else
+            vim.notify("Failed to create history file: " .. history_file, vim.log.levels.WARN)
+        end
+        return
+    end
+
+    local line_count = 0
     for line in file:lines() do
         line = line:match("^%s*(.-)%s*$")
         if line ~= "" then
             table.insert(search_history, line)
+            line_count = line_count + 1
         end
     end
     file:close()
+
+    if line_count > 0 then
+        vim.notify(string.format("Loaded %d history entries", line_count), vim.log.levels.DEBUG)
+    end
 end
 
 -- Save history to file.
 local function save_search_history()
-    local file = io.open(history_file, "w")
-    if not file then return end
+    -- Ensure directory exists
+    ensure_data_dir()
 
+    local file = io.open(history_file, "w")
+    if not file then
+        vim.notify("Failed to save history to: " .. history_file, vim.log.levels.ERROR)
+        return
+    end
+
+    local saved_count = 0
     for i = 1, math.min(#search_history, max_history) do
         file:write(search_history[i] .. "\n")
+        saved_count = saved_count + 1
     end
     file:close()
+
+    vim.notify(string.format("Saved %d history entries", saved_count), vim.log.levels.DEBUG)
 end
 
 -- Add query to history.
@@ -503,5 +541,15 @@ return {
                 end,
             })
         end, {desc = "Replace selected text"})
+
+        -- Debug command to check history status
+        vim.api.nvim_create_user_command("TelescopeReplaceDebug", function()
+            vim.notify("History file: " .. history_file, vim.log.levels.INFO)
+            vim.notify("History entries: " .. #search_history, vim.log.levels.INFO)
+            vim.notify("File exists: " .. (vim.fn.filereadable(history_file) == 1 and "yes" or "no"), vim.log.levels.INFO)
+            if #search_history > 0 then
+                vim.notify("Last entry: " .. search_history[1], vim.log.levels.INFO)
+            end
+        end, {})
     end,
 }
