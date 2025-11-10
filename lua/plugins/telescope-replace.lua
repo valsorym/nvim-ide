@@ -1,11 +1,11 @@
 -- ~/.config/nvim/lua/plugins/telescope-replace.lua
--- Custom Telescope-based find & replace with modal UI and history
+-- Custom Telescope-based find & replace with modal UI and history.
 
 local history_file = vim.fn.stdpath("data") .. "/telescope_replace_history.txt"
 local max_history = 10
 local search_history = {}
 
--- Load history from file
+-- Load history from file.
 local function load_search_history()
     search_history = {}
     local file = io.open(history_file, "r")
@@ -20,7 +20,7 @@ local function load_search_history()
     file:close()
 end
 
--- Save history to file
+-- Save history to file.
 local function save_search_history()
     local file = io.open(history_file, "w")
     if not file then return end
@@ -31,21 +31,21 @@ local function save_search_history()
     file:close()
 end
 
--- Add query to history
+-- Add query to history.
 local function add_to_search_history(query)
     if not query or query == "" then return end
 
-    -- Remove duplicates
+    -- Remove duplicates.
     for i = #search_history, 1, -1 do
         if search_history[i] == query then
             table.remove(search_history, i)
         end
     end
 
-    -- Add to beginning
+    -- Add to beginning.
     table.insert(search_history, 1, query)
 
-    -- Limit size
+    -- Limit size.
     while #search_history > max_history do
         table.remove(search_history)
     end
@@ -53,7 +53,7 @@ local function add_to_search_history(query)
     save_search_history()
 end
 
--- Load history on startup
+-- Load history on startup.
 load_search_history()
 
 return {
@@ -61,13 +61,13 @@ return {
     lazy = false,
     priority = 800,
     config = function()
-        -- Store search results globally
+        -- Store search results globally.
         _G.TelescopeReplace = {
             results = {},
             search_term = "",
         }
 
-        -- Function to perform replacement
+        -- Function to perform replacement.
         local function do_replace(old_pattern, new_text, opts)
             opts = opts or {}
             local case_sensitive = opts.case_sensitive or false
@@ -77,7 +77,7 @@ return {
                 return
             end
 
-            -- Group results by file
+            -- Group results by file.
             local files = {}
             for _, result in ipairs(_G.TelescopeReplace.results) do
                 local file = result.filename
@@ -87,25 +87,25 @@ return {
                 table.insert(files[file], result)
             end
 
-            -- Escape pattern for literal search
+            -- Escape pattern for literal search.
             local search_pattern = vim.fn.escape(old_pattern, "/\\.*^$[]")
 
-            -- Count total replacements
+            -- Count total replacements.
             local total_files = 0
             local total_replacements = 0
 
-            -- Perform replacement in each file
+            -- Perform replacement in each file.
             for file, _ in pairs(files) do
                 local bufnr = vim.fn.bufnr(file)
                 local buf_existed = bufnr ~= -1
 
-                -- Load buffer if not loaded
+                -- Load buffer if not loaded.
                 if not buf_existed then
                     vim.cmd("silent edit " .. vim.fn.fnameescape(file))
                     bufnr = vim.fn.bufnr(file)
                 end
 
-                -- Perform replacement
+                -- Perform replacement.
                 local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
                 local changed = false
                 local file_replacements = 0
@@ -116,7 +116,7 @@ return {
                     if case_sensitive then
                         new_line, count = line:gsub(vim.pesc(old_pattern), new_text)
                     else
-                        -- Case insensitive: find all matches
+                        -- Case insensitive: find all matches.
                         local pattern = old_pattern:lower()
                         local line_lower = line:lower()
                         local pos = 1
@@ -164,11 +164,11 @@ return {
                 vim.log.levels.INFO
             )
 
-            -- Clear results
+            -- Clear results.
             _G.TelescopeReplace.results = {}
         end
 
-        -- Helper to get CWD
+        -- Helper to get CWD.
         local function get_cwd()
             local cwd = vim.fn.getcwd()
             local ok, api = pcall(require, "nvim-tree.api")
@@ -181,10 +181,10 @@ return {
             return cwd
         end
 
-        -- History navigation state
+        -- History navigation state.
         local hist_index = 0
 
-        -- <leader>fc: Find & Replace (respects .gitignore)
+        -- Find & Replace (respects .gitignore).
         vim.keymap.set("n", "<leader>fc", function()
             local telescope_ok, telescope = pcall(require, "telescope.builtin")
             if not telescope_ok then
@@ -195,14 +195,14 @@ return {
             local actions = require("telescope.actions")
             local action_state = require("telescope.actions.state")
 
-            -- Reset history index
+            -- Reset history index.
             hist_index = 0
 
             telescope.live_grep({
                 prompt_title = "🔍 Find & Replace (Alt-r Replace, Alt+↑/↓ History)",
                 cwd = get_cwd(),
                 attach_mappings = function(prompt_bufnr, map)
-                    -- History navigation
+                    -- History navigation.
                     map("i", "<A-Up>", function()
                         if #search_history == 0 then return end
                         hist_index = math.min(hist_index + 1, #search_history)
@@ -225,7 +225,7 @@ return {
                         local picker = action_state.get_current_picker(prompt_bufnr)
                         local search_query = picker:_get_prompt()
 
-                        -- Save to history
+                        -- Save to history.
                         if search_query and search_query ~= "" then
                             add_to_search_history(search_query)
                         end
@@ -288,7 +288,7 @@ return {
             })
         end, {desc = "Find & Replace"})
 
-        -- <leader>fC: Find & Replace (include ignored files)
+        -- Find & Replace (include ignored files).
         vim.keymap.set("n", "<leader>fC", function()
             local telescope_ok, telescope = pcall(require, "telescope.builtin")
             if not telescope_ok then
@@ -390,7 +390,7 @@ return {
             })
         end, {desc = "Find & Replace (include ignored)"})
 
-        -- <leader>fx: Replace current Word
+        -- Replace current Word.
         vim.keymap.set("n", "<leader>fx", function()
             local word = vim.fn.expand("<cword>")
             local telescope_ok, telescope = pcall(require, "telescope.builtin")
