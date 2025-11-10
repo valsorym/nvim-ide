@@ -234,8 +234,8 @@ return {
 
             -- FIND
             { "<leader>ff", ":Telescope find_files<CR>", description = "Find Files", mode = { "n" } },
-            { "<leader>fg", ":Telescope live_grep<CR>", description = "Live Grep", mode = { "n" } },
-            { "<leader>fG", description = "Live Grep (include ignored)", mode = { "n" } },
+            -- { "<leader>fg", ":Telescope live_grep<CR>", description = "Live Grep", mode = { "n" } },
+            -- { "<leader>fG", description = "Live Grep (include ignored)", mode = { "n" } },
             { "<leader>fb", ":Telescope buffers<CR>", description = "Find Buffers", mode = { "n" } },
             { "<leader>fh", ":Telescope help_tags<CR>", description = "Help Tags", mode = { "n" } },
             { "<leader>fo", ":Telescope oldfiles<CR>", description = "Old Files", mode = { "n" } },

@@ -25,7 +25,7 @@ return {
                         "│    ╚═╝  ╚═══╝  ╚═══╝  ╚═╝╚═╝     ╚═╝    ╚═╝╚═════╝ ╚══════╝   │",
                         "│             Welcome to your development environment!         │",
                         "│                                                               │",
-                        "│                                                      v.0.14.6 │",
+                        "│                                                      v.0.15.0 │",
                         "╰───────────────────────────────────────────────────────────────╯",
                         "",
                         "",
@@ -33,9 +33,17 @@ return {
                     center = {
                         {
                             icon = "  ",
-                            desc = "Find File",
+                            desc = "Find & Replace",
                             key = "f",
-                            action = "Telescope find_files"
+                            action = function()
+                                -- Close dashboard first
+                                vim.cmd("bd")
+                                -- Trigger <leader>fc
+                                vim.schedule(function()
+                                    local keys = vim.api.nvim_replace_termcodes("<leader>fc", true, false, true)
+                                    vim.api.nvim_feedkeys(keys, "m", false)
+                                end)
+                            end
                         },
                         {
                             icon = "  ",

@@ -1,5 +1,60 @@
 -- ~/.config/nvim/lua/plugins/telescope-replace.lua
--- Custom Telescope-based find & replace with modal UI
+-- Custom Telescope-based find & replace with modal UI and history
+
+local history_file = vim.fn.stdpath("data") .. "/telescope_replace_history.txt"
+local max_history = 10
+local search_history = {}
+
+-- Load history from file
+local function load_search_history()
+    search_history = {}
+    local file = io.open(history_file, "r")
+    if not file then return end
+
+    for line in file:lines() do
+        line = line:match("^%s*(.-)%s*$")
+        if line ~= "" then
+            table.insert(search_history, line)
+        end
+    end
+    file:close()
+end
+
+-- Save history to file
+local function save_search_history()
+    local file = io.open(history_file, "w")
+    if not file then return end
+
+    for i = 1, math.min(#search_history, max_history) do
+        file:write(search_history[i] .. "\n")
+    end
+    file:close()
+end
+
+-- Add query to history
+local function add_to_search_history(query)
+    if not query or query == "" then return end
+
+    -- Remove duplicates
+    for i = #search_history, 1, -1 do
+        if search_history[i] == query then
+            table.remove(search_history, i)
+        end
+    end
+
+    -- Add to beginning
+    table.insert(search_history, 1, query)
+
+    -- Limit size
+    while #search_history > max_history do
+        table.remove(search_history)
+    end
+
+    save_search_history()
+end
+
+-- Load history on startup
+load_search_history()
 
 return {
     "nvim-lua/plenary.nvim",
@@ -18,8 +73,7 @@ return {
             local case_sensitive = opts.case_sensitive or false
 
             if #_G.TelescopeReplace.results == 0 then
-                vim.notify("No search results to replace",
-                    vim.log.levels.WARN)
+                vim.notify("No search results to replace", vim.log.levels.WARN)
                 return
             end
 
@@ -34,8 +88,7 @@ return {
             end
 
             -- Escape pattern for literal search
-            local search_pattern = vim.fn.escape(old_pattern,
-                "/\\.*^$[]")
+            local search_pattern = vim.fn.escape(old_pattern, "/\\.*^$[]")
 
             -- Count total replacements
             local total_files = 0
@@ -48,14 +101,12 @@ return {
 
                 -- Load buffer if not loaded
                 if not buf_existed then
-                    vim.cmd("silent edit " ..
-                        vim.fn.fnameescape(file))
+                    vim.cmd("silent edit " .. vim.fn.fnameescape(file))
                     bufnr = vim.fn.bufnr(file)
                 end
 
                 -- Perform replacement
-                local lines = vim.api.nvim_buf_get_lines(
-                    bufnr, 0, -1, false)
+                local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
                 local changed = false
                 local file_replacements = 0
 
@@ -63,10 +114,7 @@ return {
                     local new_line, count
 
                     if case_sensitive then
-                        new_line, count = line:gsub(
-                            vim.pesc(old_pattern),
-                            new_text
-                        )
+                        new_line, count = line:gsub(vim.pesc(old_pattern), new_text)
                     else
                         -- Case insensitive: find all matches
                         local pattern = old_pattern:lower()
@@ -76,15 +124,13 @@ return {
                         count = 0
 
                         while true do
-                            local start_idx, end_idx =
-                                line_lower:find(pattern, pos, true)
+                            local start_idx, end_idx = line_lower:find(pattern, pos, true)
                             if not start_idx then
                                 result = result .. line:sub(pos)
                                 break
                             end
 
-                            result = result .. line:sub(pos,
-                                start_idx - 1) .. new_text
+                            result = result .. line:sub(pos, start_idx - 1) .. new_text
                             pos = end_idx + 1
                             count = count + 1
                         end
@@ -104,23 +150,17 @@ return {
                 end
 
                 if changed then
-                    vim.api.nvim_buf_set_lines(bufnr, 0, -1,
-                        false, lines)
+                    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
                     vim.api.nvim_buf_call(bufnr, function()
                         vim.cmd("silent write")
                     end)
                     total_files = total_files + 1
-                    total_replacements = total_replacements +
-                        file_replacements
+                    total_replacements = total_replacements + file_replacements
                 end
             end
 
             vim.notify(
-                string.format(
-                    "✅ Replaced %d occurrences in %d files",
-                    total_replacements,
-                    total_files
-                ),
+                string.format("✅ Replaced %d occurrences in %d files", total_replacements, total_files),
                 vim.log.levels.INFO
             )
 
@@ -141,28 +181,54 @@ return {
             return cwd
         end
 
+        -- History navigation state
+        local hist_index = 0
+
         -- <leader>fc: Find & Replace (respects .gitignore)
         vim.keymap.set("n", "<leader>fc", function()
-            local telescope_ok, telescope =
-                pcall(require, "telescope.builtin")
+            local telescope_ok, telescope = pcall(require, "telescope.builtin")
             if not telescope_ok then
-                vim.notify("Telescope not loaded",
-                    vim.log.levels.ERROR)
+                vim.notify("Telescope not loaded", vim.log.levels.ERROR)
                 return
             end
 
             local actions = require("telescope.actions")
             local action_state = require("telescope.actions.state")
 
+            -- Reset history index
+            hist_index = 0
+
             telescope.live_grep({
-                prompt_title = "🔍 Find & Replace (Ctrl-R)",
+                prompt_title = "🔍 Find & Replace (Alt-r Replace, Alt+↑/↓ History)",
                 cwd = get_cwd(),
-                -- Default: respects .gitignore
                 attach_mappings = function(prompt_bufnr, map)
-                    map("i", "<C-r>", function()
-                        local picker = action_state
-                            .get_current_picker(prompt_bufnr)
+                    -- History navigation
+                    map("i", "<A-Up>", function()
+                        if #search_history == 0 then return end
+                        hist_index = math.min(hist_index + 1, #search_history)
+                        local picker = action_state.get_current_picker(prompt_bufnr)
+                        if picker and search_history[hist_index] then
+                            picker:reset_prompt(search_history[hist_index])
+                        end
+                    end)
+
+                    map("i", "<A-Down>", function()
+                        if #search_history == 0 then return end
+                        hist_index = math.max(hist_index - 1, 0)
+                        local picker = action_state.get_current_picker(prompt_bufnr)
+                        if picker then
+                            picker:reset_prompt(hist_index > 0 and search_history[hist_index] or "")
+                        end
+                    end)
+
+                    map("i", "<A-r>", function()
+                        local picker = action_state.get_current_picker(prompt_bufnr)
                         local search_query = picker:_get_prompt()
+
+                        -- Save to history
+                        if search_query and search_query ~= "" then
+                            add_to_search_history(search_query)
+                        end
 
                         local manager = picker.manager
                         local results = {}
@@ -171,8 +237,7 @@ return {
                         end
 
                         if #results == 0 then
-                            vim.notify("No results found",
-                                vim.log.levels.WARN)
+                            vim.notify("No results found", vim.log.levels.WARN)
                             return
                         end
 
@@ -182,41 +247,41 @@ return {
 
                         vim.schedule(function()
                             vim.ui.input({
-                                prompt = string.format(
-                                    "Replace '%s' with: ",
-                                    search_query
-                                ),
+                                prompt = string.format("Replace '%s' with: ", search_query),
                                 default = "",
                             }, function(replacement)
-                                if not replacement then
-                                    return
-                                end
+                                if not replacement then return end
 
                                 vim.ui.select(
+                                    {"Yes, replace all", "No, cancel"},
                                     {
-                                        "Yes, replace all",
-                                        "No, cancel"
-                                    },
-                                    {
-                                        prompt = string.format(
-                                            "Replace %d occurrences?",
-                                            #results
-                                        ),
+                                        prompt = string.format("Replace %d occurrences?", #results),
                                     },
                                     function(choice)
-                                        if choice ==
-                                            "Yes, replace all" then
-                                            do_replace(
-                                                search_query,
-                                                replacement,
-                                                {case_sensitive = false}
-                                            )
+                                        if choice == "Yes, replace all" then
+                                            do_replace(search_query, replacement, {case_sensitive = false})
                                         end
                                     end
                                 )
                             end)
                         end)
                     end)
+
+                    -- Save history when buffer is closed (on_detach)
+                    vim.api.nvim_buf_attach(prompt_bufnr, false, {
+                        on_detach = function()
+                            -- Use pcall to safely get prompt
+                            local ok, picker = pcall(action_state.get_current_picker, prompt_bufnr)
+                            if ok and picker then
+                                local success, query = pcall(function()
+                                    return picker:_get_prompt()
+                                end)
+                                if success and query and query ~= "" then
+                                    add_to_search_history(query)
+                                end
+                            end
+                        end
+                    })
 
                     return true
                 end,
@@ -225,28 +290,49 @@ return {
 
         -- <leader>fC: Find & Replace (include ignored files)
         vim.keymap.set("n", "<leader>fC", function()
-            local telescope_ok, telescope =
-                pcall(require, "telescope.builtin")
+            local telescope_ok, telescope = pcall(require, "telescope.builtin")
             if not telescope_ok then
-                vim.notify("Telescope not loaded",
-                    vim.log.levels.ERROR)
+                vim.notify("Telescope not loaded", vim.log.levels.ERROR)
                 return
             end
 
             local actions = require("telescope.actions")
             local action_state = require("telescope.actions.state")
 
+            hist_index = 0
+
             telescope.live_grep({
-                prompt_title = "🔍 Find & Replace - ALL FILES (Ctrl-R)",
+                prompt_title = "🔍 Find & Replace ALL (Alt-r, Alt+↑/↓ History)",
                 cwd = get_cwd(),
                 additional_args = function()
                     return {"--no-ignore", "--hidden", "--glob", "!.git/"}
                 end,
                 attach_mappings = function(prompt_bufnr, map)
-                    map("i", "<C-r>", function()
-                        local picker = action_state
-                            .get_current_picker(prompt_bufnr)
+                    map("i", "<A-Up>", function()
+                        if #search_history == 0 then return end
+                        hist_index = math.min(hist_index + 1, #search_history)
+                        local picker = action_state.get_current_picker(prompt_bufnr)
+                        if picker and search_history[hist_index] then
+                            picker:reset_prompt(search_history[hist_index])
+                        end
+                    end)
+
+                    map("i", "<A-Down>", function()
+                        if #search_history == 0 then return end
+                        hist_index = math.max(hist_index - 1, 0)
+                        local picker = action_state.get_current_picker(prompt_bufnr)
+                        if picker then
+                            picker:reset_prompt(hist_index > 0 and search_history[hist_index] or "")
+                        end
+                    end)
+
+                    map("i", "<A-r>", function()
+                        local picker = action_state.get_current_picker(prompt_bufnr)
                         local search_query = picker:_get_prompt()
+
+                        if search_query and search_query ~= "" then
+                            add_to_search_history(search_query)
+                        end
 
                         local manager = picker.manager
                         local results = {}
@@ -255,8 +341,7 @@ return {
                         end
 
                         if #results == 0 then
-                            vim.notify("No results found",
-                                vim.log.levels.WARN)
+                            vim.notify("No results found", vim.log.levels.WARN)
                             return
                         end
 
@@ -266,35 +351,19 @@ return {
 
                         vim.schedule(function()
                             vim.ui.input({
-                                prompt = string.format(
-                                    "Replace '%s' with: ",
-                                    search_query
-                                ),
+                                prompt = string.format("Replace '%s' with: ", search_query),
                                 default = "",
                             }, function(replacement)
-                                if not replacement then
-                                    return
-                                end
+                                if not replacement then return end
 
                                 vim.ui.select(
+                                    {"Yes, replace all", "No, cancel"},
                                     {
-                                        "Yes, replace all",
-                                        "No, cancel"
-                                    },
-                                    {
-                                        prompt = string.format(
-                                            "Replace %d occurrences?",
-                                            #results
-                                        ),
+                                        prompt = string.format("Replace %d occurrences?", #results),
                                     },
                                     function(choice)
-                                        if choice ==
-                                            "Yes, replace all" then
-                                            do_replace(
-                                                search_query,
-                                                replacement,
-                                                {case_sensitive = false}
-                                            )
+                                        if choice == "Yes, replace all" then
+                                            do_replace(search_query, replacement, {case_sensitive = false})
                                         end
                                     end
                                 )
@@ -302,35 +371,41 @@ return {
                         end)
                     end)
 
+                    vim.api.nvim_buf_attach(prompt_bufnr, false, {
+                        on_detach = function()
+                            local ok, picker = pcall(action_state.get_current_picker, prompt_bufnr)
+                            if ok and picker then
+                                local success, query = pcall(function()
+                                    return picker:_get_prompt()
+                                end)
+                                if success and query and query ~= "" then
+                                    add_to_search_history(query)
+                                end
+                            end
+                        end
+                    })
+
                     return true
                 end,
             })
         end, {desc = "Find & Replace (include ignored)"})
 
-        -- <leader>fw: Replace current Word
+        -- <leader>fx: Replace current Word
         vim.keymap.set("n", "<leader>fx", function()
             local word = vim.fn.expand("<cword>")
-            local telescope_ok, telescope =
-                pcall(require, "telescope.builtin")
-            if not telescope_ok then
-                return
-            end
+            local telescope_ok, telescope = pcall(require, "telescope.builtin")
+            if not telescope_ok then return end
 
             local actions = require("telescope.actions")
             local action_state = require("telescope.actions.state")
 
             telescope.grep_string({
-                prompt_title = string.format(
-                    "🔍 Replace '%s' (Ctrl-R)",
-                    word
-                ),
+                prompt_title = string.format("🔍 Replace '%s' (Alt-r)", word),
                 search = word,
                 cwd = get_cwd(),
-                -- Respects .gitignore
                 attach_mappings = function(prompt_bufnr, map)
-                    map("i", "<C-r>", function()
-                        local picker = action_state
-                            .get_current_picker(prompt_bufnr)
+                    map("i", "<A-r>", function()
+                        local picker = action_state.get_current_picker(prompt_bufnr)
                         local manager = picker.manager
                         local results = {}
                         for entry in manager:iter() do
@@ -338,8 +413,7 @@ return {
                         end
 
                         if #results == 0 then
-                            vim.notify("No results found",
-                                vim.log.levels.WARN)
+                            vim.notify("No results found", vim.log.levels.WARN)
                             return
                         end
 
@@ -349,35 +423,19 @@ return {
 
                         vim.schedule(function()
                             vim.ui.input({
-                                prompt = string.format(
-                                    "Replace '%s' with: ",
-                                    word
-                                ),
+                                prompt = string.format("Replace '%s' with: ", word),
                                 default = word,
                             }, function(replacement)
-                                if not replacement then
-                                    return
-                                end
+                                if not replacement then return end
 
                                 vim.ui.select(
+                                    {"Yes, replace all", "No, cancel"},
                                     {
-                                        "Yes, replace all",
-                                        "No, cancel"
-                                    },
-                                    {
-                                        prompt = string.format(
-                                            "Replace %d occurrences?",
-                                            #results
-                                        ),
+                                        prompt = string.format("Replace %d occurrences?", #results),
                                     },
                                     function(choice)
-                                        if choice ==
-                                            "Yes, replace all" then
-                                            do_replace(
-                                                word,
-                                                replacement,
-                                                {case_sensitive = true}
-                                            )
+                                        if choice == "Yes, replace all" then
+                                            do_replace(word, replacement, {case_sensitive = true})
                                         end
                                     end
                                 )
@@ -396,27 +454,19 @@ return {
             local selected = vim.fn.getreg("v")
             selected = vim.fn.escape(selected, "\n")
 
-            local telescope_ok, telescope =
-                pcall(require, "telescope.builtin")
-            if not telescope_ok then
-                return
-            end
+            local telescope_ok, telescope = pcall(require, "telescope.builtin")
+            if not telescope_ok then return end
 
             local actions = require("telescope.actions")
             local action_state = require("telescope.actions.state")
 
             telescope.grep_string({
-                prompt_title = string.format(
-                    "🔍 Replace '%s' (Ctrl-R)",
-                    selected
-                ),
+                prompt_title = string.format("🔍 Replace '%s' (Alt-r)", selected),
                 search = selected,
                 cwd = get_cwd(),
-                -- Respects .gitignore
                 attach_mappings = function(prompt_bufnr, map)
-                    map("i", "<C-r>", function()
-                        local picker = action_state
-                            .get_current_picker(prompt_bufnr)
+                    map("i", "<A-r>", function()
+                        local picker = action_state.get_current_picker(prompt_bufnr)
                         local manager = picker.manager
                         local results = {}
                         for entry in manager:iter() do
@@ -429,35 +479,19 @@ return {
 
                         vim.schedule(function()
                             vim.ui.input({
-                                prompt = string.format(
-                                    "Replace '%s' with: ",
-                                    selected
-                                ),
+                                prompt = string.format("Replace '%s' with: ", selected),
                                 default = "",
                             }, function(replacement)
-                                if not replacement then
-                                    return
-                                end
+                                if not replacement then return end
 
                                 vim.ui.select(
+                                    {"Yes, replace all", "No, cancel"},
                                     {
-                                        "Yes, replace all",
-                                        "No, cancel"
-                                    },
-                                    {
-                                        prompt = string.format(
-                                            "Replace %d occurrences?",
-                                            #results
-                                        ),
+                                        prompt = string.format("Replace %d occurrences?", #results),
                                     },
                                     function(choice)
-                                        if choice ==
-                                            "Yes, replace all" then
-                                            do_replace(
-                                                selected,
-                                                replacement,
-                                                {case_sensitive = true}
-                                            )
+                                        if choice == "Yes, replace all" then
+                                            do_replace(selected, replacement, {case_sensitive = true})
                                         end
                                     end
                                 )
