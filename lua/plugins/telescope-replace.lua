@@ -5,11 +5,21 @@ local history_file = vim.fn.stdpath("data") .. "/telescope_replace_history.txt"
 local max_history = 10
 local search_history = {}
 
--- Ensure data directory exists
+-- Debug logging flag (set to false to disable verbose logging).
+local DEBUG_HISTORY = true
+
+local function debug_log(msg)
+    if DEBUG_HISTORY then
+        vim.notify("[TelescopeReplace] " .. msg, vim.log.levels.INFO)
+    end
+end
+
+-- Ensure data directory exists.
 local function ensure_data_dir()
     local data_dir = vim.fn.stdpath("data")
     if vim.fn.isdirectory(data_dir) == 0 then
         vim.fn.mkdir(data_dir, "p")
+        debug_log("Created data directory: " .. data_dir)
     end
 end
 
@@ -17,18 +27,19 @@ end
 local function load_search_history()
     search_history = {}
 
-    -- Ensure directory exists
+    -- Ensure directory exists.
     ensure_data_dir()
 
     local file = io.open(history_file, "r")
     if not file then
-        -- Try to create empty file if it doesn't exist
+        debug_log("History file doesn't exist, creating: " .. history_file)
+        -- Try to create empty file if it doesn't exist.
         local create_file = io.open(history_file, "w")
         if create_file then
             create_file:close()
-            vim.notify("Created history file: " .. history_file, vim.log.levels.INFO)
+            debug_log("Successfully created history file")
         else
-            vim.notify("Failed to create history file: " .. history_file, vim.log.levels.WARN)
+            vim.notify("[ERROR] Failed to create history file: " .. history_file, vim.log.levels.ERROR)
         end
         return
     end
@@ -44,54 +55,84 @@ local function load_search_history()
     file:close()
 
     if line_count > 0 then
-        vim.notify(string.format("Loaded %d history entries", line_count), vim.log.levels.DEBUG)
+        debug_log(string.format("Loaded %d history entries", line_count))
+    else
+        debug_log("History file is empty")
     end
 end
 
 -- Save history to file.
 local function save_search_history()
-    -- Ensure directory exists
+    debug_log("Attempting to save history...")
+
+    -- Ensure directory exists.
     ensure_data_dir()
 
-    local file = io.open(history_file, "w")
+    local file, err = io.open(history_file, "w")
     if not file then
-        vim.notify("Failed to save history to: " .. history_file, vim.log.levels.ERROR)
-        return
+        vim.notify("[ERROR] Failed to open history file for writing: " .. (err or "unknown error"), vim.log.levels.ERROR)
+        vim.notify("[ERROR] File path: " .. history_file, vim.log.levels.ERROR)
+        return false
     end
 
     local saved_count = 0
     for i = 1, math.min(#search_history, max_history) do
-        file:write(search_history[i] .. "\n")
-        saved_count = saved_count + 1
+        local success, write_err = pcall(function()
+            file:write(search_history[i] .. "\n")
+        end)
+        if success then
+            saved_count = saved_count + 1
+        else
+            vim.notify("[ERROR] Failed to write entry: " .. (write_err or "unknown"), vim.log.levels.ERROR)
+        end
     end
+
     file:close()
 
-    vim.notify(string.format("Saved %d history entries", saved_count), vim.log.levels.DEBUG)
+    debug_log(string.format("Saved %d history entries to file", saved_count))
+    return true
 end
 
 -- Add query to history.
 local function add_to_search_history(query)
-    if not query or query == "" then return end
+    debug_log("add_to_search_history called with: '" .. (query or "nil") .. "'")
+
+    if not query or query == "" then
+        debug_log("Query is empty, not adding to history")
+        return
+    end
 
     -- Remove duplicates.
+    local removed = 0
     for i = #search_history, 1, -1 do
         if search_history[i] == query then
             table.remove(search_history, i)
+            removed = removed + 1
         end
+    end
+    if removed > 0 then
+        debug_log(string.format("Removed %d duplicate(s)", removed))
     end
 
     -- Add to beginning.
     table.insert(search_history, 1, query)
+    debug_log(string.format("Added to history. Total entries: %d", #search_history))
 
     -- Limit size.
     while #search_history > max_history do
         table.remove(search_history)
     end
 
-    save_search_history()
+    local success = save_search_history()
+    if success then
+        debug_log("History saved successfully")
+    else
+        vim.notify("[ERROR] Failed to save history", vim.log.levels.ERROR)
+    end
 end
 
 -- Load history on startup.
+debug_log("Loading history on startup...")
 load_search_history()
 
 return {
@@ -99,6 +140,8 @@ return {
     lazy = false,
     priority = 800,
     config = function()
+        debug_log("Configuring TelescopeReplace plugin...")
+
         -- Store search results globally.
         _G.TelescopeReplace = {
             results = {},
@@ -242,17 +285,25 @@ return {
                 attach_mappings = function(prompt_bufnr, map)
                     -- History navigation.
                     map("i", "<A-Up>", function()
-                        if #search_history == 0 then return end
+                        debug_log("History Up pressed")
+                        if #search_history == 0 then
+                            debug_log("No history available")
+                            return
+                        end
                         hist_index = math.min(hist_index + 1, #search_history)
+                        debug_log(string.format("History index: %d/%d", hist_index, #search_history))
                         local picker = action_state.get_current_picker(prompt_bufnr)
                         if picker and search_history[hist_index] then
                             picker:reset_prompt(search_history[hist_index])
+                            debug_log("Set prompt to: " .. search_history[hist_index])
                         end
                     end)
 
                     map("i", "<A-Down>", function()
+                        debug_log("History Down pressed")
                         if #search_history == 0 then return end
                         hist_index = math.max(hist_index - 1, 0)
+                        debug_log(string.format("History index: %d/%d", hist_index, #search_history))
                         local picker = action_state.get_current_picker(prompt_bufnr)
                         if picker then
                             picker:reset_prompt(hist_index > 0 and search_history[hist_index] or "")
@@ -260,8 +311,10 @@ return {
                     end)
 
                     map("i", "<A-r>", function()
+                        debug_log("Replace (Alt-r) triggered")
                         local picker = action_state.get_current_picker(prompt_bufnr)
                         local search_query = picker:_get_prompt()
+                        debug_log("Search query: '" .. (search_query or "nil") .. "'")
 
                         -- Save to history.
                         if search_query and search_query ~= "" then
@@ -308,6 +361,7 @@ return {
                     -- Save history when buffer is closed (on_detach)
                     vim.api.nvim_buf_attach(prompt_bufnr, false, {
                         on_detach = function()
+                            debug_log("Telescope buffer detached (on_detach)")
                             -- Use pcall to safely get prompt
                             local ok, picker = pcall(action_state.get_current_picker, prompt_bufnr)
                             if ok and picker then
@@ -315,8 +369,13 @@ return {
                                     return picker:_get_prompt()
                                 end)
                                 if success and query and query ~= "" then
+                                    debug_log("Saving query from on_detach: '" .. query .. "'")
                                     add_to_search_history(query)
+                                else
+                                    debug_log("No valid query in on_detach")
                                 end
+                            else
+                                debug_log("Could not get picker in on_detach")
                             end
                         end
                     })
@@ -486,7 +545,7 @@ return {
             })
         end, {desc = "Replace current word"})
 
-        -- Visual mode: replace selected text (respects .gitignore)
+        -- Visual mode: replace selected text (respects .gitignore).
         vim.keymap.set("v", "<leader>fc", function()
             vim.cmd('noau normal! "vy"')
             local selected = vim.fn.getreg("v")
@@ -542,14 +601,37 @@ return {
             })
         end, {desc = "Replace selected text"})
 
-        -- Debug command to check history status
+        -- Debug command to check history status.
         vim.api.nvim_create_user_command("TelescopeReplaceDebug", function()
+            vim.notify("=== Telescope Replace Debug Info ===", vim.log.levels.INFO)
             vim.notify("History file: " .. history_file, vim.log.levels.INFO)
             vim.notify("History entries: " .. #search_history, vim.log.levels.INFO)
             vim.notify("File exists: " .. (vim.fn.filereadable(history_file) == 1 and "yes" or "no"), vim.log.levels.INFO)
             if #search_history > 0 then
                 vim.notify("Last entry: " .. search_history[1], vim.log.levels.INFO)
             end
+
+            -- Test write permissions.
+            local test_file = io.open(history_file, "a")
+            if test_file then
+                test_file:close()
+                vim.notify("Write permissions: OK", vim.log.levels.INFO)
+            else
+                vim.notify("Write permissions: FAILED", vim.log.levels.ERROR)
+            end
         end, {})
+
+        -- Command to toggle debug logging.
+        vim.api.nvim_create_user_command("TelescopeReplaceToggleDebug", function()
+            DEBUG_HISTORY = not DEBUG_HISTORY
+            vim.notify("Debug logging " .. (DEBUG_HISTORY and "enabled" or "disabled"), vim.log.levels.INFO)
+        end, {})
+
+        -- Command to manually add test entry.
+        vim.api.nvim_create_user_command("TelescopeReplaceTestAdd", function(opts)
+            local test_query = opts.args ~= "" and opts.args or "test_entry_" .. os.time()
+            add_to_search_history(test_query)
+            vim.notify("Added test entry: " .. test_query, vim.log.levels.INFO)
+        end, { nargs = "?" })
     end,
 }
