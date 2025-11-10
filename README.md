@@ -114,8 +114,13 @@ fc-cache -fv
 Remove old version.
 
 ```bash
+sudo apt remove neovim
+sudo rm -f /usr/bin/nvim
 sudo rm -f /usr/local/bin/nvim
 sudo rm -rf /usr/local/share/nvim/
+sudo rm -rf /opt/nvim-linux-x86_64
+sudo rm -rf /opt/nvim-linux-arm64
+sudo rm -rf /opt/nvim
 ```
 
 Clear cache.
@@ -135,20 +140,36 @@ cd /tmp/nvim
 Install for x86_64.
 
 ```bash
-curl -LO https://github.com/neovim/neovim/releases/download/v0.11.4/nvim-linux-x86_64.tar.gz
+curl -LO https://github.com/neovim/neovim/releases/download/v0.11.5/nvim-linux-x86_64.tar.gz
 tar xzvf nvim-linux-x86_64.tar.gz
 sudo mv nvim-linux-x86_64 /opt/nvim
-sudo ln -sf /opt/nvim/bin/nvim /usr/local/bin/nvim
+sudo ln -sf /opt/nvim/bin/nvim /usr/bin/nvim
+hash -r
 ```
 
 Install for arm64.
 
 ```bash
-curl -LO https://github.com/neovim/neovim/releases/download/v0.11.4/nvim-linux-arm64.tar.gz
+curl -LO https://github.com/neovim/neovim/releases/download/v0.11.5/nvim-linux-arm64.tar.gz
 tar xzvf nvim-linux-arm64.tar.gz
 sudo mv nvim-linux-arm64 /opt/nvim
-sudo ln -sf /opt/nvim/bin/nvim /usr/local/bin/nvim
+sudo ln -sf /opt/nvim/bin/nvim /usr/bin/nvim
+hash -r
 ```
+
+
+Check version
+```bash
+nvim --version | head -n 5
+```
+
+```txt
+NVIM v0.11.5
+Build type: Release
+LuaJIT 2.1.1741730670
+Run "nvim -V1 -v" for more info
+```
+
 
 ### 4. Install Python Tools
 
