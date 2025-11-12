@@ -835,15 +835,62 @@ function M.setup()
 
     -- SAVE AND FORMAT
 
+    -- -- F2 for smart save and format.
+    -- map("n", "<F2>", function()
+    --     safe_save.smart_write()
+    -- end, {desc = "Save and format file"})
+
+    -- map("i", "<F2>", function()
+    --     vim.cmd("stopinsert")
+    --     safe_save.smart_write()
+    --     vim.cmd("startinsert")
+    -- end, {desc = "Save and format file"})
+
     -- F2 for smart save and format.
     map("n", "<F2>", function()
-        safe_save.smart_write()
+        local bufname = vim.api.nvim_buf_get_name(0)
+
+        -- Check if buffer is unnamed.
+        if bufname == "" or bufname:match("^%[No Name%]") then
+            vim.ui.input({
+                prompt = "Save as: ",
+                default = vim.fn.getcwd() .. "/",
+                completion = "file",
+            }, function(filename)
+                if filename and filename ~= "" then
+                    vim.cmd("write " .. vim.fn.fnameescape(filename))
+                    vim.notify("💾 Saved: " .. filename, vim.log.levels.INFO)
+                end
+            end)
+        else
+            -- Normal save with formatting.
+            safe_save.smart_write()
+        end
     end, {desc = "Save and format file"})
 
     map("i", "<F2>", function()
         vim.cmd("stopinsert")
-        safe_save.smart_write()
-        vim.cmd("startinsert")
+
+        local bufname = vim.api.nvim_buf_get_name(0)
+
+        -- Check if buffer is unnamed.
+        if bufname == "" or bufname:match("^%[No Name%]") then
+            vim.ui.input({
+                prompt = "Save as: ",
+                default = vim.fn.getcwd() .. "/",
+                completion = "file",
+            }, function(filename)
+                if filename and filename ~= "" then
+                    vim.cmd("write " .. vim.fn.fnameescape(filename))
+                    vim.notify("💾 Saved: " .. filename, vim.log.levels.INFO)
+                end
+                vim.cmd("startinsert")
+            end)
+        else
+            -- Normal save with formatting.
+            safe_save.smart_write()
+            vim.cmd("startinsert")
+        end
     end, {desc = "Save and format file"})
 
     -- Undo/Redo shortcuts (additional comfort mappings)
