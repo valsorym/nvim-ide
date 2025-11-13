@@ -238,7 +238,7 @@ sudo update-alternatives --install /usr/bin/editor editor /usr/local/bin/nvim 60
 Use kitty as an alternative terminal to run nvim.
 
 ```bash
-sudo apt install kitty
+sudo apt install -y kitty
 ```
 
 Now you can use it as:
