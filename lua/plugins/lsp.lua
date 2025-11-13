@@ -34,6 +34,8 @@ return {
             return "python3"
         end
 
+
+
         -- Open location in a tab (reuse tab if file is already open).
         local function open_lsp_location_in_tab(loc)
             -- Location can be Location or LocationLink.

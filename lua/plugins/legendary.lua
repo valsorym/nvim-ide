@@ -296,7 +296,6 @@ return {
             { "<leader>cr", vim.lsp.buf.rename, description = "Rename Symbol" },
             { "<leader>cf", function() vim.lsp.buf.format({ async = true }) end, description = "Format Document" },
             { "<leader>ci", ":OrganizeImports<CR>", description = "Sort Imports" },
-            { "<leader>cv", ":VenvSelect<CR>", description = "Select Venv" },
             { "<leader>cc", vim.diagnostic.open_float, description = "Show Line Diagnostics" },
             { "<leader>cC", ":Telescope diagnostics<CR>", description = "Workspace Diagnostics" },
             { "<leader>cl", ":lopen<CR>", description = "Diagnostic List" },
@@ -306,6 +305,13 @@ return {
             { "<leader>cs", ":Telescope lsp_document_symbols<CR>", description = "Document Symbols" },
             { "<leader>cg", ":SymbolsOutline<CR>", description = "Symbols (Grouped)" },
             { "<leader>cw", ":Telescope lsp_workspace_symbols<CR>", description = "Workspace Symbols" },
+
+            -- PYTHON VENV
+            { "<leader>cva", ":VenvActivate<CR>", description = "Activate Venv" },
+            { "<leader>cvd", ":VenvDeactivate<CR>", description = "Deactivate Venv" },
+            { "<leader>cvs", ":VenvStatus<CR>", description = "Venv Status" },
+            { "<leader>cvf", ":VenvFind<CR>", description = "Find Venv" },
+            { "<leader>cvc", ":VenvSelect<CR>", description = "Select Venv" },
 
             -- LINTERS
             { "<leader>ckd", "<cmd>ToggleDjlint<cr>", description = "Toggle djlint" },

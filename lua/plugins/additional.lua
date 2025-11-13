@@ -371,7 +371,7 @@ return {
                 auto_refresh = true
             })
             -- Updated keymap using <leader>c prefix for code-related actions
-            vim.keymap.set("n", "<leader>cv", "<cmd>VenvSelect<cr>",
+            vim.keymap.set("n", "<leader>vc", "<cmd>VenvSelect<cr>",
                 {desc = "Select Python venv"})
         end
     },

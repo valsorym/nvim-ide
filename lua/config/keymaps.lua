@@ -962,6 +962,13 @@ function M.setup()
     map("n", "<C-k>", vim.lsp.buf.signature_help, {desc = "Signature Help"})
     map("i", "<C-k>", vim.lsp.buf.signature_help, {desc = "Signature Help"})
 
+    -- Python virtual environment
+    map("n", "<leader>cva", "<cmd>VenvActivate<cr>", {desc = "Activate Python venv"})
+    map("n", "<leader>cvd", "<cmd>VenvDeactivate<cr>", {desc = "Deactivate Python venv"})
+    map("n", "<leader>cvs", "<cmd>VenvStatus<cr>", {desc = "Venv status"})
+    map("n", "<leader>cvf", "<cmd>VenvFind<cr>", {desc = "Find venv"})
+    map("n", "<leader>cvc", "<cmd>VenvSelect<cr>",{desc = "Select Python venv"})
+
     -- Smart quit commands with Dashboard-aware logic.
     vim.api.nvim_create_user_command(
         "Q",
