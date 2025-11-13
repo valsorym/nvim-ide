@@ -107,7 +107,7 @@ rm *.zip && \
 fc-cache -fv
 ```
 
-**⚠️ IMPORTANT**: Set one of the Nerd Font Mono fonts as your terminal's default font for proper icon display.
+**⚠️ IMPORTANT**: Set one of the `UbuntuMono Nerd Font Mono` fonts as your terminal's default font for proper icon display.
 
 ### 3. Install Neovim
 
