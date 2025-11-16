@@ -18,16 +18,16 @@ return {
             mode = { "n", "v" },
             desc = "🔍 Search All Commands"
         },
-        {
-            "<C-p>",
-            function()
-                require("legendary").find({
-                    filters = { require("legendary.filters").keymaps() }
-                })
-            end,
-            mode = { "n", "v" },
-            desc = "⌨️  Search Keymaps"
-        },
+        -- {
+        --     "<C-p>",
+        --     function()
+        --         require("legendary").find({
+        --             filters = { require("legendary.filters").keymaps() }
+        --         })
+        --     end,
+        --     mode = { "n", "v" },
+        --     desc = "⌨️ Search Keymaps"
+        -- },
         {
             "<leader>:",
             function()
@@ -412,20 +412,20 @@ return {
             { "<leader>dc1", function()
                 vim.wo.colorcolumn = "79"
                 print("ColorColumn: 79")
-            end, description = "ColorColumn: 79 symbols" },
+            end, description = "ColorColumn - 79 symbols" },
             { "<leader>dc2", function()
                 vim.wo.colorcolumn = "120"
                 print("ColorColumn: 120")
-            end, description = "ColorColumn: 120 symbols" },
+            end, description = "ColorColumn - 120 symbols" },
             { "<leader>dc0", function()
                 if vim.wo.colorcolumn == "" then
                     vim.wo.colorcolumn = "79"
-                    print("ColorColumn: ON (79)")
+                    print("ColorColumn - ON (79)")
                 else
                     vim.wo.colorcolumn = ""
-                    print("ColorColumn: OFF")
+                    print("ColorColumn - OFF")
                 end
-            end, description = "ColorColumn: Toggle Show/Hide" },
+            end, description = "Toggle ColorColumn" },
 
             -- AERIAL
             { "<leader>aa", ":AerialToggle<CR>", description = "Toggle Aerial outline", mode = { "n" } },
