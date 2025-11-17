@@ -53,6 +53,26 @@ local function add_to_search_history(query)
     save_search_history()
 end
 
+-- Convert ripgrep/telescope pattern to literal string
+local function normalize_pattern_to_literal(pattern)
+    -- Convert common regex escapes to literal characters
+    local literal = pattern
+    literal = literal:gsub("\\%.", ".")  -- \. -> .
+    literal = literal:gsub("\\%*", "*")  -- \* -> *
+    literal = literal:gsub("\\%+", "+")  -- \+ -> +
+    literal = literal:gsub("\\%?", "?")  -- \? -> ?
+    literal = literal:gsub("\\%(", "(")  -- \( -> (
+    literal = literal:gsub("\\%)", ")")  -- \) -> )
+    literal = literal:gsub("\\%[", "[")  -- \[ -> [
+    literal = literal:gsub("\\%]", "]")  -- \] -> ]
+    literal = literal:gsub("\\%{", "{")  -- \{ -> {
+    literal = literal:gsub("\\%}", "}")  -- \} -> }
+    literal = literal:gsub("\\%^", "^")  -- \^ -> ^
+    literal = literal:gsub("\\%$", "$")  -- \$ -> $
+    literal = literal:gsub("\\\\", "\\") -- \\ -> \
+    return literal
+end
+
 -- Load history on startup.
 load_search_history()
 
@@ -77,6 +97,9 @@ return {
                 return
             end
 
+            -- Convert pattern to literal string for consistent replacement
+            local literal_pattern = normalize_pattern_to_literal(old_pattern)
+
             -- Group results by file.
             local files = {}
             for _, result in ipairs(_G.TelescopeReplace.results) do
@@ -86,9 +109,6 @@ return {
                 end
                 table.insert(files[file], result)
             end
-
-            -- Escape pattern for literal search.
-            local search_pattern = vim.fn.escape(old_pattern, "/\\.*^$[]")
 
             -- Count total replacements.
             local total_files = 0
@@ -111,35 +131,27 @@ return {
                 local file_replacements = 0
 
                 for i, line in ipairs(lines) do
-                    local new_line, count
+                    local new_line = ""
+                    local count = 0
+                    local pos = 1
 
-                    if case_sensitive then
-                        new_line, count = line:gsub(vim.pesc(old_pattern), new_text)
-                    else
-                        -- Case insensitive: find all matches.
-                        local pattern = old_pattern:lower()
-                        local line_lower = line:lower()
-                        local pos = 1
-                        local result = ""
-                        count = 0
+                    local search_in_line = case_sensitive and line or line:lower()
+                    local search_pattern = case_sensitive and literal_pattern or literal_pattern:lower()
 
-                        while true do
-                            local start_idx, end_idx = line_lower:find(pattern, pos, true)
-                            if not start_idx then
-                                result = result .. line:sub(pos)
-                                break
-                            end
-
-                            result = result .. line:sub(pos, start_idx - 1) .. new_text
-                            pos = end_idx + 1
-                            count = count + 1
+                    while true do
+                        local start_idx, end_idx = search_in_line:find(search_pattern, pos, true) -- true = literal search
+                        if not start_idx then
+                            new_line = new_line .. line:sub(pos)
+                            break
                         end
 
-                        if count > 0 then
-                            new_line = result
-                        else
-                            new_line = line
-                        end
+                        -- Add text before match
+                        new_line = new_line .. line:sub(pos, start_idx - 1)
+                        -- Add replacement text
+                        new_line = new_line .. new_text
+
+                        pos = end_idx + 1
+                        count = count + 1
                     end
 
                     if count > 0 then
@@ -448,7 +460,7 @@ return {
             })
         end, {desc = "Replace current word"})
 
-        -- Visual mode: replace selected text (respects .gitignore)
+        -- Visual mode: replace selected text (respects .gitignore).
         vim.keymap.set("v", "<leader>fc", function()
             vim.cmd('noau normal! "vy"')
             local selected = vim.fn.getreg("v")
