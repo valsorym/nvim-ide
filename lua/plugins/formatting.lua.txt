@@ -1,0 +1,501 @@
+-- ~/.config/nvim/lua/plugins/formatting.lua
+-- RADICAL SOLUTION: No null-ls LSP, only direct commands
+
+return {
+    "nvimtools/none-ls.nvim",
+    dependencies = {
+        "nvim-lua/plenary.nvim",
+        "jay-babu/mason-null-ls.nvim"
+    },
+    cmd = {
+        "ToggleDjlint",
+        "ToggleCodespell",
+        "PythonToolsStatus",
+        "CreatePyprojectToml",
+        "InstallPythonTools",
+        "CheckFormatters",
+    },
+    init = function()
+        vim.g.enable_djlint = false
+        vim.g.enable_codespell = true
+    end,
+    config = function()
+        -- COMPLETELY SKIP null-ls setup to avoid LSP errors
+        -- We'll use only direct command execution
+
+        -- Get python executable
+        local function get_python_executable()
+            local venv = vim.fn.getenv("VIRTUAL_ENV")
+            if venv ~= vim.NIL and venv ~= "" then
+                return venv .. "/bin/python"
+            end
+            if vim.fn.isdirectory(".venv") == 1 then
+                return vim.fn.getcwd() .. "/.venv/bin/python"
+            end
+            if vim.fn.isdirectory("venv") == 1 then
+                return vim.fn.getcwd() .. "/venv/bin/python"
+            end
+            return "python3"
+        end
+
+        -- Check tools availability
+        local function check_python_tools()
+            local py = get_python_executable()
+            local tools = {"black", "isort", "mypy", "flake8", "codespell", "djlint"}
+            local missing = {}
+            local available = {}
+
+            for _, tool in ipairs(tools) do
+                local exe = py:gsub("/python$", "/" .. tool)
+                local is_available = (vim.fn.executable(tool) == 1) or (vim.fn.executable(exe) == 1)
+                if is_available then
+                    table.insert(available, tool)
+                else
+                    table.insert(missing, tool)
+                end
+            end
+
+            return available, missing
+        end
+
+        -- Settings
+        vim.g.format_on_save = false -- Disable auto-format to avoid null-ls
+
+        vim.keymap.set("n", "<leader>xf", function()
+            vim.g.format_on_save = not vim.g.format_on_save
+            vim.notify("Format on save: " .. (vim.g.format_on_save and "ON (manual only)" or "OFF"),
+                vim.log.levels.INFO, {title = "Formatting", timeout = 2000})
+        end, {desc = "Toggle format on save"})
+
+        -- Manual format using direct commands
+        vim.keymap.set("n", "<leader>df", function()
+            local ft = vim.bo.filetype
+            if ft == "python" then
+                -- Use our direct black command
+                vim.cmd("normal! m'")
+                local result = vim.fn.system({
+                    "black", "--line-length", "79", "--target-version", "py38",
+                    "--skip-string-normalization", vim.fn.expand("%:p")
+                })
+                if vim.v.shell_error == 0 then
+                    vim.cmd("silent! edit!")
+                    vim.notify("🖤 Python formatted", vim.log.levels.INFO)
+                else
+                    vim.notify("❌ black not available", vim.log.levels.WARN)
+                end
+            elseif ft == "lua" then
+                local result = vim.fn.system({"stylua", "--column-width", "79", vim.fn.expand("%:p")})
+                if vim.v.shell_error == 0 then
+                    vim.cmd("silent! edit!")
+                    vim.notify("🌙 Lua formatted", vim.log.levels.INFO)
+                else
+                    vim.notify("❌ stylua not available", vim.log.levels.WARN)
+                end
+            elseif ft == "javascript" or ft == "typescript" or ft == "json" then
+                local result = vim.fn.system({"prettier", "--print-width", "79", "--write", vim.fn.expand("%:p")})
+                if vim.v.shell_error == 0 then
+                    vim.cmd("silent! edit!")
+                    vim.notify("✨ JS/TS formatted", vim.log.levels.INFO)
+                else
+                    vim.notify("❌ prettier not available", vim.log.levels.WARN)
+                end
+            else
+                vim.notify("No direct formatter for " .. ft, vim.log.levels.INFO)
+            end
+        end, {desc = "Format document (direct)"})
+
+        ------------------------------------------------------------------------
+        -- 🔄 isort (direct command, zero LSP involvement)
+        ------------------------------------------------------------------------
+        vim.keymap.set("n", "<leader>ci", function()
+            if vim.bo.filetype ~= "python" then
+                vim.notify("🚫 This is not a Python file", vim.log.levels.WARN)
+                return
+            end
+
+            if vim.bo.modified then
+                vim.cmd("silent write")
+            end
+
+            local py = get_python_executable()
+            local exe = py:gsub("/python$", "/isort")
+            local current_file = vim.fn.expand("%:p")
+
+            local isort_cmd = nil
+            if vim.fn.executable(exe) == 1 then
+                isort_cmd = exe
+            elseif vim.fn.executable("isort") == 1 then
+                isort_cmd = "isort"
+            else
+                vim.notify("🚫 isort not found\n\nRun: :InstallPythonTools",
+                    vim.log.levels.WARN, {title = "Missing Tool", timeout = 4000})
+                return
+            end
+
+            vim.notify("🔄 Sorting imports...", vim.log.levels.INFO, {
+                title = "isort", timeout = 800
+            })
+
+            -- Store cursor position
+            local cursor_pos = vim.api.nvim_win_get_cursor(0)
+
+            local result = vim.fn.system({
+                isort_cmd, "--profile", "black", "--line-length", "79",
+                "--multi-line", "3", "--trailing-comma", current_file
+            })
+
+            if vim.v.shell_error == 0 then
+                vim.cmd("silent! edit!")
+                -- Restore cursor position
+                pcall(vim.api.nvim_win_set_cursor, 0, cursor_pos)
+                vim.notify("📝 Imports sorted", vim.log.levels.INFO, {
+                    title = "isort", timeout = 2000
+                })
+            else
+                vim.notify("❌ isort failed", vim.log.levels.ERROR, {
+                    title = "isort", timeout = 3000
+                })
+            end
+        end, {desc = "Sort Python imports (direct)"})
+
+        ------------------------------------------------------------------------
+        -- 🖤 Black (direct command)
+        ------------------------------------------------------------------------
+        vim.keymap.set("n", "<leader>cb", function()
+            if vim.bo.filetype ~= "python" then
+                vim.notify("🚫 This is not a Python file", vim.log.levels.WARN)
+                return
+            end
+
+            if vim.bo.modified then
+                vim.cmd("silent write")
+            end
+
+            local py = get_python_executable()
+            local exe = py:gsub("/python$", "/black")
+            local current_file = vim.fn.expand("%:p")
+
+            local black_cmd = nil
+            if vim.fn.executable(exe) == 1 then
+                black_cmd = exe
+            elseif vim.fn.executable("black") == 1 then
+                black_cmd = "black"
+            else
+                vim.notify("🚫 black not found\n\nRun: :InstallPythonTools",
+                    vim.log.levels.WARN, {title = "Missing Tool", timeout = 4000})
+                return
+            end
+
+            vim.notify("🔄 Formatting code...", vim.log.levels.INFO, {
+                title = "black", timeout = 800
+            })
+
+            local cursor_pos = vim.api.nvim_win_get_cursor(0)
+
+            local result = vim.fn.system({
+                black_cmd, "--line-length", "79", "--target-version", "py38",
+                "--skip-string-normalization", current_file
+            })
+
+            if vim.v.shell_error == 0 then
+                vim.cmd("silent! edit!")
+                pcall(vim.api.nvim_win_set_cursor, 0, cursor_pos)
+                vim.notify("🖤 Code formatted", vim.log.levels.INFO, {
+                    title = "black", timeout = 2000
+                })
+            else
+                vim.notify("❌ black failed", vim.log.levels.ERROR, {
+                    title = "black", timeout = 3000
+                })
+            end
+        end, {desc = "Format Python code (direct)"})
+
+        ------------------------------------------------------------------------
+        -- 📦 Commands (unchanged)
+        ------------------------------------------------------------------------
+
+        vim.api.nvim_create_user_command("InstallPythonTools", function()
+            local py = get_python_executable()
+            local tools = "black isort mypy flake8 codespell djlint"
+
+            vim.ui.input({
+                prompt = "Install Python tools? (y/N): ",
+                default = "y"
+            }, function(input)
+                if input and input:lower() == "y" then
+                    vim.notify("Installing Python tools...", vim.log.levels.INFO, {
+                        title = "Installation", timeout = 3000
+                    })
+
+                    local result = vim.fn.system(py .. " -m pip install -U " .. tools)
+
+                    if vim.v.shell_error == 0 then
+                        vim.notify("✅ Python tools installed", vim.log.levels.INFO, {
+                            title = "Installation", timeout = 3000
+                        })
+                    else
+                        vim.notify("❌ Installation failed", vim.log.levels.ERROR, {
+                            title = "Installation", timeout = 3000
+                        })
+                    end
+                end
+            end)
+        end, {desc = "Install Python formatting tools"})
+
+        vim.api.nvim_create_user_command("PythonToolsStatus", function()
+            local py = get_python_executable()
+            local available, missing = check_python_tools()
+
+            print("Python executable: " .. py)
+            print("\n✅ Available tools:")
+            for _, tool in ipairs(available) do
+                print("  " .. tool)
+            end
+
+            if #missing > 0 then
+                print("\n❌ Missing tools:")
+                for _, tool in ipairs(missing) do
+                    print("  " .. tool)
+                end
+                print("\nRun: :InstallPythonTools")
+            end
+
+            local has_pyproject = (vim.fn.filereadable("pyproject.toml") == 1)
+            print("\npyproject.toml: " .. (has_pyproject and "✓ exists" or "✗ missing"))
+        end, {desc = "Check Python tools status"})
+
+        vim.api.nvim_create_user_command("CreatePyprojectToml", function()
+            local content = [[
+[tool.black]
+line-length = 79
+target-version = ['py38']
+skip-string-normalization = true
+
+[tool.isort]
+profile = "black"
+line_length = 79
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+]]
+            if vim.fn.filereadable("pyproject.toml") == 1 then
+                vim.notify("pyproject.toml already exists", vim.log.levels.WARN)
+            else
+                local file = io.open("pyproject.toml", "w")
+                if file then
+                    file:write(content)
+                    file:close()
+                    vim.notify("✅ Created pyproject.toml", vim.log.levels.INFO)
+                else
+                    vim.notify("❌ Could not create pyproject.toml", vim.log.levels.ERROR)
+                end
+            end
+        end, {desc = "Create pyproject.toml"})
+
+        vim.api.nvim_create_user_command("CheckFormatters", function()
+            local tools = {"black", "isort", "prettier", "stylua", "goimports", "clang-format"}
+            print("Formatter status:")
+            for _, tool in ipairs(tools) do
+                local available = vim.fn.executable(tool) == 1
+                print("  " .. tool .. ": " .. (available and "✓" or "✗"))
+            end
+        end, {desc = "Check formatters"})
+
+        -- Simple toggles (these don't do anything since we're not using null-ls)
+        vim.api.nvim_create_user_command("ToggleDjlint", function()
+            vim.notify("djlint: not available (no null-ls)", vim.log.levels.INFO)
+        end, {desc = "Toggle djlint (disabled)"})
+
+        vim.api.nvim_create_user_command("ToggleCodespell", function()
+            vim.notify("codespell: not available (no null-ls)", vim.log.levels.INFO)
+        end, {desc = "Toggle codespell (disabled)"})
+    end
+}
+
+===============================================================================
+-- ~/.config/nvim/lua/plugins/formatting.lua
+-- Clean version: simple error handling, no blocking messages
+
+return {
+    "nvimtools/none-ls.nvim",
+    dependencies = {
+        "nvim-lua/plenary.nvim",
+        "jay-babu/mason-null-ls.nvim"
+    },
+    cmd = {
+        "PythonToolsStatus",
+        "CreatePyprojectToml",
+        "InstallPythonTools",
+    },
+    config = function()
+        -- Get python executable
+        local function get_python_executable()
+            local venv = vim.fn.getenv("VIRTUAL_ENV")
+            if venv ~= vim.NIL and venv ~= "" then
+                return venv .. "/bin/python"
+            end
+            if vim.fn.isdirectory(".venv") == 1 then
+                return vim.fn.getcwd() .. "/.venv/bin/python"
+            end
+            if vim.fn.isdirectory("venv") == 1 then
+                return vim.fn.getcwd() .. "/venv/bin/python"
+            end
+            return "python3"
+        end
+
+        -- Settings
+        vim.g.format_on_save = false
+
+        vim.keymap.set("n", "<leader>xf", function()
+            vim.g.format_on_save = not vim.g.format_on_save
+            vim.notify("Format on save: " .. (vim.g.format_on_save and "ON" or "OFF"), vim.log.levels.INFO)
+        end, {desc = "Toggle format on save"})
+
+        ------------------------------------------------------------------------
+        -- 🔄 isort - clean and simple
+        ------------------------------------------------------------------------
+        vim.keymap.set("n", "<leader>ci", function()
+            if vim.bo.filetype ~= "python" then
+                vim.notify("🚫 Not a Python file", vim.log.levels.WARN)
+                return
+            end
+
+            if vim.bo.modified then vim.cmd("silent write") end
+
+            local py = get_python_executable()
+            local exe = py:gsub("/python$", "/isort")
+            local current_file = vim.fn.expand("%:p")
+
+            local isort_cmd = vim.fn.executable(exe) == 1 and exe or "isort"
+            if vim.fn.executable(isort_cmd) == 0 then
+                vim.notify("🚫 isort not found", vim.log.levels.WARN)
+                return
+            end
+
+            vim.notify("🔄 Sorting imports...", vim.log.levels.INFO)
+
+            local cursor_pos = vim.api.nvim_win_get_cursor(0)
+            local result = vim.fn.system({
+                isort_cmd, "--profile", "black", "--line-length", "79",
+                "--multi-line", "3", "--trailing-comma", current_file
+            })
+
+            if vim.v.shell_error == 0 then
+                vim.cmd("silent! edit!")
+                pcall(vim.api.nvim_win_set_cursor, 0, cursor_pos)
+                vim.notify("📝 Imports sorted", vim.log.levels.INFO)
+            else
+                vim.notify("❌ isort failed", vim.log.levels.ERROR)
+            end
+        end, {desc = "Sort Python imports", silent = true})
+
+        ------------------------------------------------------------------------
+        -- 🖤 Black - clean with syntax error detection
+        ------------------------------------------------------------------------
+        vim.keymap.set("n", "<leader>cb", function()
+            if vim.bo.filetype ~= "python" then
+                vim.notify("🚫 Not a Python file", vim.log.levels.WARN)
+                return
+            end
+
+            if vim.bo.modified then vim.cmd("silent write") end
+
+            local py = get_python_executable()
+            local exe = py:gsub("/python$", "/black")
+            local current_file = vim.fn.expand("%:p")
+
+            local black_cmd = vim.fn.executable(exe) == 1 and exe or "black"
+            if vim.fn.executable(black_cmd) == 0 then
+                vim.notify("🚫 black not found", vim.log.levels.WARN)
+                return
+            end
+
+            vim.notify("🔄 Formatting code...", vim.log.levels.INFO)
+
+            local cursor_pos = vim.api.nvim_win_get_cursor(0)
+            local result = vim.fn.system({
+                black_cmd, "--line-length", "79", "--skip-string-normalization", current_file
+            })
+
+            if vim.v.shell_error == 0 then
+                vim.cmd("silent! edit!")
+                pcall(vim.api.nvim_win_set_cursor, 0, cursor_pos)
+                vim.notify("🖤 Code formatted", vim.log.levels.INFO)
+            else
+                -- Check if it's a syntax error
+                if result:match("Cannot parse") or result:match("SyntaxError") then
+                    vim.notify("❌ Code has syntax errors - fix them first", vim.log.levels.ERROR)
+                else
+                    vim.notify("❌ black failed", vim.log.levels.ERROR)
+                end
+            end
+        end, {desc = "Format Python code", silent = true})
+
+        -- Manual format for other languages
+        vim.keymap.set("n", "<leader>df", function()
+            local ft = vim.bo.filetype
+            if ft == "python" then
+                -- Use our Python formatting
+                vim.cmd("normal \\<leader>cb")
+            elseif ft == "lua" and vim.fn.executable("stylua") == 1 then
+                local cursor_pos = vim.api.nvim_win_get_cursor(0)
+                vim.fn.system({"stylua", "--column-width", "79", vim.fn.expand("%:p")})
+                if vim.v.shell_error == 0 then
+                    vim.cmd("silent! edit!")
+                    pcall(vim.api.nvim_win_set_cursor, 0, cursor_pos)
+                    vim.notify("🌙 Lua formatted", vim.log.levels.INFO)
+                end
+            else
+                vim.notify("No formatter available for " .. ft, vim.log.levels.INFO)
+            end
+        end, {desc = "Format document"})
+
+        ------------------------------------------------------------------------
+        -- 📦 Commands
+        ------------------------------------------------------------------------
+        vim.api.nvim_create_user_command("InstallPythonTools", function()
+            local py = get_python_executable()
+            vim.notify("Installing Python tools...", vim.log.levels.INFO)
+            vim.fn.system(py .. " -m pip install -U black isort mypy flake8")
+            vim.notify("✅ Tools installed", vim.log.levels.INFO)
+        end, {desc = "Install Python tools"})
+
+        vim.api.nvim_create_user_command("PythonToolsStatus", function()
+            local py = get_python_executable()
+            local tools = {"black", "isort", "mypy", "flake8"}
+
+            print("Python: " .. py)
+            for _, tool in ipairs(tools) do
+                local exe = py:gsub("/python$", "/" .. tool)
+                local available = vim.fn.executable(tool) == 1 or vim.fn.executable(exe) == 1
+                print("  " .. tool .. ": " .. (available and "✅" or "❌"))
+            end
+        end, {desc = "Check Python tools"})
+
+        vim.api.nvim_create_user_command("CreatePyprojectToml", function()
+            local content = [[
+[tool.black]
+line-length = 79
+skip-string-normalization = true
+
+[tool.isort]
+profile = "black"
+line_length = 79
+multi_line_output = 3
+include_trailing_comma = true
+]]
+            if vim.fn.filereadable("pyproject.toml") == 1 then
+                vim.notify("pyproject.toml already exists", vim.log.levels.WARN)
+            else
+                local file = io.open("pyproject.toml", "w")
+                if file then
+                    file:write(content)
+                    file:close()
+                    vim.notify("✅ Created pyproject.toml", vim.log.levels.INFO)
+                end
+            end
+        end, {desc = "Create pyproject.toml"})
+    end
+}

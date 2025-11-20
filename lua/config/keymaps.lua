@@ -744,38 +744,38 @@ function M.setup()
     end, {desc = "Format buffer"})
 
     -- Sort Python imports.
-    map(
-        "n", "<leader>ci",
-        function()
-            vim.cmd("write")
-            local function get_python_executable()
-                local venv = vim.fn.getenv("VIRTUAL_ENV")
-                if venv ~= vim.NIL and venv ~= "" then
-                    return venv .. "/bin/python"
-                end
-                if vim.fn.isdirectory(".venv") == 1 then
-                    return vim.fn.getcwd() .. "/.venv/bin/python"
-                end
-                if vim.fn.isdirectory("venv") == 1 then
-                    return vim.fn.getcwd() .. "/venv/bin/python"
-                end
-                return "python3"
-            end
-            local py = get_python_executable()
-            local exe = py:gsub("/python$", "/isort")
-            local args = table.concat({
-                "--profile","black","--line-length","79",
-                "--multi-line","3","--trailing-comma"
-            }, " ")
-            if vim.fn.executable(exe) == 1 then
-                vim.cmd("!" .. exe .. " " .. args .. " %")
-            else
-                vim.cmd("!isort " .. args .. " %")
-            end
-            vim.cmd("edit!")
-        end,
-        {desc = "Sort Python Imports"}
-    )
+    -- map(
+    --     "n", "<leader>ci",
+    --     function()
+    --         vim.cmd("write")
+    --         local function get_python_executable()
+    --             local venv = vim.fn.getenv("VIRTUAL_ENV")
+    --             if venv ~= vim.NIL and venv ~= "" then
+    --                 return venv .. "/bin/python"
+    --             end
+    --             if vim.fn.isdirectory(".venv") == 1 then
+    --                 return vim.fn.getcwd() .. "/.venv/bin/python"
+    --             end
+    --             if vim.fn.isdirectory("venv") == 1 then
+    --                 return vim.fn.getcwd() .. "/venv/bin/python"
+    --             end
+    --             return "python3"
+    --         end
+    --         local py = get_python_executable()
+    --         local exe = py:gsub("/python$", "/isort")
+    --         local args = table.concat({
+    --             "--profile","black","--line-length","79",
+    --             "--multi-line","3","--trailing-comma"
+    --         }, " ")
+    --         if vim.fn.executable(exe) == 1 then
+    --             vim.cmd("!" .. exe .. " " .. args .. " %")
+    --         else
+    --             vim.cmd("!isort " .. args .. " %")
+    --         end
+    --         vim.cmd("edit!")
+    --     end,
+    --     {desc = "Sort Python Imports"}
+    -- )
 
     -- SYSTEM / CONFIG / TOOLS (<leader>x)
 
