@@ -237,6 +237,23 @@ return {
 
         vim.api.nvim_create_user_command("CreatePyprojectToml", function()
             local content = [[
+# Fix the [project] section before installing.
+# Activate virtual environment and run `pip install -e .`
+
+[project]
+name = "project-name"
+version = "0.0.1"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [tool.black]
 line-length = 79
 skip-string-normalization = true
