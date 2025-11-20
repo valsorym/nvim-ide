@@ -253,6 +253,9 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = [
+    "apps.*",
+]
 
 [tool.black]
 line-length = 79
@@ -263,6 +266,7 @@ profile = "black"
 line_length = 79
 multi_line_output = 3
 include_trailing_comma = true
+
 ]]
             if vim.fn.filereadable("pyproject.toml") == 1 then
                 vim.notify("pyproject.toml already exists", vim.log.levels.WARN)
@@ -275,5 +279,33 @@ include_trailing_comma = true
                 end
             end
         end, {desc = "Create pyproject.toml"})
+
+        vim.api.nvim_create_user_command("CreatePyrightConfig", function()
+            local content = [[
+{
+// Pyright configuration for Django project with src/ and src/apps.
+"executionEnvironments": [
+    {
+    "root": "./src",
+    "extraPaths": [
+        "./src/apps"
+    ]
+    }
+]
+}
+]]
+            if vim.fn.filereadable("pyrightconfig.json") == 1 then
+                vim.notify("pyrightconfig.json already exists", vim.log.levels.WARN)
+            else
+                local file = io.open("pyrightconfig.json", "w")
+                if file then
+                    file:write(content)
+                    file:close()
+                    vim.notify("✅ Created pyrightconfig.json", vim.log.levels.INFO)
+                else
+                    vim.notify("❌ Failed to create pyrightconfig.json", vim.log.levels.ERROR)
+                end
+            end
+        end, { desc = "Create pyrightconfig.json" })
     end
 }

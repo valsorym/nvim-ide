@@ -2,7 +2,7 @@
 -- Dashboard.
 
 -- Release version.
-local release_version = "v0.16.6"
+local release_version = "v0.16.7"
 
 return {
     "nvimdev/dashboard-nvim",

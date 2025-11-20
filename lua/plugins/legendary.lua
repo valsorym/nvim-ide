@@ -320,6 +320,7 @@ return {
             { "<leader>ckf", "<cmd>ToggleFlake8<cr>", description = "Toggle Flake8" },
             { "<leader>cks", "<cmd>PythonToolsStatus<cr>", description = "Python Tools Status" },
             { "<leader>ckp", "<cmd>CreatePyprojectToml<cr>", description = "Create pyproject.toml" },
+            { "<leader>ckr", "<cmd>CreatePyrightConfig<cr>", description = "Create pyrightconfig.json" },
 
             -- SYSTEM
             { "<leader>xr", ":source $MYVIMRC<CR>", description = "Reload Config" },
