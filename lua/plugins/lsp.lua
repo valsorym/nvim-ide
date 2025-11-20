@@ -9,10 +9,34 @@ return {
         "hrsh7th/cmp-nvim-lsp"
     },
     config = function()
+        require("ui.borders")
         local cmp_nvim_lsp = require("cmp_nvim_lsp")
 
         -- Enhanced capabilities with autocompletion.
         local capabilities = cmp_nvim_lsp.default_capabilities()
+
+        -- Stop auto signature help.
+        vim.lsp.handlers["textDocument/signatureHelp"] =
+            vim.lsp.with(vim.lsp.handlers.signature_help, {
+                border = {
+                    { "╭", "LspSignatureBorder" },
+                    { "─", "LspSignatureBorder" },
+                    { "╮", "LspSignatureBorder" },
+                    { "│", "LspSignatureBorder" },
+                    { "╯", "LspSignatureBorder" },
+                    { "─", "LspSignatureBorder" },
+                    { "╰", "LspSignatureBorder" },
+                    { "│", "LspSignatureBorder" },
+                },
+                max_width = 60,
+                max_height = 12,
+                focusable = false,
+                close_events = {
+                    "CursorMoved", "CursorMovedI",
+                    "BufHidden", "InsertLeave",
+                    "WinScrolled",
+                },
+            })
 
         -- Python virtual environment detection.
         local function get_python_path()
@@ -227,8 +251,6 @@ return {
             vim.keymap.set("n", "K", vim.lsp.buf.hover,
                 vim.tbl_extend("force", opts, {desc = "Show hover info"}))
 
-            vim.keymap.set("n", "<C-k>", vim.lsp.buf.signature_help,
-                vim.tbl_extend("force", opts, {desc = "Signature help"}))
 
             -- Code actions (these are also mapped in keymaps.lua for global access).
             vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action,
@@ -273,7 +295,19 @@ return {
             vim.keymap.set("n", "<leader>f", function()
                 vim.lsp.buf.format({async = true})
             end, vim.tbl_extend("force", opts, {desc = "Format buffer"}))
-        end
+
+            -- Signature help Ctrl+k.
+            vim.keymap.set({"i", "n"}, "<C-k>", function()
+                vim.lsp.buf.signature_help()
+            end, { buffer = bufnr, silent = true, desc = "Signature help" })
+        end -- end on_attach
+
+        -- -- Show signature help with Ctrl+k.
+        -- vim.keymap.set("n", "<C-k>", vim.lsp.buf.signature_help,
+        --     { desc = "Signature help" })
+
+        -- vim.keymap.set("i", "<C-k>", vim.lsp.buf.signature_help,
+        --     { desc = "Signature help" })
 
         -- Force disable underlines for all diagnostic types
         vim.api.nvim_set_hl(0, "DiagnosticUnderlineError", {

@@ -958,7 +958,7 @@ function M.setup()
         end
     end, {desc = "Toggle Trailing Spaces"})
 
-    -- Show signature help with Ctrl+K
+    -- Show signature help with Ctrl+k
     map("n", "<C-k>", vim.lsp.buf.signature_help, {desc = "Signature Help"})
     map("i", "<C-k>", vim.lsp.buf.signature_help, {desc = "Signature Help"})
 
