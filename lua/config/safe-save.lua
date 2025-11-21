@@ -1,117 +1,164 @@
 -- ~/.config/nvim/lua/config/safe-save.lua
--- Safe save: friendly messages, LSP-aware formatting.
+-- Safe save with formatting support
 
 local M = {}
 
--- Icons
-local ico_ok, ico_err, ico_fmt = "", "", ""
-
--- Check if current buffer is a normal, writable file.
-local function can_write()
-    -- Not modifiable buffer
-    if vim.bo.modifiable == false then
-        return false, "Buffer is not modifiable"
-    end
-    -- Readonly file
-    if vim.bo.readonly == true then
-        return false, "File is readonly"
-    end
-    -- Special buftypes should not be written
-    local bt = vim.bo.buftype
-    if bt ~= "" and bt ~= "acwrite" then
-        return false, "Special buffer (type: " .. bt .. ")"
-    end
-    -- Unnamed buffer
-    if vim.fn.bufname("%") == "" then
-        return false, "Unnamed buffer"
-    end
-    return true, nil
-end
-
--- Notify helper (falls back to :echo).
-local function say(msg, level)
-    level = level or vim.log.levels.WARN
-    if vim.notify then
-        vim.notify(msg, level)
-    else
-        local hl = (level == vim.log.levels.ERROR) and "ErrorMsg"
-            or (level == vim.log.levels.INFO) and "MoreMsg"
-            or "WarningMsg"
-        vim.api.nvim_echo({{msg, hl}}, false, {})
-    end
-end
-
--- Try format when supported. Returns (supported, formatted_ran).
-local function try_format(timeout)
-    timeout = timeout or 800
-    local supported, ran = false, false
-
-    local ok = pcall(function()
-        local bufnr = 0
-        local clients = vim.lsp.get_clients({bufnr = bufnr})
-        if #clients == 0 then return end
-        for _, c in ipairs(clients) do
-            if c.supports_method
-                and c:supports_method("textDocument/formatting") then
-                supported = true
-                break
-            end
-        end
-        if supported then
-            vim.lsp.buf.format({async = false, timeout_ms = timeout})
-            ran = true
-        end
-    end)
-
-    -- If pcall failed, do not treat as formatted.
-    if not ok then ran = false end
-    return supported, ran
-end
-
--- Public: smart write with friendly messages.
+-- Smart write function that handles different file types appropriately
 function M.smart_write()
-    local ok_can, reason = can_write()
-    if not ok_can then
-        say(ico_err .. "  Cannot save: " .. reason, vim.log.levels.WARN)
+    local ft = vim.bo.filetype
+    local bufname = vim.api.nvim_buf_get_name(0)
+
+    -- Skip formatting for specific filetypes that shouldn't be auto-formatted
+    local no_format_filetypes = {
+        "htmldjango",
+        "html",
+        "markdown",
+        "text",
+        "gitcommit",
+        "gitrebase",
+    }
+
+    -- Check if current filetype should skip formatting
+    local should_skip_format = false
+    for _, skip_ft in ipairs(no_format_filetypes) do
+        if ft == skip_ft then
+            should_skip_format = true
+            break
+        end
+    end
+
+    -- Check if autoformat is disabled globally or for buffer
+    if vim.g.format_on_save == false or vim.b.autoformat == false then
+        should_skip_format = true
+    end
+
+    -- Save without formatting if needed
+    if should_skip_format then
+        vim.cmd("silent! write")
+        vim.notify("💾 Saved (no format)", vim.log.levels.INFO)
         return
     end
 
-    -- LSP format only if user did not disable it.
-    local did_support, did_format = false, false
-    if vim.g.format_on_save ~= false then
-        did_support, did_format = try_format()
+    -- Try to format with LSP first, then fallback to manual tools
+    local formatted = false
+
+    -- Try LSP formatting
+    local clients = vim.lsp.get_clients({ bufnr = 0 })
+    for _, client in pairs(clients) do
+        if client.supports_method("textDocument/formatting") then
+            vim.lsp.buf.format({
+                async = false,
+                filter = function(c) return c.id == client.id end
+            })
+            formatted = true
+            break
+        end
     end
 
-    -- Silent write; suppress Vim(write) errors.
-    local okw, errw = pcall(vim.cmd, "silent! write")
-    if not okw then
-        say(ico_err .. "  Cannot save: " .. (errw or ""),
-            vim.log.levels.ERROR)
-        return
+    -- Manual formatting for specific file types if LSP didn't handle it
+    if not formatted then
+        if ft == "python" then
+            -- Python: try isort + black
+            local success = M.format_python_file()
+            if success then
+                formatted = true
+            end
+        elseif ft == "lua" and vim.fn.executable("stylua") == 1 then
+            -- Lua: stylua
+            local cursor_pos = vim.api.nvim_win_get_cursor(0)
+            vim.fn.system({"stylua", "--column-width", "79", bufname})
+            if vim.v.shell_error == 0 then
+                vim.cmd("silent! edit!")
+                pcall(vim.api.nvim_win_set_cursor, 0, cursor_pos)
+                formatted = true
+            end
+        elseif (ft == "javascript" or ft == "typescript" or ft == "json")
+            and vim.fn.executable("prettier") == 1 then
+            -- JS/TS: prettier
+            local cursor_pos = vim.api.nvim_win_get_cursor(0)
+            vim.fn.system({"prettier", "--write", "--print-width", "79", bufname})
+            if vim.v.shell_error == 0 then
+                vim.cmd("silent! edit!")
+                pcall(vim.api.nvim_win_set_cursor, 0, cursor_pos)
+                formatted = true
+            end
+        end
     end
 
-    -- Success messages.
-    if did_format then
-        say(ico_ok .. "  Saved and formated", vim.log.levels.INFO)
+    -- Save the file
+    vim.cmd("silent! write")
+
+    -- Show appropriate notification
+    if formatted then
+        vim.notify("💾 Saved and formatted", vim.log.levels.INFO)
     else
-        say(ico_ok .. "  Saved", vim.log.levels.INFO)
+        vim.notify("💾 Saved", vim.log.levels.INFO)
     end
 end
 
--- Optional: guard a BufWritePre hook if you prefer auto-format.
-function M.setup_format_guard()
-    local grp = vim.api.nvim_create_augroup("SafeFormatGuard", {clear = true})
-    vim.api.nvim_create_autocmd("BufWritePre", {
-        group = grp,
-        callback = function()
-            local ok_can = select(1, can_write())
-            if not ok_can then return end
-            if vim.g.format_on_save ~= false then
-                try_format()
+-- Format Python file with isort + black
+function M.format_python_file()
+    local function get_python_executable()
+        local venv = vim.fn.getenv("VIRTUAL_ENV")
+        if venv ~= vim.NIL and venv ~= "" then
+            return venv .. "/bin/python"
+        end
+        if vim.fn.isdirectory(".venv") == 1 then
+            return vim.fn.getcwd() .. "/.venv/bin/python"
+        end
+        if vim.fn.isdirectory("venv") == 1 then
+            return vim.fn.getcwd() .. "/venv/bin/python"
+        end
+        return "python3"
+    end
+
+    local py = get_python_executable()
+    local current_file = vim.fn.expand("%:p")
+    local cursor_pos = vim.api.nvim_win_get_cursor(0)
+    local success = false
+
+    -- Step 1: isort
+    local isort_exe = py:gsub("/python$", "/isort")
+    local isort_cmd = vim.fn.executable(isort_exe) == 1 and isort_exe or "isort"
+
+    if vim.fn.executable(isort_cmd) == 1 then
+        vim.fn.system({
+            isort_cmd, "--profile", "black", "--line-length", "79",
+            "--multi-line", "3", "--trailing-comma", current_file
+        })
+        if vim.v.shell_error == 0 then
+            success = true
+        end
+    end
+
+    -- Step 2: black
+    local black_exe = py:gsub("/python$", "/black")
+    local black_cmd = vim.fn.executable(black_exe) == 1 and black_exe or "black"
+
+    if vim.fn.executable(black_cmd) == 1 then
+        local result = vim.fn.system({
+            black_cmd, "--line-length", "79", "--skip-string-normalization",
+            current_file
+        })
+        if vim.v.shell_error == 0 then
+            vim.cmd("silent! edit!")
+            pcall(vim.api.nvim_win_set_cursor, 0, cursor_pos)
+            success = true
+        else
+            -- Handle syntax errors
+            if result:match("Cannot parse") or result:match("SyntaxError") then
+                local line_number = result:match(": (%d+):")
+                if line_number then
+                    vim.notify("❌ Syntax error on line " .. line_number,
+                        vim.log.levels.ERROR)
+                    pcall(vim.api.nvim_win_set_cursor, 0,
+                        {tonumber(line_number), 0})
+                end
             end
-        end,
-        desc = "Format only when buffer is writable and supported",
-    })
+        end
+    end
+
+    return success
 end
 
 return M

@@ -214,39 +214,7 @@ function M.setup()
                         if prev_attach then
                             prev_attach(prompt_bufnr, map_local)
                         end
-                        -- local function select_tab()
-                        --     local e = state.get_selected_entry()
-                        --     if not e then
-                        --         return
-                        --     end
-                        --     local file = e.path or e.filename or e.value
-                        --     if (not file or file == "") and e.bufnr then
-                        --         file = vim.api.nvim_buf_get_name(e.bufnr)
-                        --     end
-                        --     if not file or file == "" then
-                        --         return actions.select_default(prompt_bufnr)
-                        --     end
-                        --     actions.close(prompt_bufnr)
 
-                        --     -- Check if the current tab is Dashboard.
-                        --     local current_buf = vim.api.nvim_get_current_buf()
-                        --     local current_filetype = vim.bo[current_buf].filetype
-                        --     local current_name = vim.fn.bufname(current_buf)
-
-                        --     if current_filetype == "dashboard" or
-                        --     (current_name == "" and not vim.bo[current_buf].modified) then
-                        --         -- Replace the current tab instead of creating a new one.
-                        --         vim.cmd("edit " .. vim.fn.fnameescape(file))
-                        --     else
-                        --         -- Use tab drop for other cases.
-                        --         vim.cmd("tab drop " .. vim.fn.fnameescape(file))
-                        --     end
-
-                        --     local ln = e.lnum or e.row or 1
-                        --     local cl = math.max((e.col or 1) - 1, 0)
-                        --     pcall(vim.api.nvim_win_set_cursor, 0, {ln, cl})
-                        --     vim.cmd("normal! zz")
-                        -- end
                         local function select_tab()
                             local e = state.get_selected_entry()
                             if not e then
@@ -387,24 +355,6 @@ function M.setup()
         vim.notify("Copied: " .. path, vim.log.levels.INFO)
     end, {desc = "Copy absolute file path"})
 
-    -- map("n", "<leader>f???", function()
-    --     local path = vim.fn.expand("%")
-    --     vim.fn.setreg("+", path)
-    --     vim.notify("Copied: " .. path, vim.log.levels.INFO)
-    -- end, {desc = "Copy relative path"})
-
-    -- map("n", "<leader>f???", function()
-    --     local path = vim.fn.expand("%:t")
-    --     vim.fn.setreg("+", path)
-    --     vim.notify("Copied: " .. path, vim.log.levels.INFO)
-    -- end, {desc = "Copy filename"})
-
-    -- map("n", "<leader>f???", function()
-    --     local path = vim.fn.expand("%:p:h")
-    --     vim.fn.setreg("+", path)
-    --     vim.notify("Copied: " .. path, vim.log.levels.INFO)
-    -- end, {desc = "Copy directory path"})
-
     -- Move current tab.
     map("n", "<S-Left>", ":-tabmove<CR>", {desc = "Move tab left"})
     map("n", "<S-Right>", ":+tabmove<CR>", {desc = "Move tab right"})
@@ -495,8 +445,6 @@ function M.setup()
     map("n", "<A-l>", ":+tabmove<CR>", {desc = "Move tab right"})
 
     -- Tab navigation with F keys.
-    -- map("n", "<F5>", ":tabprevious<CR>", {desc = "Previous tab"})
-    -- map("n", "<F6>", ":tabnext<CR>", {desc = "Next tab"})
     map("n", "<F5>", function()
         local current = vim.fn.tabpagenr()
         if current > 1 then
@@ -608,7 +556,6 @@ function M.setup()
     map("n", "<leader>ep", ":bprevious<CR>", {desc = "Previous buffer"})
 
     -- New tab
-    -- map("n", "<leader>eT", ":tabnew<CR>", {desc = "New tab"})
     map("n", "<C-t>", ":tabnew<CR>", {desc = "New tab"})
 
     -- CODE / LSP / DIAGNOSTICS (<leader>c)
@@ -665,7 +612,6 @@ function M.setup()
         {desc = "Workspace symbols", silent = true}
     )
 
-    -- -- Diagnostics (moved from <leader>x to <leader>c)
     map(
         "n",
         "<leader>cc",
@@ -689,7 +635,6 @@ function M.setup()
         function()
             vim.diagnostic.setloclist()
             vim.cmd("lopen")
-            -- vim.cmd("wincmd p")
 
             vim.wo.cursorline = true
             vim.wo.number = true
@@ -743,40 +688,6 @@ function M.setup()
         vim.lsp.buf.format({async = true})
     end, {desc = "Format buffer"})
 
-    -- Sort Python imports.
-    -- map(
-    --     "n", "<leader>ci",
-    --     function()
-    --         vim.cmd("write")
-    --         local function get_python_executable()
-    --             local venv = vim.fn.getenv("VIRTUAL_ENV")
-    --             if venv ~= vim.NIL and venv ~= "" then
-    --                 return venv .. "/bin/python"
-    --             end
-    --             if vim.fn.isdirectory(".venv") == 1 then
-    --                 return vim.fn.getcwd() .. "/.venv/bin/python"
-    --             end
-    --             if vim.fn.isdirectory("venv") == 1 then
-    --                 return vim.fn.getcwd() .. "/venv/bin/python"
-    --             end
-    --             return "python3"
-    --         end
-    --         local py = get_python_executable()
-    --         local exe = py:gsub("/python$", "/isort")
-    --         local args = table.concat({
-    --             "--profile","black","--line-length","79",
-    --             "--multi-line","3","--trailing-comma"
-    --         }, " ")
-    --         if vim.fn.executable(exe) == 1 then
-    --             vim.cmd("!" .. exe .. " " .. args .. " %")
-    --         else
-    --             vim.cmd("!isort " .. args .. " %")
-    --         end
-    --         vim.cmd("edit!")
-    --     end,
-    --     {desc = "Sort Python Imports"}
-    -- )
-
     -- SYSTEM / CONFIG / TOOLS (<leader>x)
 
     -- Clear search highlighting (moved to <leader>x).
@@ -785,9 +696,6 @@ function M.setup()
     -- Also make Esc clear highlights in normal mode.
     map("n", "<Esc>", ":nohlsearch<CR>",
         {desc = "Clear search highlights", silent = true})
-
-    -- Clear search highlighting (moved to <leader>x).
-    map("n", "<leader>xh", ":nohlsearch<CR>", {desc = "Clear highlights"})
 
     -- Mason (moved to <leader>x).
     map("n", "<leader>xm", ":Mason<CR>", {desc = "Open Mason"})
@@ -834,17 +742,6 @@ function M.setup()
     map("v", "<leader>yp", '"+p', {desc = "Paste from clipboard"})
 
     -- SAVE AND FORMAT
-
-    -- -- F2 for smart save and format.
-    -- map("n", "<F2>", function()
-    --     safe_save.smart_write()
-    -- end, {desc = "Save and format file"})
-
-    -- map("i", "<F2>", function()
-    --     vim.cmd("stopinsert")
-    --     safe_save.smart_write()
-    --     vim.cmd("startinsert")
-    -- end, {desc = "Save and format file"})
 
     -- F2 for smart save and format.
     map("n", "<F2>", function()
@@ -958,9 +855,8 @@ function M.setup()
         end
     end, {desc = "Toggle Trailing Spaces"})
 
-    -- Show signature help with Ctrl+k
-    map("n", "<C-k>", vim.lsp.buf.signature_help, {desc = "Signature Help"})
-    map("i", "<C-k>", vim.lsp.buf.signature_help, {desc = "Signature Help"})
+    -- NOTE: Signature Help with Ctrl+k is handled by native LSP
+    -- Native LSP signature help is configured in lsp.lua on_attach function
 
     -- Python virtual environment
     map("n", "<leader>cva", "<cmd>VenvActivate<cr>", {desc = "Activate Python venv"})

@@ -1,0 +1,12 @@
+-- ~/.config/nvim/lua/plugins/lsp-signature.lua
+-- DISABLED - using native LSP signature help instead
+
+return {
+    "ray-x/lsp_signature.nvim",
+    enabled = false, -- Completely disable this plugin
+    event = "VeryLazy",
+    opts = {},
+    config = function(_, opts)
+        -- Plugin disabled - using native LSP signature help
+    end,
+}
