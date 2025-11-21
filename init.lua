@@ -100,6 +100,7 @@ require("config.filetype-settings").setup_keymaps()
 require("config.auto-reload").setup()
 require("config.tabs-list").setup()
 require("config.highlights").setup()
+require("config.floating-windows").setup()
 
 -- Python virtual environment support.
 require("config.python-venv").setup({

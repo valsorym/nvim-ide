@@ -9,7 +9,7 @@ return {
         "hrsh7th/cmp-nvim-lsp"
     },
     config = function()
-        require("config.lsp-ui")
+        -- require("config.lsp-ui")
         local cmp_nvim_lsp = require("cmp_nvim_lsp")
 
         -- Enhanced capabilities with autocompletion.
