@@ -18,16 +18,6 @@ return {
             mode = { "n", "v" },
             desc = "🔍 Search All Commands"
         },
-        -- {
-        --     "<C-p>",
-        --     function()
-        --         require("legendary").find({
-        --             filters = { require("legendary.filters").keymaps() }
-        --         })
-        --     end,
-        --     mode = { "n", "v" },
-        --     desc = "⌨️ Search Keymaps"
-        -- },
         {
             "<leader>:",
             function()
@@ -201,6 +191,7 @@ return {
             e = { icon = "", name = "Explorer" },
             c = { icon = "", name = "Code/LSP" },
             ck = { icon = "", name = "Linters" },
+            cv = { icon = "", name = "Python Venv" },
             x = { icon = "", name = "System" },
             xt = { icon = "", name = "Terminal" },
             g = { icon = "", name = "Git" },
@@ -213,172 +204,393 @@ return {
             s = { icon = "", name = "Search" },
         }
 
-        -- Base keymaps (English version).
+        -- Base keymaps (English version) - ALL LEADER-BASED KEYMAPS
         local base_keymaps = {
-            -- TABS
-            { "<leader>tq", ":SmartCloseTab<CR>", description = "Smart Close Tab" },
-            { "<leader>tc", ":CloseSavedTabs<CR>", description = "Close All Saved Tabs" },
-            { "<leader>tQ", ":ForceCloseTab<CR>", description = "Force Close Tab" },
-            { "<leader>tA", ":qa<CR>", description = "Close All & Exit" },
-            { "<leader>tn", ":tabnew<CR>", description = "New Tab" },
-            { "<leader>to", ":tabonly<CR>", description = "Close Other Tabs" },
+            -- =================================================================
+            -- TABS MANAGEMENT (<leader>t)
+            -- =================================================================
+            { "<leader>tn", function()
+                local current_buf = vim.api.nvim_get_current_buf()
+                local current_filetype = vim.bo[current_buf].filetype
+                local current_name = vim.fn.bufname(current_buf)
 
-            -- WORKSPACE
+                if current_filetype == "dashboard" or
+                   (current_name == "" and not vim.bo[current_buf].modified) then
+                    vim.cmd("enew")
+                else
+                    vim.cmd("tablast | tabnew")
+                end
+            end, description = "New Tab" },
+
+            { "<leader>tq", function()
+                require("config.keymaps").smart_tab_close()
+            end, description = "Smart Close Tab" },
+
+            { "<leader>tc", function()
+                require("config.keymaps").close_saved_tabs()
+            end, description = "Close All Saved Tabs" },
+
+            { "<leader>tQ", function()
+                require("config.keymaps").force_close_tab()
+            end, description = "Force Close Tab" },
+
+            { "<leader>tA", ":qa<CR>", description = "Close All & Exit" },
+            { "<leader>tO", ":tabonly<CR>", description = "Close Other Tabs" },
+
+            -- =================================================================
+            -- WORKSPACE/SESSIONS (<leader>w)
+            -- =================================================================
             { "<leader>ws", ":SessionSave<CR>", description = "Save Session" },
             { "<leader>wr", ":SessionRestore<CR>", description = "Restore Session" },
-            { "<leader>wS", ":SessionRestoreLast<CR>", description = "Restore Last Session" },
-            { "<leader>wD", ":SessionDontSave<CR>", description = "Don't Save Session" },
-            { "<leader>wF", ":Telescope sessions<CR>", description = "Find Sessions" },
+            { "<leader>wS", function()
+                if package.loaded.persistence then
+                    require("persistence").load()
+                    vim.notify("Session restored", vim.log.levels.INFO)
+                end
+            end, description = "Restore Last Session" },
+            { "<leader>wD", ":SessionDelete<CR>", description = "Delete Session" },
+            { "<leader>wF", function()
+                if _G.TelescopeSessions then
+                    _G.TelescopeSessions()
+                else
+                    vim.notify("Sessions not available", vim.log.levels.WARN)
+                end
+            end, description = "Find Sessions" },
             { "<leader>ww", ":Telescope workspaces<CR>", description = "Find Workspaces" },
-            { "<leader>wa", ":WorkspaceAdd<CR>", description = "Add Workspace" },
+            { "<leader>wa", function()
+                local name = vim.fn.input("Workspace name: ", vim.fn.fnamemodify(vim.fn.getcwd(), ":t"))
+                if name ~= "" then
+                    require("workspaces").add(vim.fn.getcwd(), name)
+                end
+            end, description = "Add Workspace" },
 
-            -- FIND
-            { "<leader>ff", ":Telescope find_files<CR>", description = "Find Files", mode = { "n" } },
-            -- { "<leader>fg", ":Telescope live_grep<CR>", description = "Live Grep", mode = { "n" } },
-            -- { "<leader>fG", description = "Live Grep (include ignored)", mode = { "n" } },
-            { "<leader>fb", ":Telescope buffers<CR>", description = "Find Buffers", mode = { "n" } },
-            { "<leader>fh", ":Telescope help_tags<CR>", description = "Help Tags", mode = { "n" } },
-            { "<leader>fo", ":Telescope oldfiles<CR>", description = "Old Files", mode = { "n" } },
-            { "<leader>fd", ":Telescope lsp_document_symbols<CR>", description = "Document Symbols", mode = { "n" } },
-            { "<leader>fw", ":Telescope lsp_workspace_symbols<CR>", description = "Workspace Symbols", mode = { "n" } },
+            -- =================================================================
+            -- FIND/SEARCH/REPLACE (<leader>f)
+            -- =================================================================
+            { "<leader>ff", function()
+                local cwd = vim.fn.getcwd()
+                local ok, api = pcall(require, "nvim-tree.api")
+                if ok and api.tree.is_visible() then
+                    local root = api.tree.get_root()
+                    if root and root.absolute_path then
+                        cwd = root.absolute_path
+                    end
+                end
+                require("telescope.builtin").find_files({cwd = cwd})
+            end, description = "Find Files" },
 
+            { "<leader>fg", function()
+                local cwd = vim.fn.getcwd()
+                local ok, api = pcall(require, "nvim-tree.api")
+                if ok and api.tree.is_visible() then
+                    local root = api.tree.get_root()
+                    if root and root.absolute_path then
+                        cwd = root.absolute_path
+                    end
+                end
+                require("telescope.builtin").live_grep({cwd = cwd})
+            end, description = "Live Grep" },
+
+            { "<leader>fG", function()
+                local cwd = vim.fn.getcwd()
+                local ok, api = pcall(require, "nvim-tree.api")
+                if ok and api.tree.is_visible() then
+                    local root = api.tree.get_root()
+                    if root and root.absolute_path then
+                        cwd = root.absolute_path
+                    end
+                end
+                require("telescope.builtin").live_grep({
+                    cwd = cwd,
+                    additional_args = function()
+                        return {"--no-ignore", "--hidden", "--glob", "!.git/"}
+                    end
+                })
+            end, description = "Live Grep (include ignored)" },
+
+            { "<leader>fb", ":Telescope buffers<CR>", description = "Find Buffers" },
+            { "<leader>fh", ":Telescope help_tags<CR>", description = "Help Tags" },
+            { "<leader>fo", ":Telescope oldfiles<CR>", description = "Old Files" },
+            { "<leader>fd", ":Telescope lsp_document_symbols<CR>", description = "Document Symbols" },
+            { "<leader>fp", function()
+                local path = vim.fn.expand("%:p")
+                vim.fn.setreg("+", path)
+                vim.notify("Copied: " .. path, vim.log.levels.INFO)
+            end, description = "Copy File Path" },
+
+            -- Find & Replace (handled by telescope-replace.lua plugin)
             { "<leader>fc", description = "Find & Replace", mode = { "n", "v" } },
             { "<leader>fC", description = "Find & Replace (include ignored)", mode = { "n" } },
             { "<leader>fx", description = "Replace current Word", mode = { "n" } },
 
-            -- EXPLORER
-            {
-                "<leader>ee",
-                function()
-                    if _G.NvimTreeModal then
-                        vim.defer_fn(function() _G.NvimTreeModal() end, 100)
-                    else
-                        local api = require("nvim-tree.api")
-                        if api.tree.is_visible() then
-                            api.tree.close()
-                        else
-                            api.tree.open({ current_window = false, find_file = false, update_root = false })
-                        end
-                    end
-                end,
-                description = "Open File Explorer"
-            },
-            {
-                "<leader>eh",
-                function()
-                    if _G.NvimTreeHistory and _G.NvimTreeHistory.show_history then
-                        _G.NvimTreeHistory.show_history()
-                    else
-                        print("Project history not available")
-                    end
-                end,
-                description = "Project History"
-            },
-            {
-                "<leader>et",
-                function()
-                    if _G.TabsList and _G.TabsList.show_tabs_window then
-                        _G.TabsList.show_tabs_window()
-                    else
-                        print("TabsList functionality not loaded")
-                    end
-                end,
-                description = "Show Tabs List"
-            },
+            -- Flash.nvim
+            { "<leader>fs", function()
+                require("flash").jump()
+            end, description = "Flash Jump", mode = { "n", "x", "o" } },
+            { "<leader>fS", function()
+                require("flash").treesitter()
+            end, description = "Flash Treesitter", mode = { "n", "x", "o" } },
+            { "<leader>fr", function()
+                require("flash").remote()
+            end, description = "Flash Remote", mode = { "o" } },
+            { "<leader>fR", function()
+                require("flash").treesitter_search()
+            end, description = "Flash Search", mode = { "o", "x" } },
+
+            -- =================================================================
+            -- EXPLORER/FILES/BUFFERS (<leader>e)
+            -- =================================================================
+            { "<leader>ee", function()
+                if _G.NvimTreeModal then
+                    _G.NvimTreeModal()
+                else
+                    vim.cmd("NvimTreeToggle")
+                end
+            end, description = "File Explorer" },
+
+            { "<leader>eh", function()
+                if _G.NvimTreeHistory and _G.NvimTreeHistory.show_history then
+                    _G.NvimTreeHistory.show_history()
+                else
+                    print("Project history not available")
+                end
+            end, description = "Project History" },
+
+            { "<leader>et", function()
+                if _G.TabsList and _G.TabsList.show_tabs_window then
+                    _G.TabsList.show_tabs_window()
+                else
+                    print("TabsList not loaded")
+                end
+            end, description = "Show Tabs List" },
+
             { "<leader>eb", ":Telescope buffers<CR>", description = "Show Buffers" },
             { "<leader>ed", ":bd<CR>", description = "Delete Buffer" },
             { "<leader>en", ":bnext<CR>", description = "Next Buffer" },
             { "<leader>ep", ":bprevious<CR>", description = "Previous Buffer" },
-            { "<leader>eT", ":tabnew<CR>", description = "New Tab" },
 
-            -- CODE
+            -- =================================================================
+            -- CODE/LSP (<leader>c)
+            -- =================================================================
             { "<leader>ca", vim.lsp.buf.code_action, description = "Code Action" },
             { "<leader>cr", vim.lsp.buf.rename, description = "Rename Symbol" },
-            { "<leader>cf", function() vim.lsp.buf.format({ async = true }) end, description = "Format Document" },
-            { "<leader>ci", ":OrganizeImports<CR>", description = "Sort Imports" },
-            { "<leader>cc", vim.diagnostic.open_float, description = "Show Line Diagnostics" },
-            { "<leader>cC", ":Telescope diagnostics<CR>", description = "Workspace Diagnostics" },
-            { "<leader>cl", ":lopen<CR>", description = "Diagnostic List" },
-            { "<leader>cq", ":copen<CR>", description = "Quickfix List" },
-            { "<leader>cT", ":ToggleDiagnostics<CR>", description = "Toggle WS/Buf" },
-            { "<leader>cS", ":DiagnosticSummary<CR>", description = "Diagnostic Summary" },
-            { "<leader>cs", ":Telescope lsp_document_symbols<CR>", description = "Document Symbols" },
-            { "<leader>cg", ":SymbolsOutline<CR>", description = "Symbols (Grouped)" },
+            { "<leader>cf", function()
+                vim.lsp.buf.format({ async = true })
+            end, description = "Format Document" },
+
+            -- Diagnostics
+            { "<leader>cc", function()
+                local diagnostic_opts = {
+                    focusable = false,
+                    close_events = {"BufLeave", "CursorMoved", "InsertEnter", "FocusLost"},
+                    border = "rounded",
+                    source = "always",
+                    prefix = " ",
+                    scope = "line"
+                }
+                vim.diagnostic.open_float(nil, diagnostic_opts)
+            end, description = "Show Line Diagnostics" },
+
+            { "<leader>cC", ":Trouble diagnostics toggle<CR>", description = "Workspace Diagnostics" },
+            { "<leader>cl", ":Trouble loclist toggle<CR>", description = "Diagnostic List" },
+            { "<leader>cq", ":Trouble qflist toggle<CR>", description = "Quickfix List" },
+
+            -- Symbols
+            { "<leader>cs", function()
+                if _G.CodeInspector then
+                    _G.CodeInspector()
+                else
+                    vim.cmd("Telescope lsp_document_symbols")
+                end
+            end, description = "Document Symbols" },
+
+            { "<leader>cg", function()
+                if _G.CodeInspectorGrouped then
+                    _G.CodeInspectorGrouped()
+                else
+                    vim.notify("Code Inspector not loaded", vim.log.levels.WARN)
+                end
+            end, description = "Document Symbols (Grouped)" },
+
             { "<leader>cw", ":Telescope lsp_workspace_symbols<CR>", description = "Workspace Symbols" },
 
-            -- PYTHON VENV
+            -- Python tools
+            { "<leader>ci", function()
+                -- Python import sorting - handled by formatting.lua
+                vim.notify("Use <leader>df for combined Python formatting", vim.log.levels.INFO)
+            end, description = "Sort Python Imports" },
+
+            { "<leader>cb", function()
+                -- Python Black formatting - handled by formatting.lua
+                vim.notify("Use <leader>df for combined Python formatting", vim.log.levels.INFO)
+            end, description = "Format Python Code" },
+
+            -- Python Virtual Environment
             { "<leader>cva", ":VenvActivate<CR>", description = "Activate Venv" },
             { "<leader>cvd", ":VenvDeactivate<CR>", description = "Deactivate Venv" },
             { "<leader>cvs", ":VenvStatus<CR>", description = "Venv Status" },
             { "<leader>cvf", ":VenvFind<CR>", description = "Find Venv" },
             { "<leader>cvc", ":VenvSelect<CR>", description = "Select Venv" },
 
-            -- LINTERS
-            { "<leader>ckd", "<cmd>ToggleDjlint<cr>", description = "Toggle djlint" },
-            { "<leader>ckc", "<cmd>ToggleCodespell<cr>", description = "Toggle Codespell" },
-            { "<leader>cke", "<cmd>ToggleESLint<cr>", description = "Toggle ESLint" },
-            { "<leader>ckf", "<cmd>ToggleFlake8<cr>", description = "Toggle Flake8" },
-            { "<leader>cks", "<cmd>PythonToolsStatus<cr>", description = "Python Tools Status" },
-            { "<leader>ckp", "<cmd>CreatePyprojectToml<cr>", description = "Create pyproject.toml" },
-            { "<leader>ckr", "<cmd>CreatePyrightConfig<cr>", description = "Create pyrightconfig.json" },
+            -- Linters and Tools
+            { "<leader>cks", ":PythonToolsStatus<CR>", description = "Python Tools Status" },
+            { "<leader>ckp", ":CreatePyprojectToml<CR>", description = "Create pyproject.toml" },
+            { "<leader>ckr", ":CreatePyrightConfig<CR>", description = "Create pyrightconfig.json" },
 
-            -- SYSTEM
-            { "<leader>xr", ":source $MYVIMRC<CR>", description = "Reload Config" },
+            -- =================================================================
+            -- SYSTEM/CONFIG/TOOLS (<leader>x)
+            -- =================================================================
+            { "<leader>xr", function()
+                local current_file = vim.fn.expand("%:p")
+                local config_dir = vim.fn.stdpath("config")
+
+                if current_file:match("^" .. vim.pesc(config_dir)) then
+                    local reload_path = current_file
+                    if vim.fn.filereadable(reload_path) then
+                        local ok, err = pcall(dofile, reload_path)
+                        if ok then
+                            vim.notify("Reloaded: " .. vim.fn.fnamemodify(reload_path, ":t"),
+                                vim.log.levels.INFO)
+                        else
+                            vim.notify("Error: " .. tostring(err), vim.log.levels.ERROR)
+                        end
+                    end
+                else
+                    vim.cmd("source " .. config_dir .. "/init.lua")
+                    vim.notify("Config reloaded", vim.log.levels.INFO)
+                end
+            end, description = "Reload Config" },
+
             { "<leader>xm", ":Mason<CR>", description = "Mason" },
-            { "<leader>xh", ":nohl<CR>", description = "Clear Highlights" },
+            { "<leader>xh", ":nohlsearch<CR>", description = "Clear Highlights" },
             { "<leader>xu", ":UndotreeToggle<CR>", description = "Undotree" },
+            { "<leader>xf", function()
+                vim.g.format_on_save = not vim.g.format_on_save
+                vim.notify("Format on save: " .. (vim.g.format_on_save and "ON" or "OFF"), vim.log.levels.INFO)
+            end, description = "Toggle Format on Save" },
 
-            -- TERMINAL
+            -- Terminal
             { "<leader>xtf", ":ToggleTerm direction=float<CR>", description = "Float Terminal" },
             { "<leader>xth", ":ToggleTerm direction=horizontal<CR>", description = "Horizontal Terminal" },
-            { "<leader>xtv", ":ToggleTerm direction=vertical<CR>", description = "Vertical Terminal" },
-            { "<leader>xtp", ":TermExec cmd='python'<CR>", description = "Python Terminal" },
-            { "<leader>xtd", ":TermExec cmd='python manage.py shell'<CR>", description = "Django Shell" },
-            { "<leader>xtr", ":TermExec cmd='python manage.py runserver'<CR>", description = "Django Runserver" },
-            { "<leader>xtn", ":TermExec cmd='node'<CR>", description = "Node Terminal" },
+            { "<leader>xtv", ":ToggleTerm direction=vertical size=80<CR>", description = "Vertical Terminal" },
+            { "<leader>xtp", function()
+                if _G._PYTHON_TOGGLE then
+                    _G._PYTHON_TOGGLE()
+                else
+                    vim.cmd("TermExec cmd='python'")
+                end
+            end, description = "Python Terminal" },
+            { "<leader>xtn", function()
+                if _G._NODE_TOGGLE then
+                    _G._NODE_TOGGLE()
+                else
+                    vim.cmd("TermExec cmd='node'")
+                end
+            end, description = "Node Terminal" },
 
-            -- GIT
-            { "<leader>gs", ":Gitsigns stage_hunk<CR>", description = "Stage Hunk", mode = { "n", "v" } },
-            { "<leader>gr", ":Gitsigns reset_hunk<CR>", description = "Reset Hunk", mode = { "n", "v" } },
-            { "<leader>gp", ":Gitsigns preview_hunk<CR>", description = "Preview Hunk" },
-            { "<leader>gb", ":Gitsigns blame_line<CR>", description = "Blame Line" },
-            { "<leader>gd", ":Gitsigns diffthis<CR>", description = "Diff This" },
-            { "<leader>gt", ":Gitsigns toggle_current_line_blame<CR>", description = "Toggle Blame" },
+            -- =================================================================
+            -- GIT (<leader>g)
+            -- =================================================================
+            { "<leader>gs", function()
+                if package.loaded.gitsigns then
+                    require("gitsigns").stage_hunk()
+                end
+            end, description = "Stage Hunk", mode = { "n", "v" } },
 
-            -- YANK
-            { "<leader>ya", ":%y+<CR>", description = "Yank All Buffer", mode = { "n" } },
-            { "<leader>yy", '"+y', description = "Yank Selection", mode = { "n", "v" } },
-            { "<leader>yp", '"+p', description = "Paste from Clipboard", mode = { "n", "v" } },
+            { "<leader>gr", function()
+                if package.loaded.gitsigns then
+                    require("gitsigns").reset_hunk()
+                end
+            end, description = "Reset Hunk", mode = { "n", "v" } },
 
-            -- UI
-            { "<leader>ut", ":Telescope colorscheme<CR>", description = "Theme Switcher" },
-            { "<leader>us", ":SetPermanentTheme<CR>", description = "Set Permanent Theme" },
-            { "<leader>ub", ":ToggleBackground<CR>", description = "Toggle Background" },
+            { "<leader>gp", function()
+                if package.loaded.gitsigns then
+                    require("gitsigns").preview_hunk()
+                end
+            end, description = "Preview Hunk" },
+
+            { "<leader>gb", function()
+                if package.loaded.gitsigns then
+                    require("gitsigns").blame_line({full = true})
+                end
+            end, description = "Blame Line" },
+
+            { "<leader>gd", function()
+                if package.loaded.gitsigns then
+                    require("gitsigns").diffthis()
+                end
+            end, description = "Diff This" },
+
+            { "<leader>gt", function()
+                if package.loaded.gitsigns then
+                    require("gitsigns").toggle_current_line_blame()
+                end
+            end, description = "Toggle Blame" },
+
+            -- =================================================================
+            -- YANK/CLIPBOARD (<leader>y)
+            -- =================================================================
+            { "<leader>ya", "ggVG\"+y", description = "Yank All Buffer", mode = { "n" } },
+            { "<leader>yy", "\"+y", description = "Yank Selection", mode = { "n", "v" } },
+            { "<leader>yp", "\"+p", description = "Paste from Clipboard", mode = { "n", "v" } },
+
+            -- =================================================================
+            -- UI/THEMES (<leader>u)
+            -- =================================================================
+            { "<leader>ut", ":ThemeSwitcher<CR>", description = "Theme Switcher" },
+            { "<leader>us", ":ThemeSwitcherPermanent<CR>", description = "Set Permanent Theme" },
             { "<leader>ui", ":ThemeInfo<CR>", description = "Theme Info" },
-            { "<leader>uI", "<cmd>IBLToggle<cr>", description = "Toggle Indent Guides" },
+            { "<leader>uI", ":IBLToggle<CR>", description = "Toggle Indent Guides" },
 
-            -- DOCUMENT
-            { "<leader>df", function() vim.lsp.buf.format({ async = true }) end, description = "Format Document" },
-            { "<leader>dt", ":ToggleTrailingSpaces<CR>", description = "Toggle Trailing Spaces" },
-            { "<leader>dsi", ":IndentInfo<CR>", description = "Indent Info" },
-            {
-                "<leader>dr",
-                function()
-                    local ft = vim.bo.filetype
-                    if ft == "markdown" then
-                        require("render-markdown").toggle()
-                    elseif ft == "rst" or ft == "restructuredtext" then
-                        if _G.rst_render_toggle then
-                            _G.rst_render_toggle()
-                        else
-                            vim.notify("RST renderer not loaded", vim.log.levels.WARN)
-                        end
+            -- =================================================================
+            -- DOCUMENT/FORMATTING (<leader>d)
+            -- =================================================================
+            { "<leader>df", function()
+                -- This is handled by formatting.lua plugin with combined Python formatting
+                local ft = vim.bo.filetype
+                if ft == "python" then
+                    vim.notify("Python formatting handled by formatting.lua", vim.log.levels.INFO)
+                else
+                    vim.lsp.buf.format({ async = true })
+                end
+            end, description = "Format Document" },
+
+            { "<leader>dr", function()
+                local ft = vim.bo.filetype
+                if ft == "markdown" then
+                    require("render-markdown").toggle()
+                elseif ft == "rst" or ft == "restructuredtext" then
+                    if _G.rst_render_toggle then
+                        _G.rst_render_toggle()
                     else
-                        vim.notify("No renderer available for ." .. ft, vim.log.levels.WARN)
+                        vim.notify("RST renderer not loaded", vim.log.levels.WARN)
                     end
-                end,
-                description = "Toggle Rendering (Markdown/RST)"
-            },
+                else
+                    vim.notify("No renderer available for ." .. ft, vim.log.levels.WARN)
+                end
+            end, description = "Toggle Rendering (Markdown/RST)" },
+
+            -- Trailing spaces
+            { "<leader>dt", description = "Toggle Trailing Spaces" },
+            { "<leader>dx", description = "Clean Trailing Spaces" },
+
+            -- Spaces/Tabs
+            { "<leader>ds2", function()
+                vim.opt_local.expandtab = true
+                vim.opt_local.tabstop = 2
+                vim.opt_local.shiftwidth = 2
+                vim.opt_local.softtabstop = 2
+                print("Set to 2 spaces")
+            end, description = "Set 2 Spaces" },
+
+            { "<leader>ds4", function()
+                vim.opt_local.expandtab = true
+                vim.opt_local.tabstop = 4
+                vim.opt_local.shiftwidth = 4
+                vim.opt_local.softtabstop = 4
+                print("Set to 4 spaces")
+            end, description = "Set 4 Spaces" },
+
             { "<leader>dst", function()
                 if vim.bo.expandtab then
                     vim.opt_local.expandtab = false
@@ -394,30 +606,8 @@ return {
                     print("Switched to SPACES (4 width)")
                 end
             end, description = "Toggle Tabs ↔ Spaces" },
-            { "<leader>ds2", function()
-                vim.opt_local.expandtab = true
-                vim.opt_local.tabstop = 2
-                vim.opt_local.shiftwidth = 2
-                vim.opt_local.softtabstop = 2
-                print("Set to 2 spaces")
-            end, description = "Set 2 Spaces" },
-            { "<leader>ds4", function()
-                vim.opt_local.expandtab = true
-                vim.opt_local.tabstop = 4
-                vim.opt_local.shiftwidth = 4
-                vim.opt_local.softtabstop = 4
-                print("Set to 4 spaces")
-            end, description = "Set 4 Spaces" },
-            { "<leader>dst2", ":Retab<CR>", description = "Tabs → Spaces" },
-            { "<leader>dss2", ":RetabReverse<CR>", description = "Spaces → Tabs" },
-            { "<leader>dc1", function()
-                vim.wo.colorcolumn = "79"
-                print("ColorColumn: 79")
-            end, description = "ColorColumn - 79 symbols" },
-            { "<leader>dc2", function()
-                vim.wo.colorcolumn = "120"
-                print("ColorColumn: 120")
-            end, description = "ColorColumn - 120 symbols" },
+
+            -- ColorColumn
             { "<leader>dc0", function()
                 if vim.wo.colorcolumn == "" then
                     vim.wo.colorcolumn = "79"
@@ -428,50 +618,47 @@ return {
                 end
             end, description = "Toggle ColorColumn" },
 
-            -- AERIAL
-            { "<leader>aa", ":AerialToggle<CR>", description = "Toggle Aerial outline", mode = { "n" } },
-            { "<leader>aA", ":AerialNavToggle<CR>", description = "Toggle Aerial nav", mode = { "n" } },
-            { "<leader>af", ":Telescope aerial<CR>", description = "Find symbols (Aerial)", mode = { "n" } },
+            { "<leader>dc1", function()
+                vim.wo.colorcolumn = "79"
+                print("ColorColumn: 79")
+            end, description = "ColorColumn - 79 symbols" },
 
-            -- SEARCH
-            { "<leader>st", ":TodoTelescope<CR>", description = "Find TODO comments" },
-            { "<leader>sT", ":TodoTelescope keywords=TODO,FIX<CR>", description = "Find TODO/FIX" },
+            { "<leader>dc2", function()
+                vim.wo.colorcolumn = "120"
+                print("ColorColumn: 120")
+            end, description = "ColorColumn - 120 symbols" },
+
+            -- =================================================================
+            -- AERIAL (<leader>a)
+            -- =================================================================
+            { "<leader>aa", ":AerialToggle<CR>", description = "Toggle Aerial Outline" },
+            { "<leader>aA", ":AerialNavToggle<CR>", description = "Toggle Aerial Nav" },
+            { "<leader>af", ":Telescope aerial<CR>", description = "Find Symbols (Aerial)" },
+
+            -- =================================================================
+            -- SEARCH/TODO (<leader>s)
+            -- =================================================================
+            { "<leader>st", ":TodoTelescope<CR>", description = "Find TODO Comments" },
+            { "<leader>sT", ":TodoTelescope keywords=TODO,FIX,FIXME<CR>", description = "Find TODO/FIX" },
         }
 
-        -- Static keymaps.
+        -- Static keymaps (non-leader based).
         local static_keymaps = {
-            { "<A-Left>", ":tabprevious<CR>", description = "Previous Tab", mode = { "n" } },
-            { "<A-Right>", ":tabnext<CR>", description = "Next Tab", mode = { "n" } },
-            { "<A-h>", ":tabmove -1<CR>", description = "Move Tab Left", mode = { "n" } },
-            { "<A-l>", ":tabmove +1<CR>", description = "Move Tab Right", mode = { "n" } },
-            { "<A-1>", "1gt", description = "Go to Tab 1", mode = { "n" } },
-            { "<A-2>", "2gt", description = "Go to Tab 2", mode = { "n" } },
-            { "<A-3>", "3gt", description = "Go to Tab 3", mode = { "n" } },
-            { "<A-4>", "4gt", description = "Go to Tab 4", mode = { "n" } },
-            { "<A-5>", "5gt", description = "Go to Tab 5", mode = { "n" } },
-            { "<A-6>", "6gt", description = "Go to Tab 6", mode = { "n" } },
-            { "<A-7>", "7gt", description = "Go to Tab 7", mode = { "n" } },
-            { "<A-8>", "8gt", description = "Go to Tab 8", mode = { "n" } },
-            { "<A-9>", "9gt", description = "Go to Tab 9", mode = { "n" } },
+            -- LSP Navigation
             { "gd", vim.lsp.buf.definition, description = "Go to Definition" },
             { "gD", vim.lsp.buf.declaration, description = "Go to Declaration" },
             { "gi", vim.lsp.buf.implementation, description = "Go to Implementation" },
             { "gr", vim.lsp.buf.references, description = "Go to References" },
             { "K", vim.lsp.buf.hover, description = "Hover Info" },
-            { "gl", vim.diagnostic.open_float, description = "Line Diagnostics" },
-            { "]d", vim.diagnostic.goto_next, description = "Next Diagnostic" },
-            { "[d", vim.diagnostic.goto_prev, description = "Previous Diagnostic" },
-            { "]c", ":Gitsigns next_hunk<CR>", description = "Next Git Hunk" },
-            { "[c", ":Gitsigns prev_hunk<CR>", description = "Previous Git Hunk" },
-            { "]t", function() require("todo-comments").jump_next() end, description = "Next TODO" },
-            { "[t", function() require("todo-comments").jump_prev() end, description = "Previous TODO" },
-            { "<F2>", ":w | lua vim.lsp.buf.format()<CR>", description = "Save & Format" },
-            { "<F5>", ":tabprevious<CR>", description = "Previous Tab" },
-            { "<F6>", ":tabnext<CR>", description = "Next Tab" },
-            { "<F7>", ":Telescope lsp_document_symbols<CR>", description = "Document Symbols" },
-            { "<F8>", ":Telescope tabs<CR>", description = "Tabs List" },
-            { "<F9>", ":NvimTreeToggle<CR>", description = "File Explorer" },
-            { "<F10>", ":Telescope buffers<CR>", description = "Buffers List" },
+
+            -- Function keys
+            { "<F2>", description = "Save & Format" },
+            { "<F5>", description = "Previous Tab" },
+            { "<F6>", description = "Next Tab" },
+            { "<F7>", description = "Code Inspector" },
+            { "<F8>", description = "Tabs List" },
+            { "<F9>", description = "File Explorer" },
+            { "<F10>", description = "Buffers List" },
         }
 
         -- Generate keymaps.
@@ -572,10 +759,7 @@ return {
             for _, group in ipairs(groups) do
                 if key_pressed == group.key then
                     vim.schedule(function()
-                        -- We receive all keys (including translated ones).
                         local all_keymaps = generate_keymaps()
-
-                        -- Check if there are commands for this group.
                         local has_matches = false
                         for _, keymap in ipairs(all_keymaps) do
                             local lhs = keymap[1] or ""
@@ -586,7 +770,6 @@ return {
                         end
 
                         if has_matches then
-                            -- If there is a match, open Legendary with a filter.
                             require("legendary").find({
                                 filters = {
                                     function(item)
@@ -597,7 +780,6 @@ return {
                                 },
                             })
                         else
-                            -- If there are no matches, we simply show the message below.
                             vim.cmd('echohl WarningMsg | echom "❌ Unknown leader command: <leader>' ..
                                     key_pressed .. '" | echohl None')
                         end
@@ -606,7 +788,6 @@ return {
                 end
             end
 
-            -- If the group is not found at all.
             vim.cmd('echohl ErrorMsg | echom "❌ Wrong hotkey: <leader>' ..
                     key_pressed .. '" | echohl None')
         end
@@ -618,7 +799,7 @@ return {
                 lazy_nvim = true,
                 which_key = false,
             },
-            select_prompt = "  Legendary ",
+            select_prompt = "  Legendary ",
             include_builtin = false,
             include_legendary_cmds = true,
             keymaps = generate_keymaps(),
