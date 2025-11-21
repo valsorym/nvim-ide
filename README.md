@@ -229,6 +229,76 @@ sudo update-alternatives --install /usr/bin/vi vi /usr/local/bin/nvim 60
 sudo update-alternatives --install /usr/bin/editor editor /usr/local/bin/nvim 60
 ```
 
+## Copilot
+
+### Update NodeJS
+
+Remove old version.
+
+```bash
+sudo apt -y remove --purge nodejs npm
+sudo apt autoremove
+sudo apt autoclean
+
+sudo rm -rf /usr/local/lib/node_modules
+sudo rm -rf ~/.npm
+sudo rm -rf ~/.node-gyp
+rm -rf ~/.nvm
+
+sudo rm -f /usr/local/bin/node
+sudo rm -f /usr/local/bin/npm
+sudo rm -f /usr/local/bin/npx
+
+sudo rm -f /etc/apt/sources.list.d/nodesource.list
+sudo rm -f /etc/apt/sources.list.d/nodejs.list
+sudo apt update
+```
+
+Install new.
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+```
+
+Test version.
+
+```bash
+node --version
+npm --version
+```
+
+### Copilot auth
+
+Open in browser: https://github.com/login/device
+
+In NVim press: `<leader>coa`
+
+```
+First copy your one-time code: E3A1-56C9
+Press ENTER to open GitHub in your browser
+```
+
+Enter the code in your browser and click "Authorize Plugin".
+
+### Daily Usage
+
+```bash
+<leader>coo          # Toggle Copilot on/off
+<leader>cos          # Check Copilot status
+<leader>cox          # Sign out of Copilot
+```
+
+### While Coding (when enabled)
+
+```bash
+# In Insert Mode:
+Ctrl+J               # Accept suggestion
+Ctrl+H               # Dismiss suggestion
+Ctrl+N               # Next suggestion
+Ctrl+P               # Previous suggestion
+```
+
 ## Hotkey System and Commands
 
 ### Centralized Command System

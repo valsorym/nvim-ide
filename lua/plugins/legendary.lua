@@ -202,10 +202,61 @@ return {
             dc = { icon = "", name = "ColorColumn" },
             a = { icon = "", name = "Aerial" },
             s = { icon = "", name = "Search" },
+            co = { icon = "🤖", name = "Copilot" },
         }
 
         -- Base keymaps (English version) - ALL LEADER-BASED KEYMAPS
         local base_keymaps = {
+            -- =================================================================
+            -- COPILOT (optional AI assistance) (<leader>co)
+            -- =================================================================
+            { "<leader>coo", function()
+                -- Check if Copilot is loaded, if not - load it
+                if not vim.g.loaded_copilot then
+                    require("lazy").load({plugins = {"copilot.vim"}})
+                    vim.schedule(function()
+                        vim.cmd("CopilotToggle")
+                    end)
+                else
+                    vim.cmd("CopilotToggle")
+                end
+            end, description = "Toggle Copilot" },
+
+            { "<leader>cos", function()
+                if vim.g.loaded_copilot then
+                    vim.cmd("Copilot status")
+                else
+                    vim.notify("🤖 Copilot not loaded. Use <leader>coo to enable.", vim.log.levels.INFO)
+                end
+            end, description = "Copilot Status" },
+
+            { "<leader>coa", function()
+                if not vim.g.loaded_copilot then
+                    require("lazy").load({plugins = {"copilot.vim"}})
+                end
+                vim.schedule(function()
+                    vim.cmd("Copilot auth")
+                end)
+            end, description = "Copilot Authentication" },
+
+            { "<leader>cop", function()
+                if not vim.g.loaded_copilot then
+                    require("lazy").load({plugins = {"copilot.vim"}})
+                end
+                vim.schedule(function()
+                    vim.cmd("Copilot setup")
+                end)
+            end, description = "Copilot Setup" },
+
+            { "<leader>cox", function()
+                if vim.g.loaded_copilot then
+                    vim.cmd("Copilot signout")
+                    vim.notify("🤖 Copilot signed out", vim.log.levels.INFO)
+                else
+                    vim.notify("🤖 Copilot not loaded", vim.log.levels.WARN)
+                end
+            end, description = "Copilot Sign Out" },
+
             -- =================================================================
             -- TABS MANAGEMENT (<leader>t)
             -- =================================================================

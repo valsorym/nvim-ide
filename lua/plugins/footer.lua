@@ -125,6 +125,27 @@ return {
             end
         end
 
+        -- COPILOT STATUS
+        local function copilot_status()
+            -- Check if Copilot plugin is loaded
+            if not vim.g.loaded_copilot then
+                return ""  -- Don't show anything if plugin not loaded
+            end
+
+            -- Check if Copilot is enabled
+            if vim.g.copilot_enabled == 1 then
+                -- Check if there's an active suggestion
+                local ok, status = pcall(vim.fn["copilot#GetDisplayedSuggestion"])
+                if ok and status and status.text and status.text ~= "" then
+                    return "🤖✨"  -- active with suggestion
+                else
+                    return "🤖"    -- enabled but no suggestion
+                end
+            else
+                return ""  -- don't show when disabled (clean UI)
+            end
+        end
+
         -- LOCATION
         local function loc_fmt(_)
             local l = vim.fn.line(".")
@@ -183,6 +204,16 @@ return {
                     { selection_info, color = { fg = "#f9e2af" } },
                     { python_venv, color = { fg = "#89b4fa" } },
                     { indent_info, color = { fg = "#a6e3a1" } },
+                    {
+                        copilot_status,
+                        color = function()
+                            if vim.g.copilot_enabled == 1 then
+                                return { fg = "#50fa7b" }  -- Green when enabled
+                            else
+                                return { fg = "#6272a4" }  -- Gray when disabled
+                            end
+                        end,
+                    },
                     {
                         "diagnostics",
                         sources = { "nvim_diagnostic" },
