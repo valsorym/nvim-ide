@@ -233,7 +233,17 @@ sudo update-alternatives --install /usr/bin/editor editor /usr/local/bin/nvim 60
 
 ### Update NodeJS
 
-Remove old version.
+Remove form ~/.bashrc
+
+```bash
+#export NVM_DIR="$HOME/.nvm"
+#[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+#[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+```
+
+And reload: `source ~/.bashrc`
+
+Remove old version of the Node.
 
 ```bash
 sudo apt -y remove --purge nodejs npm
@@ -254,7 +264,7 @@ sudo rm -f /etc/apt/sources.list.d/nodejs.list
 sudo apt update
 ```
 
-Install new.
+Install new Node version.
 
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
@@ -266,6 +276,14 @@ Test version.
 ```bash
 node --version
 npm --version
+which node
+```
+
+And test version and path in NVim.
+
+```bash
+:lua print(vim.fn.system("node --version"))
+:lua print(vim.fn.system("which node"))
 ```
 
 ### Copilot auth
