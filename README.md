@@ -308,6 +308,7 @@ Enter the code in your browser and click "Authorize Plugin".
 <leader>coso          # Copilot Sign Out
 <leader>cose          # Copilot Setup
 
+# Disabled...
 <leader>coc          # Copilot Chat
 <leader>coe          # Copilot Explain Code
 <leader>cof          # Copilot Fix Code

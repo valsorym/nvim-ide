@@ -259,11 +259,11 @@ return {
             end, description = "Copilot Sign Out" },
 
             -- Copilot Chat commands.
-            { "<leader>coc", ":CopilotChat ", description = "Copilot Chat" },
-            { "<leader>coe", ":CopilotChatExplain<CR>", description = "Copilot Explain Code", mode = "v" },
-            { "<leader>cof", ":CopilotChatFix<CR>", description = "Copilot Fix Code", mode = "v" },
-            { "<leader>cor", ":CopilotChatReview<CR>", description = "Copilot Review Code", mode = "v" },
-            { "<leader>cod", ":CopilotChatDocs<CR>", description = "Copilot Generate Docs", mode = "v" },
+            -- { "<leader>coc", ":CopilotChat ", description = "Copilot Chat" },
+            -- { "<leader>coe", ":CopilotChatExplain<CR>", description = "Copilot Explain Code", mode = "v" },
+            -- { "<leader>cof", ":CopilotChatFix<CR>", description = "Copilot Fix Code", mode = "v" },
+            -- { "<leader>cor", ":CopilotChatReview<CR>", description = "Copilot Review Code", mode = "v" },
+            -- { "<leader>cod", ":CopilotChatDocs<CR>", description = "Copilot Generate Docs", mode = "v" },
 
             -- =================================================================
             -- TABS MANAGEMENT (<leader>t)

@@ -2,68 +2,68 @@
 -- Optional GitHub Copilot with toggle functionality and status indicator.
 
 return {
-    {
-        "CopilotC-Nvim/CopilotChat.nvim",
-        branch = "main",
-        dependencies = {
-            { "github/copilot.vim" },
-            { "nvim-lua/plenary.nvim" },
-        },
-        config = function()
-            require("CopilotChat").setup({
-                debug = false, -- enable debugging
-                window = {
-                    layout = "float",
-                    width = 0.8,
-                    height = 0.8,
-                    relative = "editor",
-                    border = {
-                        { "╭", "FloatBorder" },
-                        { "─", "FloatBorder" },
-                        { "╮", "FloatBorder" },
-                        { "│", "FloatBorder" },
-                        { "╯", "FloatBorder" },
-                        { "─", "FloatBorder" },
-                        { "╰", "FloatBorder" },
-                        { "│", "FloatBorder" },
-                    },
-                    title = "─ 🤖✨ Copilot Chat ",
-                    -- Alternative title with title_pos = "center":
-                    -- title = string.rep("─", math.max(0, math.floor((vim.o.columns * 0.8 - 14) / 2) - 0)) .. " Copilot Chat " .. string.rep("─", math.max(0, math.floor((vim.o.columns * 0.8 - 14) / 2) - 0)),
-                },
-                mappings = {
-                    close = {
-                        normal = 'q',
-                        insert = '<C-c>'
-                    },
-                },
-            })
+    -- {
+    --     "CopilotC-Nvim/CopilotChat.nvim",
+    --     branch = "main",
+    --     dependencies = {
+    --         { "github/copilot.vim" },
+    --         { "nvim-lua/plenary.nvim" },
+    --     },
+    --     config = function()
+    --         require("CopilotChat").setup({
+    --             debug = false, -- enable debugging
+    --             window = {
+    --                 layout = "float",
+    --                 width = 0.8,
+    --                 height = 0.8,
+    --                 relative = "editor",
+    --                 border = {
+    --                     { "╭", "FloatBorder" },
+    --                     { "─", "FloatBorder" },
+    --                     { "╮", "FloatBorder" },
+    --                     { "│", "FloatBorder" },
+    --                     { "╯", "FloatBorder" },
+    --                     { "─", "FloatBorder" },
+    --                     { "╰", "FloatBorder" },
+    --                     { "│", "FloatBorder" },
+    --                 },
+    --                 title = "─ 🤖✨ Copilot Chat ",
+    --                 -- Alternative title with title_pos = "center":
+    --                 -- title = string.rep("─", math.max(0, math.floor((vim.o.columns * 0.8 - 14) / 2) - 0)) .. " Copilot Chat " .. string.rep("─", math.max(0, math.floor((vim.o.columns * 0.8 - 14) / 2) - 0)),
+    --             },
+    --             mappings = {
+    --                 close = {
+    --                     normal = 'q',
+    --                     insert = '<C-c>'
+    --                 },
+    --             },
+    --         })
 
-            vim.api.nvim_create_autocmd("FileType", {
-                pattern = "copilot-chat",
-                callback = function()
-                    -- Override q for normal mode to close window.
-                    vim.keymap.set("n", "q", function()
-                        vim.cmd("close")
-                        vim.schedule(function()
-                            vim.cmd("wincmd =")
-                            vim.cmd("redraw!")
-                        end)
-                    end, { buffer = true })
+    --         vim.api.nvim_create_autocmd("FileType", {
+    --             pattern = "copilot-chat",
+    --             callback = function()
+    --                 -- Override q for normal mode to close window.
+    --                 vim.keymap.set("n", "q", function()
+    --                     vim.cmd("close")
+    --                     vim.schedule(function()
+    --                         vim.cmd("wincmd =")
+    --                         vim.cmd("redraw!")
+    --                     end)
+    --                 end, { buffer = true })
 
-                    -- Override Esc for normal mode to close window.
-                    -- [!] We use Esc in chat to change input mode.
-                    -- vim.keymap.set("n", "<Esc>", function()
-                    --     vim.cmd("close")
-                    --     vim.schedule(function()
-                    --         vim.cmd("wincmd =")
-                    --         vim.cmd("redraw!")
-                    --     end)
-                    -- end, { buffer = true })
-                end,
-            })
-        end,
-    },
+    --                 -- Override Esc for normal mode to close window.
+    --                 -- [!] We use Esc in chat to change input mode.
+    --                 -- vim.keymap.set("n", "<Esc>", function()
+    --                 --     vim.cmd("close")
+    --                 --     vim.schedule(function()
+    --                 --         vim.cmd("wincmd =")
+    --                 --         vim.cmd("redraw!")
+    --                 --     end)
+    --                 -- end, { buffer = true })
+    --             end,
+    --         })
+    --     end,
+    -- },
     {
         "github/copilot.vim",
         lazy = true,  -- don't load by default
