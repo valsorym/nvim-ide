@@ -170,8 +170,17 @@ return {
         -- LOCATION
         local function loc_fmt(_)
             local l = vim.fn.line(".")
+            local l_length = vim.fn.line("$")
+
             local c = vim.fn.col(".")
-            return icons.col .. " " .. c .. " " .. icons.line .. " " .. l
+            local line_text = vim.fn.getline(".") or ""
+            local c_length = string.len(line_text)
+            -- return icons.col .. "" .. c .. "/" .. c_length .. "  " .. icons.line .. "" .. l .. "/" .. l_length
+            local cl_prefix = "%#Comment# %*"
+            local col_part = icons.col .. c .. "%#Comment#/" .. c_length .. "%*"
+            local line_part = icons.line .. l .. "%#Comment#/" .. l_length .. "%*"
+
+            return cl_prefix .. col_part .. "  " .. line_part
         end
 
         -- SETUP
