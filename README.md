@@ -302,9 +302,17 @@ Enter the code in your browser and click "Authorize Plugin".
 ### Daily Usage
 
 ```bash
-<leader>coo          # Toggle Copilot on/off
+<leader>cot          # Copilot Toggle
 <leader>cos          # Check Copilot status
-<leader>cox          # Sign out of Copilot
+<leader>cosi          # Copilot Sign In
+<leader>coso          # Copilot Sign Out
+<leader>cose          # Copilot Setup
+
+<leader>coc          # Copilot Chat
+<leader>coe          # Copilot Explain Code
+<leader>cof          # Copilot Fix Code
+<leader>cor          # Copilot Review Code
+<leader>cod          # Copilot Generate Docs
 ```
 
 ### While Coding (when enabled)

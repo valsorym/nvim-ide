@@ -185,23 +185,23 @@ return {
 
         -- Group definitions matching which-key.
         local group_info = {
-            t = { icon = "", name = "Tabs" },
-            w = { icon = "", name = "Workspaces" },
-            f = { icon = "", name = "Find/Search" },
-            e = { icon = "", name = "Explorer" },
-            c = { icon = "", name = "Code/LSP" },
-            ck = { icon = "", name = "Linters" },
-            cv = { icon = "", name = "Python Venv" },
-            x = { icon = "", name = "System" },
-            xt = { icon = "", name = "Terminal" },
-            g = { icon = "", name = "Git" },
-            y = { icon = "", name = "Yank" },
-            u = { icon = "", name = "UI/Themes" },
-            d = { icon = "", name = "Document" },
-            ds = { icon = "", name = "Spaces" },
-            dc = { icon = "", name = "ColorColumn" },
-            a = { icon = "", name = "Aerial" },
-            s = { icon = "", name = "Search" },
+            t = { icon = "📑", name = "Tabs" },
+            w = { icon = "🏢", name = "Workspaces" },
+            f = { icon = "🔍", name = "Find/Search" },
+            e = { icon = "📁", name = "Explorer" },
+            c = { icon = "💻", name = "Code/LSP" },
+            ck = { icon = "🔧", name = "Linters" },
+            cv = { icon = "🐍", name = "Python Venv" },
+            x = { icon = "⚙️", name = "System" },
+            xt = { icon = "💻", name = "Terminal" },
+            g = { icon = "🔀", name = "Git" },
+            y = { icon = "📋", name = "Yank" },
+            u = { icon = "🎨", name = "UI/Themes" },
+            d = { icon = "📝", name = "Document" },
+            ds = { icon = "🔠", name = "Spaces" },
+            dc = { icon = "📏", name = "ColorColumn" },
+            a = { icon = "🗺️", name = "Aerial" },
+            s = { icon = "🔎", name = "Search" },
             co = { icon = "🤖", name = "Copilot" },
         }
 
@@ -210,7 +210,7 @@ return {
             -- =================================================================
             -- COPILOT (optional AI assistance) (<leader>co)
             -- =================================================================
-            { "<leader>coo", function()
+            { "<leader>cot", function()
                 -- Check if Copilot is loaded, if not - load it
                 if not vim.g.loaded_copilot then
                     require("lazy").load({plugins = {"copilot.vim"}})
@@ -226,20 +226,11 @@ return {
                 if vim.g.loaded_copilot then
                     vim.cmd("Copilot status")
                 else
-                    vim.notify("🤖 Copilot not loaded. Use <leader>coo to enable.", vim.log.levels.INFO)
+                    vim.notify("🤖 Copilot not loaded. Use <leader>cot to enable.", vim.log.levels.INFO)
                 end
             end, description = "Copilot Status" },
 
-            { "<leader>coa", function()
-                if not vim.g.loaded_copilot then
-                    require("lazy").load({plugins = {"copilot.vim"}})
-                end
-                vim.schedule(function()
-                    vim.cmd("Copilot auth")
-                end)
-            end, description = "Copilot Authentication" },
-
-            { "<leader>cop", function()
+            { "<leader>cose", function()
                 if not vim.g.loaded_copilot then
                     require("lazy").load({plugins = {"copilot.vim"}})
                 end
@@ -248,7 +239,17 @@ return {
                 end)
             end, description = "Copilot Setup" },
 
-            { "<leader>cox", function()
+            { "<leader>cosi", function()
+                if not vim.g.loaded_copilot then
+                    require("lazy").load({plugins = {"copilot.vim"}})
+                end
+                vim.schedule(function()
+                    vim.cmd("Copilot auth")
+                end)
+            end, description = "Copilot Sign In" },
+
+
+            { "<leader>coso", function()
                 if vim.g.loaded_copilot then
                     vim.cmd("Copilot signout")
                     vim.notify("🤖 Copilot signed out", vim.log.levels.INFO)
@@ -256,6 +257,13 @@ return {
                     vim.notify("🤖 Copilot not loaded", vim.log.levels.WARN)
                 end
             end, description = "Copilot Sign Out" },
+
+            -- Copilot Chat commands.
+            { "<leader>coc", ":CopilotChat ", description = "Copilot Chat" },
+            { "<leader>coe", ":CopilotChatExplain<CR>", description = "Copilot Explain Code", mode = "v" },
+            { "<leader>cof", ":CopilotChatFix<CR>", description = "Copilot Fix Code", mode = "v" },
+            { "<leader>cor", ":CopilotChatReview<CR>", description = "Copilot Review Code", mode = "v" },
+            { "<leader>cod", ":CopilotChatDocs<CR>", description = "Copilot Generate Docs", mode = "v" },
 
             -- =================================================================
             -- TABS MANAGEMENT (<leader>t)

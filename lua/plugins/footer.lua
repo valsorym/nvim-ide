@@ -55,9 +55,19 @@ return {
         local function lsp_status()
             local cl = vim.lsp.get_clients({bufnr = 0})
             if #cl == 0 then return "" end
-            local first = cl[1] and cl[1].name or ""
-            if #cl == 1 then return icons.lsp .. " " .. first end
-            return icons.lsp .. " " .. first .. "(+" .. (#cl - 1) .. ")"
+
+            -- Filter out Copilot from LSP clients
+            local filtered = {}
+            for _, client in ipairs(cl) do
+                if client.name ~= "copilot" then
+                    table.insert(filtered, client)
+                end
+            end
+
+            if #filtered == 0 then return "" end
+            local first = filtered[1] and filtered[1].name or ""
+            if #filtered == 1 then return icons.lsp .. " " .. first end
+            return icons.lsp .. " " .. first .. "(+" .. (#filtered - 1) .. ")"
         end
 
         -- SELECTION INFO
@@ -137,12 +147,12 @@ return {
                 -- Check if there's an active suggestion
                 local ok, status = pcall(vim.fn["copilot#GetDisplayedSuggestion"])
                 if ok and status and status.text and status.text ~= "" then
-                    return "🤖✨"  -- active with suggestion
+                    return "🤖✨"  -- Active with suggestion
                 else
-                    return "🤖"    -- enabled but no suggestion
+                    return "🤖"    -- Enabled but no suggestion
                 end
             else
-                return ""  -- don't show when disabled (clean UI)
+                return ""  -- Don't show when disabled (clean UI)
             end
         end
 
