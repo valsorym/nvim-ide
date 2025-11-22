@@ -167,18 +167,53 @@ return {
             end
         end
 
-        -- LOCATION
+        -- -- LOCATION
+        -- local function loc_fmt(_)
+        --     local l = vim.fn.line(".")
+        --     local l_length = vim.fn.line("$")
+
+        --     local c = vim.fn.col(".")
+        --     local line_text = vim.fn.getline(".") or ""
+        --     local c_length = string.len(line_text)
+        --     -- return icons.col .. "" .. c .. "/" .. c_length .. "  " .. icons.line .. "" .. l .. "/" .. l_length
+        --     local cl_prefix = "%#Comment# %*"
+        --     local col_part = icons.col .. c .. "%#Comment#/" .. c_length .. "%*"
+        --     local line_part = icons.line .. l .. "%#Comment#/" .. l_length .. "%*"
+
+        --     return cl_prefix .. col_part .. "  " .. line_part
+        -- end
+
+        -- LOCATION with dynamic zero-padding
         local function loc_fmt(_)
             local l = vim.fn.line(".")
             local l_length = vim.fn.line("$")
-
             local c = vim.fn.col(".")
             local line_text = vim.fn.getline(".") or ""
             local c_length = string.len(line_text)
-            -- return icons.col .. "" .. c .. "/" .. c_length .. "  " .. icons.line .. "" .. l .. "/" .. l_length
+
+            -- Determine number of digits for padding
+            local function get_padding_width(max_value)
+                if max_value <= 999 then
+                    return 3  -- 001, 010, 999
+                else
+                    return string.len(tostring(max_value))  -- 00001, 50000
+                end
+            end
+
+            -- Format numbers with zero-padding
+            local function format_with_padding(current, maximum)
+                local width = get_padding_width(maximum)
+                local format_str = "%0" .. width .. "d"
+                return string.format(format_str, current), string.format(format_str, maximum)
+            end
+
+            -- Format columns and lines with appropriate padding
+            local c_formatted, c_length_formatted = format_with_padding(c, c_length)
+            local l_formatted, l_length_formatted = format_with_padding(l, l_length)
+
             local cl_prefix = "%#Comment# %*"
-            local col_part = icons.col .. c .. "%#Comment#/" .. c_length .. "%*"
-            local line_part = icons.line .. l .. "%#Comment#/" .. l_length .. "%*"
+            local col_part = icons.col .. c_formatted .. "%#Comment#/" .. c_length_formatted .. "%*"
+            local line_part = icons.line .. l_formatted .. "%#Comment#/" .. l_length_formatted .. "%*"
 
             return cl_prefix .. col_part .. "  " .. line_part
         end
