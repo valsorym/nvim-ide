@@ -56,18 +56,29 @@ return {
             local cl = vim.lsp.get_clients({bufnr = 0})
             if #cl == 0 then return "" end
 
-            -- Filter out Copilot from LSP clients
+            local ignore = {
+                ["copilot"] = true,
+                ["Copilot"] = true,
+                ["GitHub Copilot"] = true,
+                ["copilot-chat"] = true,
+                ["CopilotChat"] = true,
+            }
+
             local filtered = {}
             for _, client in ipairs(cl) do
-                if client.name ~= "copilot" then
+                if not ignore[client.name] then
                     table.insert(filtered, client)
                 end
             end
 
             if #filtered == 0 then return "" end
-            local first = filtered[1] and filtered[1].name or ""
-            if #filtered == 1 then return icons.lsp .. " " .. first end
-            return icons.lsp .. " " .. first .. "(+" .. (#filtered - 1) .. ")"
+
+            local first = filtered[1].name
+            if #filtered == 1 then
+                return first
+            end
+
+            return first .. "(+" .. (#filtered - 1) .. ")"
         end
 
         -- SELECTION INFO
