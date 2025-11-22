@@ -27,9 +27,9 @@ return {
                         { "╰", "FloatBorder" },
                         { "│", "FloatBorder" },
                     },
-                    -- title = " Copilot Chat ",
+                    title = "─ 🤖✨ Copilot Chat ",
                     -- Alternative title with title_pos = "center":
-                    title = string.rep("─", math.max(0, math.floor((vim.o.columns * 0.8 - 14) / 2) - 1)) .. " Copilot Chat ",
+                    -- title = string.rep("─", math.max(0, math.floor((vim.o.columns * 0.8 - 14) / 2) - 0)) .. " Copilot Chat " .. string.rep("─", math.max(0, math.floor((vim.o.columns * 0.8 - 14) / 2) - 0)),
                 },
                 mappings = {
                     close = {
