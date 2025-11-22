@@ -140,13 +140,13 @@ local function tab_name(style)
     return line
 end
 
--- Auto-move modified tab to the right with protection.
+-- Auto-move modified tab to the right with fixed logic.
 local function auto_move_tab_right()
     local current_tab = vim.fn.tabpagenr()
     local total_tabs = vim.fn.tabpagenr("$")
 
-    -- Don't move if it's the only tab.
-    if total_tabs <= 1 then
+    -- Don't move if there are 3 or fewer tabs total
+    if total_tabs <= 3 then
         return
     end
 
@@ -165,20 +165,14 @@ local function auto_move_tab_right()
         return
     end
 
-    -- Protection: don't move if tab is already in the last N positions.
-    local freeze_right_tabs = 3
-    local distance_from_end = total_tabs - current_tab
+    -- Calculate position from end (1-based indexing).
+    -- Position 1 from end = last tab, position 2 = second to last, etc.
+    local position_from_end = total_tabs - current_tab + 1
 
-    if distance_from_end <= freeze_right_tabs then
-        -- Tab is already close to the end, don't move
-        return
-    end
-
-    -- Additional protection: only move if there are many tabs.
-    -- and tab is not visible on screen.
-    if total_tabs > 5 and distance_from_end > 3 then
-        -- Move tab to the end.
-        vim.cmd("tabmove " .. total_tabs)
+    -- If tab is in position 4 or further from end (i.e., not in last 3 positions)
+    -- then move it to the end.
+    if position_from_end >= 4 then
+        vim.cmd("tabmove")  -- move to end (no argument = move to last position)
     end
 end
 
