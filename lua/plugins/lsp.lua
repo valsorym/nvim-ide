@@ -15,6 +15,17 @@ return {
         -- Enhanced capabilities with autocompletion.
         local capabilities = cmp_nvim_lsp.default_capabilities()
 
+        -- Disable incremental sync to prevent LSP sync errors.
+        capabilities.textDocument.synchronization = {
+            willSave = true,
+            willSaveWaitUntil = false,
+            didSave = true,
+            -- CRITICAL: Disable incremental sync.
+            incrementalSync = false,
+            -- Use full document sync instead.
+            change = 1, -- full document sync
+        }
+
         -- CRITICAL: Disable signature help from cmp to prevent conflicts.
         capabilities.textDocument.signatureHelp = nil
 
