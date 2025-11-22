@@ -93,7 +93,10 @@ return {
                 "checkhealth",
                 "man",
                 "gitcommit",
-                "gitrebase"
+                "gitrebase",
+                "copilot-chat",
+                "copilot",
+                "noice"
             },
 
             -- Auto-command setup
@@ -127,29 +130,48 @@ return {
             }
         })
 
-        -- Custom autocmd for better integration
+        -- Custom autocmd for better integration with error handling
         local scrollbar_group = vim.api.nvim_create_augroup("ScrollbarCustom", { clear = true })
+
+        -- Safe scrollbar operations with error handling
+        local function safe_scrollbar_operation(operation)
+            vim.schedule(function()
+                local buf = vim.api.nvim_get_current_buf()
+                local lines = vim.api.nvim_buf_line_count(buf)
+
+                -- Only operate on valid buffers with content
+                if vim.api.nvim_buf_is_valid(buf) and lines > 0 then
+                    pcall(operation)
+                end
+            end)
+        end
 
         -- Hide scrollbar in specific windows
         vim.api.nvim_create_autocmd({"FileType", "BufEnter", "WinEnter"}, {
             group = scrollbar_group,
             callback = function()
-                local ft = vim.bo.filetype
-                local bt = vim.bo.buftype
+                vim.defer_fn(function()
+                    local ft = vim.bo.filetype
+                    local bt = vim.bo.buftype
 
-                -- Additional conditions to hide scrollbar
-                if ft == "dashboard" or
-                   ft == "alpha" or
-                   ft == "NvimTree" or
-                   bt == "terminal" or
-                   bt == "nofile" then
-                    pcall(require("scrollbar").clear)
-                else
-                    -- Show scrollbar for normal files
-                    vim.defer_fn(function()
-                        pcall(require("scrollbar").show)
-                    end, 100)
-                end
+                    -- Additional conditions to hide scrollbar
+                    if ft == "dashboard" or
+                    ft == "alpha" or
+                    ft == "NvimTree" or
+                    ft == "copilot-chat" or
+                    ft == "copilot" or
+                    bt == "terminal" or
+                    bt == "nofile" then
+                        safe_scrollbar_operation(function()
+                            require("scrollbar").clear()
+                        end)
+                    else
+                        -- Show scrollbar for normal files
+                        safe_scrollbar_operation(function()
+                            require("scrollbar").show()
+                        end)
+                    end
+                end, 150) -- Increased delay for stability
             end
         })
 
@@ -157,7 +179,9 @@ return {
         vim.api.nvim_create_autocmd("DiagnosticChanged", {
             group = scrollbar_group,
             callback = function()
-                pcall(require("scrollbar.handlers.diagnostic").handler)
+                safe_scrollbar_operation(function()
+                    require("scrollbar.handlers.diagnostic").handler()
+                end)
             end
         })
 
@@ -166,9 +190,9 @@ return {
             group = scrollbar_group,
             pattern = {"/"}, -- search commands
             callback = function()
-                vim.defer_fn(function()
-                    pcall(require("scrollbar.handlers.search").handler)
-                end, 100)
+                safe_scrollbar_operation(function()
+                    require("scrollbar.handlers.search").handler()
+                end)
             end
         })
     end
