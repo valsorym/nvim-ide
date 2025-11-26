@@ -431,10 +431,10 @@ return {
         })
 
         local signs = {
-            { name = "DiagnosticSignError", text = "☣" },
-            { name = "DiagnosticSignWarn",  text = "⚠" },
+            { name = "DiagnosticSignError", text = "" },
+            { name = "DiagnosticSignWarn",  text = "" },
             { name = "DiagnosticSignHint",  text = "" },
-            { name = "DiagnosticSignInfo",  text = "🛈" },
+            { name = "DiagnosticSignInfo",  text = "" },
         }
 
         for _, sign in ipairs(signs) do
@@ -450,14 +450,7 @@ return {
             -- Disable virtual text (text at end of line).
             virtual_text = false,
             -- Show icons in sign column using modern API.
-            signs = {
-                text = {
-                    [vim.diagnostic.severity.ERROR] = "☣",
-                    [vim.diagnostic.severity.WARN] = "⚠",
-                    [vim.diagnostic.severity.HINT] = "",
-                    [vim.diagnostic.severity.INFO] = "🛈"
-                }
-            },
+            signs = true,
             -- Disable underlines completely.
             underline = false,
             -- Don't update in insert mode for performance.
