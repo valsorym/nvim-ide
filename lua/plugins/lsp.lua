@@ -430,6 +430,21 @@ return {
             sp = "NONE"
         })
 
+        local signs = {
+            { name = "DiagnosticSignError", text = "☣" },
+            { name = "DiagnosticSignWarn",  text = "⚠" },
+            { name = "DiagnosticSignHint",  text = "" },
+            { name = "DiagnosticSignInfo",  text = "🛈" },
+        }
+
+        for _, sign in ipairs(signs) do
+        vim.fn.sign_define(sign.name, {
+            text = sign.text,
+            texthl = sign.name,
+            numhl = "",
+        })
+        end
+
         -- Diagnostic configuration with modern API.
         vim.diagnostic.config({
             -- Disable virtual text (text at end of line).
@@ -439,7 +454,7 @@ return {
                 text = {
                     [vim.diagnostic.severity.ERROR] = "☣",
                     [vim.diagnostic.severity.WARN] = "⚠",
-                    [vim.diagnostic.severity.HINT] = "💡",
+                    [vim.diagnostic.severity.HINT] = "",
                     [vim.diagnostic.severity.INFO] = "🛈"
                 }
             },
@@ -467,9 +482,9 @@ return {
         -- Debug function to check if diagnostics are working.
         local function debug_diagnostics()
             local diagnostics = vim.diagnostic.get(0)
-            print("Diagnostics count:", #diagnostics)
-            print("Signcolumn setting:", vim.wo.signcolumn)
-            print("Testing icons: ☣ ⚠ 💡 🛈")
+            -- print("Diagnostics count:", #diagnostics)
+            -- print("Signcolumn setting:", vim.wo.signcolumn)
+            -- print("Testing icons: ☣ ⚠  🛈")
 
             -- Force refresh signs.
             vim.diagnostic.show(0, 0, diagnostics)
@@ -974,4 +989,4 @@ return {
             end
         })
     end
-}
+} -- ///
