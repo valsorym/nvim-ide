@@ -629,7 +629,8 @@ return {
                     python = {
                         pythonPath = get_python_path(),
                         analysis = {
-                            typeCheckingMode = "basic",
+                            -- typeCheckingMode = "basic",
+                            -- reportAttributeAccessIssue = "none",
                             autoSearchPaths = true,
                             useLibraryCodeForTypes = true,
                             extraPaths = {"."}

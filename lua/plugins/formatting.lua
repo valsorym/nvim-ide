@@ -284,6 +284,8 @@ include_trailing_comma = true
             local content = [[
 {
 // Pyright configuration for Django project with src/ and src/apps.
+"typeCheckingMode": "basic",
+"reportAttributeAccessIssue": "none",
 "executionEnvironments": [
     {
     "root": "./src",
