@@ -3,6 +3,7 @@
 
 return {
     "stevearc/aerial.nvim",
+    cmd = { "AerialToggle", "AerialNavToggle", "AerialOpen", "AerialNext", "AerialPrev" },
     dependencies = {
         "nvim-treesitter/nvim-treesitter",
         "nvim-tree/nvim-web-devicons"
@@ -10,7 +11,7 @@ return {
     config = function()
         require("aerial").setup({
             -- Priority list of backends
-            backends = {"treesitter", "lsp", "markdown", "man"},
+            backends = {"lsp", "treesitter", "markdown", "man"},
 
             layout = {
                 max_width = {40, 0.2},
@@ -132,13 +133,6 @@ return {
 
             nerd_font = "auto",
 
-            on_attach = function(bufnr)
-                vim.keymap.set("n", "{", "<cmd>AerialPrev<CR>",
-                    {buffer = bufnr})
-                vim.keymap.set("n", "}", "<cmd>AerialNext<CR>",
-                    {buffer = bufnr})
-            end,
-
             open_automatic = false,
 
             post_jump_cmd = "normal! zz",
@@ -168,7 +162,7 @@ return {
             },
 
             lsp = {
-                diagnostics_trigger_update = true,
+                diagnostics_trigger_update = false,
                 update_when_errors = true,
                 update_delay = 300,
             },
@@ -182,18 +176,5 @@ return {
             },
         })
 
-        -- Keymaps
-        vim.keymap.set("n", "<leader>aa", "<cmd>AerialToggle!<CR>",
-            {desc = "Aerial: Toggle outline"})
-
-        vim.keymap.set("n", "<leader>aA", "<cmd>AerialNavToggle<CR>",
-            {desc = "Aerial: Toggle navigation"})
-
-        -- Use with Telescope
-        vim.keymap.set("n", "<leader>af", "<cmd>Telescope aerial<CR>",
-            {desc = "Aerial: Find symbols"})
-
-        -- Load Telescope extension
-        pcall(require("telescope").load_extension, "aerial")
     end,
 }

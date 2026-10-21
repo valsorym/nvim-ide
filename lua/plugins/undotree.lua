@@ -3,10 +3,7 @@
 
 return {
     "mbbill/undotree",
-    event = "VeryLazy",
-    keys = {
-        { "<leader>xu", vim.cmd.UndotreeToggle, desc = "Toggle Undotree" },
-    },
+    cmd = "UndotreeToggle",
     config = function()
         -- Layout: left = diff, right = tree
         vim.g.undotree_WindowLayout = 2
@@ -24,20 +21,5 @@ return {
         vim.g.undotree_TreeSplitShape = "" -- "╱"
         vim.g.undotree_TreeReturnShape = "" -- "╲"
 
-        -- Ensure persistent undo is enabled
-        local undodir = vim.fn.stdpath("data") .. "/undo"
-        if vim.fn.isdirectory(undodir) == 0 then
-            vim.fn.mkdir(undodir, "p")
-        end
-        vim.o.undofile = true
-        vim.o.undodir = undodir
-
-        -- Optional: focus on latest change when Undotree opens
-        vim.api.nvim_create_autocmd("User", {
-            pattern = "UndotreeToggle",
-            callback = function()
-                pcall(vim.cmd, "normal! g;")
-            end,
-        })
     end,
 }

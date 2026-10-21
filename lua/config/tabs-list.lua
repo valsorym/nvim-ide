@@ -34,7 +34,7 @@ function M.get_open_tabs()
             local normalized_path = path:gsub("/$", "")
 
             -- Check if file is under the root
-            if normalized_path:sub(1, #normalized_root) == normalized_root then
+            if normalized_path:sub(1, #normalized_root + 1) == normalized_root .. "/" then
                 -- Make relative path
                 local relative = normalized_path:sub(#normalized_root + 2)  -- +2 to skip root and "/"
 
@@ -79,9 +79,7 @@ function M.get_open_tabs()
         -- Find first normal buffer.
         for _, b in ipairs(buflist) do
             local name = vim.fn.bufname(b)
-            if not name:match("NvimTree_") and
-               not name:match("toggleterm") and
-               not name:match("dashboard") and name ~= "" then
+            if vim.bo[b].buftype == "" and name ~= "" then
                 buf = b
                 break
             end
@@ -125,6 +123,10 @@ end
 -- Function to create floating window with tabs list.
 function M.show_tabs_window()
     M.close_existing_window()
+    if vim.o.columns < 20 or vim.o.lines < 10 then
+        vim.notify("Enlarge the terminal to show the tab list", vim.log.levels.WARN)
+        return
+    end
 
     local all_tabs = M.get_open_tabs()
 
@@ -136,7 +138,7 @@ function M.show_tabs_window()
     -- Create main buffer.
     local buf = vim.api.nvim_create_buf(false, true)
     local width = math.min(70, vim.o.columns - 10)
-    local height = math.min(20, #all_tabs + 10)
+    local height = math.min(20, #all_tabs + 11, vim.o.lines - 4)
     local row = math.floor((vim.o.lines - height) / 2)
     local col = math.floor((vim.o.columns - width) / 2)
 
@@ -150,27 +152,37 @@ function M.show_tabs_window()
         border = "rounded",
         title = " Open Tabs ",
         title_pos = "center",
-        zindex = 1000
+        footer = {
+            {"─ [ ", "FloatBorder"},
+            {"/", "FooterKey"}, {" - filter", "FooterDesc"},
+            {" | ", "FloatBorder"},
+            {"d", "FooterKey"}, {" - close", "FooterDesc"},
+            {" | ", "FloatBorder"},
+            {"q", "FooterKey"}, {" - quit", "FooterDesc"},
+            {" ] ─", "FloatBorder"},
+        },
+        footer_pos = "center",
+        zindex = 1000,
     })
 
     M.current_win = win
 
-    -- Create prompt buffer for search.
+    -- Create prompt buffer for search (overlaid on header row 3).
     local prompt_buf = vim.api.nvim_create_buf(false, true)
-    local prompt_height = 1
     local prompt_win = vim.api.nvim_open_win(prompt_buf, false, {
         relative = "win",
         win = win,
         width = width - 4,
-        height = prompt_height,
-        row = 3,
+        height = 1,
+        row = 2,
         col = 1,
         style = "minimal",
         border = "none",
-        zindex = 1001
+        zindex = 1001,
     })
 
     vim.bo[prompt_buf].buftype = "prompt"
+    vim.bo[prompt_buf].bufhidden = "wipe"
     vim.fn.prompt_setprompt(prompt_buf, " 🔍 Filter: ")
 
     -- State
@@ -206,21 +218,18 @@ function M.show_tabs_window()
 
         local lines = {}
 
-        -- Header with tabs count.
+        -- Header: empty, title, empty (prompt overlays line 3).
         table.insert(lines, "")
         table.insert(lines, string.format(
             " 󰮰  Tabs: %d/%d", #filtered_tabs, #all_tabs))
         table.insert(lines, "")
-        -- Prompt placeholder (will be covered by prompt window).
-        table.insert(lines, "")
-        -- Separator line (full width).
+        -- Separator.
         table.insert(lines, string.rep("─", width))
-        table.insert(lines, "")
 
         if #filtered_tabs == 0 then
             table.insert(lines, "   No matching tabs")
         else
-            for i, tab in ipairs(filtered_tabs) do
+            for _, tab in ipairs(filtered_tabs) do
                 local prefix = tab.is_current and " ⚬ " or "   "
                 local status = tab.is_modified and "" or ""
                 local line = string.format("%s%d. %s%s",
@@ -241,8 +250,12 @@ function M.show_tabs_window()
         vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
         vim.bo[buf].modifiable = false
 
-        -- Move cursor to first result or current tab
-        local target_line = current_tab_line or 7
+        -- Highlight separator (0-indexed line 3).
+        vim.api.nvim_buf_add_highlight(
+            buf, -1, "FloatBorder", 3, 0, -1)
+
+        -- Move cursor to current tab or first entry (line 5).
+        local target_line = current_tab_line or 5
         if target_line <= #lines and vim.api.nvim_win_is_valid(win) then
             pcall(vim.api.nvim_win_set_cursor, win, {target_line, 0})
         end
@@ -256,6 +269,18 @@ function M.show_tabs_window()
 
     -- Initial render.
     render_list()
+
+    -- Keep cursor on entry lines only (skip header).
+    vim.api.nvim_create_autocmd("CursorMoved", {
+        buffer = buf,
+        callback = function()
+            if not vim.api.nvim_win_is_valid(win) then return end
+            local pos = vim.api.nvim_win_get_cursor(win)
+            if pos[1] < 5 then
+                vim.api.nvim_win_set_cursor(win, {5, 0})
+            end
+        end,
+    })
 
     -- Prompt callback for filtering.
     vim.fn.prompt_setcallback(prompt_buf, function(text)
@@ -318,7 +343,8 @@ function M.show_tabs_window()
         if tab_nr then
             if vim.fn.tabpagenr("$") > 1 then
                 close_window()
-                vim.cmd(tab_nr .. "tabclose")
+                vim.cmd(tab_nr .. "tabnext")
+                require("config.nvim-tabs").close(false)
                 vim.defer_fn(M.show_tabs_window, 200)
             else
                 print("Cannot close the last tab")
@@ -461,22 +487,6 @@ function M.show_tabs_window()
         end
     })
 
-    -- Start in prompt mode.
-    vim.api.nvim_set_current_win(prompt_win)
-    vim.cmd("startinsert")
-end
-
-function M.setup()
-    _G.TabsList = M
-
-    vim.api.nvim_create_user_command(
-        "TabsList",
-        M.show_tabs_window,
-        {desc = "Show list of open tabs"}
-    )
-
-    vim.keymap.set("n", "<leader>et", M.show_tabs_window,
-        {desc = "Show tabs list", silent = true})
 end
 
 return M

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Neovim IDE
+Comment=Edit files in a dedicated terminal window
+Exec=nvim-ide %F
+TryExec=nvim-ide
+Icon=nvim
+Terminal=false
+Categories=Development;TextEditor;
+MimeType=text/plain;text/x-python;text/x-c;text/x-c++src;application/x-shellscript;
+StartupWMClass=NVimIDE

@@ -1,0 +1,11 @@
+#!/bin/sh
+# Use the same configuration in a terminal or in a separate desktop window.
+if [ "${1-}" = "--terminal" ]; then
+    shift
+    exec nvim "$@"
+fi
+if ! command -v alacritty >/dev/null 2>&1; then
+    printf '%s\n' 'Install Alacritty for a separate window, or use nvim-ide --terminal.' >&2
+    exit 1
+fi
+exec alacritty --class NVimIDE -o 'window.startup_mode="Maximized"' -e nvim "$@"

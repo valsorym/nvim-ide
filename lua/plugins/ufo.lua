@@ -7,12 +7,11 @@ return {
     "kevinhwang91/nvim-ufo",
     dependencies = {
         "kevinhwang91/promise-async",
-        "neovim/nvim-lspconfig"
     },
-    event = "VeryLazy",
+    event = { "BufReadPost", "BufNewFile" },
     opts = {
         provider_selector = function(bufnr, filetype, buftype)
-            if filetype == "dashboard"
+            if require("config.performance").is_large(bufnr) or filetype == "dashboard"
             or filetype == "NvimTree"
             or filetype == "neo-tree"
             or buftype ~= "" then
@@ -90,7 +89,7 @@ return {
         vim.opt.foldlevel = 99
         vim.opt.foldlevelstart = 99
         vim.opt.foldenable = true
-        vim.opt.foldmethod = "indent" -- or "expr"
+        vim.opt.foldmethod = "manual"
 
         -- Custom fold icons: »/◈/◉ for closed, ⌄/◇/◌ for open.
         vim.opt.fillchars = {
@@ -103,22 +102,6 @@ return {
 
         -- Setup nvim-ufo.
         require("ufo").setup(opts)
-
-        -- Keymaps for folding.
-        vim.keymap.set("n", "zR", require("ufo").openAllFolds,
-            {desc = "Open all folds"})
-        vim.keymap.set("n", "zM", require("ufo").closeAllFolds,
-            {desc = "Close all folds"})
-        vim.keymap.set("n", "zr", require("ufo").openFoldsExceptKinds,
-            {desc = "Open folds except kinds"})
-        vim.keymap.set("n", "zm", require("ufo").closeFoldsWith,
-            {desc = "Close folds with"})
-        vim.keymap.set("n", "zp", function()
-            local winid = require("ufo").peekFoldedLinesUnderCursor()
-            if not winid then
-                vim.lsp.buf.hover()
-            end
-        end, {desc = "Peek fold or hover"})
 
         -- Highlight customization for better visual appearance.
         -- Folded text.
@@ -144,32 +127,5 @@ return {
             bold = true
         })
 
-        -- Hide fold column on special buffers (like Dashboard).
-        local fold_exclude_group = vim.api.nvim_create_augroup(
-            "FoldColumnExclude",
-            {clear = true}
-        )
-
-        vim.api.nvim_create_autocmd(
-            {"BufEnter", "BufWinEnter", "FileType"},
-            {
-                group = fold_exclude_group,
-                callback = function()
-                    local buftype = vim.bo.buftype
-                    local filetype = vim.bo.filetype
-
-                    -- Exclude special buffers
-                    if buftype ~= "" or
-                       filetype == "dashboard" or
-                       filetype == "NvimTree" or
-                       filetype == "neo-tree" or
-                       filetype == "help" then
-                        vim.wo.foldcolumn = "0"
-                    else
-                        vim.wo.foldcolumn = foldColumn
-                    end
-                end
-            }
-        )
-    end
+    end,
 }

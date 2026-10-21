@@ -1,613 +1,218 @@
--- ~/.config/nvim/lua/config/keymaps.lua
--- Centralized keymaps configuration with clean structure and no duplicates.
-
+-- Single source for global mappings, the command palette and the key reference.
 local M = {}
-local safe_save = require("config.safe-save")
+M.groups = {
+    b = "Buffers / explorer", c = "Code / language", d = "Document / formatting",
+    e = "Editing", f = "Find / replace", g = "Git", o = "Options / tools",
+    r = "Run / terminal", t = "Tabs", u = "Interface", w = "Workspaces / sessions",
+    x = "Checks / diagnostics",
+}
 
--- Delete buffers that are not visible in any tab.
-local function cleanup_orphan_buffers(force)
-    force = force or false
-
-    -- Collect all buffers visible across tabs.
-    local visible = {}
-    for tab = 1, vim.fn.tabpagenr("$") do
-        local bufs = vim.fn.tabpagebuflist(tab)
-        for _, b in ipairs(bufs) do
-            visible[b] = true
+local function command(cmd) return "<Cmd>" .. cmd .. "<CR>" end
+local function call(module, method, ...)
+    local args = { ... }
+    return function() return require(module)[method](unpack(args)) end
+end
+local function telescope(method, opts)
+    return function() require("telescope.builtin")[method](opts or {}) end
+end
+local function tree_history()
+    require("lazy").load({ plugins = { "nvim-tree.lua" } })
+    _G.NvimTreeHistory.show_history()
+end
+local function git_hunk(action)
+    return function()
+        local mode = vim.fn.mode()
+        local range
+        if mode == "v" or mode == "V" then
+            local a, b = vim.fn.line("v"), vim.fn.line(".")
+            range = { math.min(a, b), math.max(a, b) }
         end
-    end
-
-    for _, b in ipairs(vim.api.nvim_list_bufs()) do
-        if vim.fn.buflisted(b) == 1 and not visible[b] then
-            local name = vim.fn.bufname(b)
-            local bt = vim.bo[b].buftype
-            local ft = vim.bo[b].filetype
-
-            -- Skip special/utility buffers.
-            local skip = bt ~= "" or name == ""
-            skip = skip or ft == "dashboard" or ft == "help"
-            skip = skip or ft == "NvimTree" or ft == "neo-tree" or ft == "oil"
-            skip = skip or name:match("toggleterm") or name:match("^term://")
-
-            if not skip then
-                if not vim.bo[b].modified or force then
-                    pcall(vim.api.nvim_buf_delete, b, {force = force})
-                end
-            end
-        end
+        require("gitsigns")[action](range)
     end
 end
-
--- Autoclean orphan buffers whenever a tab is closed.
-local orphan_clean_group = vim.api.nvim_create_augroup(
-    "OrphanBufferCleanup",
-    { clear = true }
-)
-
-vim.api.nvim_create_autocmd(
-    "TabClosed",
-    {
-        group = orphan_clean_group,
-        callback = function()
-            -- Defer to ensure tab state is updated before cleaning.
-            vim.schedule(function()
-                pcall(cleanup_orphan_buffers, false)
-            end)
-        end
-    }
-)
-
--- Smart tab close function with Dashboard support.
-local function smart_tab_close()
-    local total_tabs = vim.fn.tabpagenr("$")
-    local current_buf = vim.api.nvim_get_current_buf()
-    local filetype = vim.bo[current_buf].filetype
-
-    if total_tabs == 1 then
-        if filetype == "dashboard" then
-            vim.cmd("qa")
-        else
-            vim.cmd("Dashboard")
-            cleanup_orphan_buffers(false)
-        end
+local function render()
+    if require("config.performance").is_large(0) then
+        vim.notify("Rendering is disabled for large files", vim.log.levels.WARN)
+    elseif vim.bo.filetype == "markdown" then
+        require("render-markdown").buf_toggle()
+    elseif vim.bo.filetype == "rst" then
+        require("config.rst").toggle()
     else
-        vim.cmd("tabclose")
-        cleanup_orphan_buffers(false)
+        vim.notify("Rendering is available for Markdown and RST")
     end
 end
 
--- Force close tab (with !).
-local function force_close_tab()
-    local total_tabs = vim.fn.tabpagenr("$")
-
-    if total_tabs == 1 then
-        vim.cmd("Dashboard")
-        cleanup_orphan_buffers(true)
-    else
-        vim.cmd("tabclose!")
-        cleanup_orphan_buffers(true)
-    end
-end
-
--- Close all saved tabs and return to Dashboard.
-local function close_saved_tabs()
-    local total_tabs = vim.fn.tabpagenr("$")
-    local modified_tabs = 0
-    local tabs_to_close = {}
-
-    -- Identify which tabs to close.
-    for tab_nr = 1, total_tabs do
-        local buflist = vim.fn.tabpagebuflist(tab_nr)
-        local has_modified = false
-
-        -- Check if any buffer in this tab is modified.
-        for _, buf in ipairs(buflist) do
-            if vim.bo[buf].modified then
-                has_modified = true
-                break
-            end
-        end
-
-        if has_modified then
-            modified_tabs = modified_tabs + 1
-        else
-            -- Mark for closing.
-            table.insert(tabs_to_close, tab_nr)
+function M.palette(group)
+    local entries = {}
+    for _, entry in ipairs(M.entries) do
+        -- The palette opens in Normal mode; visual-only actions stay on their keys.
+        local modes = type(entry[4]) == "table" and entry[4] or { entry[4] or "n" }
+        if vim.tbl_contains(modes, "n") and (not group or entry[1]:sub(1, 9) == "<leader>" .. group) then
+            entries[#entries + 1] = entry
         end
     end
-
-    -- If nothing to close.
-    if #tabs_to_close == 0 then
-        vim.notify(
-            string.format(
-                "All %d tabs have unsaved changes. Nothing to close.",
-                modified_tabs
-            ),
-            vim.log.levels.WARN
-        )
-        return
-    end
-
-    -- If ALL tabs are saved - show Dashboard first, then close all.
-    if #tabs_to_close == total_tabs then
-        vim.cmd("Dashboard")
-        cleanup_orphan_buffers(false)
-
-        vim.notify(
-            string.format(
-                "All %d tabs closed. Dashboard opened.",
-                #tabs_to_close
-            ),
-            vim.log.levels.INFO
-        )
-        return
-    end
-
-    -- Some tabs have unsaved changes - close only saved tabs.
-    local closed_count = 0
-    for i = #tabs_to_close, 1, -1 do
-        local tab_nr = tabs_to_close[i]
-        vim.cmd(tab_nr .. "tabclose")
-        closed_count = closed_count + 1
-    end
-
-    vim.notify(
-        string.format(
-            "Closed %d saved tabs. %d tabs with unsaved changes remain.",
-            closed_count,
-            modified_tabs
-        ),
-        vim.log.levels.WARN
-    )
+    vim.ui.select(entries, { prompt = group and M.groups[group] or "Commands",
+        format_item = function(entry) return entry[1] .. "  " .. entry[3] end }, function(entry)
+        if not entry then return end
+        -- Replay the English mapping; langremap is off so its output stays literal.
+        vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(entry[1], true, false, true), "m", false)
+    end)
 end
 
--- Setup conditional abbreviations for command line.
-local function setup_conditional_abbreviations()
-    vim.api.nvim_create_autocmd(
-        {"BufEnter", "FileType"},
-        {
-            callback = function()
-                local filetype = vim.bo.filetype
-
-                if filetype == "dashboard" then
-                    -- In Dashboard - remove abbreviations, allow native :q behavior.
-                    pcall(vim.cmd, "cunabbrev q")
-                    pcall(vim.cmd, "cunabbrev wq")
-                    pcall(vim.cmd, "cunabbrev WQ")
-                else
-                    -- In normal files - set up buffer-local abbreviations.
-                    vim.cmd("cabbrev <buffer> q Q")
-                    vim.cmd("cabbrev <buffer> wq Wq")
-                    vim.cmd("cabbrev <buffer> WQ Wq")
-                end
-            end
-        }
-    )
+function M.browse()
+    local groups = vim.tbl_keys(M.groups)
+    table.sort(groups)
+    vim.ui.select(groups, { prompt = "Key groups", format_item = function(key)
+        return "<leader>" .. key .. "  " .. M.groups[key]
+    end }, function(key) if key then M.palette(key) end end)
 end
+
+M.entries = {
+    { "<leader><leader>", function() M.palette() end, "Search commands" },
+    { "<leader>?", function() M.browse() end, "Browse key groups" },
+    { "<leader>:", telescope("commands"), "Search Ex commands" },
+    { "<leader>bb", telescope("buffers"), "Find buffer" },
+    { "<leader>bn", command("bnext"), "Next buffer" },
+    { "<leader>bp", command("bprevious"), "Previous buffer" },
+    { "<leader>bd", command("confirm bdelete"), "Delete buffer" },
+    { "<leader>be", command("NvimTreeModal"), "File explorer" },
+    { "<leader>bh", tree_history, "Project history" },
+    { "<leader>ca", call("vim.lsp.buf", "code_action"), "Code action", { "n", "x" } },
+    { "<leader>cr", call("vim.lsp.buf", "rename"), "Rename symbol" },
+    { "<leader>cd", call("config.lsp", "jump", "definition"), "Go to definition in tab" },
+    { "<leader>cD", call("config.lsp", "jump", "declaration"), "Go to declaration in tab" },
+    { "<leader>ci", call("config.lsp", "jump", "implementation"), "Go to implementation in tab" },
+    { "<leader>ct", call("config.lsp", "jump", "type_definition"), "Go to type definition in tab" },
+    { "<leader>ch", function() vim.lsp.buf.signature_help({ border = "rounded" }) end, "Signature help" },
+    { "<leader>cs", command("CodeInspector"), "Document symbols" },
+    { "<leader>cS", command("CodeInspectorGrouped"), "Grouped document symbols" },
+    { "<leader>cw", telescope("lsp_workspace_symbols"), "Workspace symbols" },
+    { "<leader>co", command("AerialToggle!"), "Toggle code outline" },
+    { "<leader>cO", command("AerialNavToggle"), "Outline navigation" },
+    { "<leader>cva", command("VenvActivate"), "Detect Python environment" },
+    { "<leader>cvc", command("VenvSelect"), "Select Python environment" },
+    { "<leader>cvd", command("VenvDeactivate"), "Use system Python" },
+    { "<leader>cvs", command("VenvStatus"), "Python environment status" },
+    { "<leader>cvf", command("VenvFind"), "Refresh Python environment" },
+    { "<leader>cpt", command("CopilotToggle"), "Toggle Copilot" },
+    { "<leader>cps", command("Copilot status"), "Copilot status" },
+    { "<leader>cpa", command("Copilot setup"), "Copilot setup" },
+    { "<leader>cpx", command("Copilot signout"), "Copilot sign out" },
+    { "<leader>df", call("config.formatting", "format"), "Format document" },
+    { "<leader>di", call("config.formatting", "format", { only = "isort" }), "Sort Python imports" },
+    { "<leader>db", call("config.formatting", "format", { only = "black" }), "Format Python with Black" },
+    { "<leader>ds", command("FormatToggle"), "Toggle format on save" },
+    { "<leader>dx", call("config.formatting", "trim"), "Trim trailing whitespace" },
+    { "<leader>d2", command("Indent2"), "Use two-space indentation" },
+    { "<leader>d4", command("Indent4"), "Use four-space indentation" },
+    { "<leader>dt", command("IndentTab"), "Use tab indentation" },
+    { "<leader>dS", command("TabsToSpaces"), "Convert tabs to spaces" },
+    { "<leader>dT", command("SpacesToTabs"), "Convert spaces to tabs" },
+    { "<leader>dI", command("IndentInfo"), "Show indentation settings" },
+    { "<leader>dr", render, "Toggle Markdown / RST rendering" },
+    { "<leader>ed", '"_d', "Delete without yanking", { "n", "x" } },
+    { "<leader>ec", '"_c', "Change without yanking", { "n", "x" } },
+    { "<leader>ey", '"+y', "Yank to system clipboard", { "n", "x" } },
+    { "<leader>ep", '"+p', "Paste system clipboard", { "n", "x" } },
+    { "<leader>ea", 'ggVG"+y', "Yank entire document" },
+    { "<leader>eu", command("UndotreeToggle"), "Undo history" },
+    { "<leader>ej", ":move '>+1<CR>gv=gv", "Move selection down", "x" },
+    { "<leader>ek", ":move '<-2<CR>gv=gv", "Move selection up", "x" },
+    { "<leader>ff", telescope("find_files"), "Find files" },
+    { "<leader>fg", telescope("live_grep"), "Search project text" },
+    { "<leader>fG", telescope("live_grep", { file_ignore_patterns = {}, additional_args = { "--hidden", "--no-ignore", "--glob", "!.git/**" } }), "Search including ignored files" },
+    { "<leader>fo", telescope("oldfiles"), "Recent files" },
+    { "<leader>fh", telescope("help_tags"), "Find help" },
+    { "<leader>fr", call("config.replace", "search", false), "Find and replace in project" },
+    { "<leader>fR", call("config.replace", "search", true), "Find and replace including ignored files" },
+    { "<leader>fw", call("config.replace", "word"), "Replace current word in project" },
+    { "<leader>fj", call("flash", "jump"), "Flash jump", { "n", "x", "o" } },
+    { "<leader>fJ", call("flash", "treesitter"), "Flash syntax selection", { "n", "x", "o" } },
+    { "<leader>gs", git_hunk("stage_hunk"), "Stage Git hunk", { "n", "x" } },
+    { "<leader>gr", git_hunk("reset_hunk"), "Reset Git hunk", { "n", "x" } },
+    { "<leader>gp", call("gitsigns", "preview_hunk"), "Preview Git hunk" },
+    { "<leader>gb", call("gitsigns", "blame_line", { full = true }), "Blame current line" },
+    { "<leader>gd", call("gitsigns", "diffthis"), "Diff current file" },
+    { "<leader>gt", call("gitsigns", "toggle_current_line_blame"), "Toggle line blame" },
+    { "<leader>ol", command("Lazy"), "Plugin manager" },
+    { "<leader>om", command("Mason"), "Language tool manager" },
+    { "<leader>oc", function() require("config.nvim-tabs").open(vim.fn.stdpath("config") .. "/init.lua") end, "Open editor configuration" },
+    { "<leader>rf", call("config.terminal", "toggle", "float"), "Floating terminal" },
+    { "<leader>rh", call("config.terminal", "toggle", "horizontal"), "Horizontal terminal" },
+    { "<leader>rv", call("config.terminal", "toggle", "vertical"), "Vertical terminal" },
+    { "<leader>rp", call("config.terminal", "run", "python"), "Python REPL" },
+    { "<leader>rn", call("config.terminal", "run", "node"), "Node REPL" },
+    { "<leader>rd", call("config.terminal", "run", "django"), "Django shell" },
+    { "<leader>rr", call("config.terminal", "run", "runserver"), "Django development server" },
+    { "<leader>tn", call("config.nvim-tabs", "new"), "New tab" },
+    { "<leader>tq", call("config.nvim-tabs", "close", false), "Close current tab" },
+    { "<leader>tQ", call("config.nvim-tabs", "close", true), "Discard and close current tab" },
+    { "<leader>tc", call("config.nvim-tabs", "close_saved"), "Close saved tabs" },
+    { "<leader>to", command("confirm tabonly"), "Close other tabs" },
+    { "<leader>tl", call("config.tabs-list", "show_tabs_window"), "Tab list" },
+    { "<leader>th", call("config.nvim-tabs", "move_tab_left"), "Move tab left" },
+    { "<leader>tj", call("config.nvim-tabs", "move_tab_right"), "Move tab right" },
+    { "<leader>ta", command("confirm qall"), "Quit editor" },
+    { "<leader>ut", call("config.theme", "pick", false), "Preview and select theme" },
+    { "<leader>us", call("config.theme", "pick", true), "Select and save theme" },
+    { "<leader>ui", command("ThemeInfo"), "Current theme" },
+    { "<leader>uI", function() require("ibl").setup_buffer(0, { enabled = not require("ibl.config").get_config(0).enabled }) end, "Toggle indent guides" },
+    { "<leader>uw", function() vim.wo.wrap = not vim.wo.wrap end, "Toggle wrapping" },
+    { "<leader>ul", function() vim.wo.list = not vim.wo.list end, "Toggle whitespace marks" },
+    { "<leader>uc", function() vim.wo.colorcolumn = vim.wo.colorcolumn == "" and "79" or "" end, "Toggle column guide" },
+    { "<leader>ws", command("SessionSave"), "Save session" },
+    { "<leader>wr", command("SessionRestore"), "Restore session" },
+    { "<leader>wl", command("SessionLast"), "Restore last session" },
+    { "<leader>wD", command("SessionDelete"), "Delete current session" },
+    { "<leader>wf", command("SessionFind"), "Find session" },
+    { "<leader>wL", command("SessionLegacy"), "Import legacy session" },
+    { "<leader>ww", command("WorkspaceFind"), "Find workspace" },
+    { "<leader>wa", command("WorkspaceAdd"), "Add workspace" },
+    { "<leader>xx", function() vim.diagnostic.open_float({ scope = "line" }) end, "Line diagnostics" },
+    { "<leader>xb", command("Trouble diagnostics toggle filter.buf=0"), "Buffer diagnostics" },
+    { "<leader>xw", command("Trouble diagnostics toggle"), "Workspace diagnostics" },
+    { "<leader>xq", command("Trouble qflist toggle"), "Quickfix list" },
+    { "<leader>xl", command("Trouble loclist toggle"), "Location list" },
+    { "<leader>xt", command("TodoTelescope"), "Find TODO comments" },
+    { "<leader>xT", command("TodoTelescope keywords=TODO,FIX,FIXME"), "Find TODO / FIXME" },
+    { "<leader>xp", command("PythonToolsStatus"), "Python tools status" },
+    { "<leader>xi", command("checkhealth vim.lsp"), "LSP health" },
+    { "<leader>xh", command("checkhealth nvim_ide"), "Editor / terminal health" },
+    { "<leader>xL", command("LargeFileInfo"), "Buffer performance mode" },
+    { "<F2>", call("config.safe-save", "smart_write"), "Save file", { "n", "i" } },
+    { "<F5>", command("tabprevious"), "Previous tab" },
+    { "<F6>", command("tabnext"), "Next tab" },
+    { "<F7>", command("CodeInspector"), "Document symbols" },
+    { "<F8>", call("config.tabs-list", "show_tabs_window"), "Tab list" },
+    { "<F9>", command("NvimTreeModal"), "File explorer" },
+    { "<F10>", telescope("buffers"), "Buffer list" },
+    { "gd", call("config.lsp", "jump", "definition"), "Go to definition in tab" },
+    { "gD", call("config.lsp", "jump", "declaration"), "Go to declaration in tab" },
+    { "gri", call("config.lsp", "jump", "implementation"), "Go to implementation in tab" },
+    { "grt", call("config.lsp", "jump", "type_definition"), "Go to type definition in tab" },
+    { "gl", function() vim.diagnostic.open_float({ scope = "line" }) end, "Line diagnostics" },
+    { "<C-LeftMouse>", call("config.lsp", "jump", "definition"), "Go to definition in tab" },
+    { "zR", call("ufo", "openAllFolds"), "Open all folds" },
+    { "zM", call("ufo", "closeAllFolds"), "Close all folds" },
+    { "zr", call("ufo", "openFoldsExceptKinds"), "Open folds except configured kinds" },
+    { "zm", call("ufo", "closeFoldsWith"), "Fold one more level" },
+    { "zp", function() if not require("ufo").peekFoldedLinesUnderCursor() then vim.lsp.buf.hover() end end, "Preview fold" },
+    { "]t", call("todo-comments", "jump_next"), "Next TODO" },
+    { "[t", call("todo-comments", "jump_prev"), "Previous TODO" },
+    { "]c", function() if vim.wo.diff then vim.cmd("normal! ]c") else require("gitsigns").nav_hunk("next") end end, "Next Git hunk" },
+    { "[c", function() if vim.wo.diff then vim.cmd("normal! [c") else require("gitsigns").nav_hunk("prev") end end, "Previous Git hunk" },
+    { "<Esc>", command("nohlsearch"), "Clear search highlight" },
+}
 
 function M.setup()
-    local map = vim.keymap.set
-    local opts = {noremap = true, silent = true}
-
-    -- Enable mouse support for LSP navigation
-    vim.opt.mouse = "a"
-    vim.opt.mousemodel = "extend"
-
-    -- Use system clipboard for all yanks/pastes by default
-    vim.opt.clipboard = "unnamedplus"
-
-    -- ========================================================================
-    -- BASIC NAVIGATION & MOVEMENT
-    -- ========================================================================
-
-    -- Better window navigation.
-    map("n", "<C-h>", "<C-w>h", {desc = "Go to left window"})
-    map("n", "<C-j>", "<C-w>j", {desc = "Go to lower window"})
-    map("n", "<C-k>", "<C-w>k", {desc = "Go to upper window"})
-    map("n", "<C-l>", "<C-w>l", {desc = "Go to right window"})
-
-    -- Resize windows.
-    map("n", "<C-Up>", ":resize +2<CR>", opts)
-    map("n", "<C-Down>", ":resize -2<CR>", opts)
-    map("n", "<C-Left>", ":vertical resize -2<CR>", opts)
-    map("n", "<C-Right>", ":vertical resize +2<CR>", opts)
-
-    -- Move text up and down.
-    map("v", "<A-j>", ":m .+1<CR>==", opts)
-    map("v", "<A-k>", ":m .-2<CR>", opts)
-    map("x", "J", ":move '>+1<CR>gv-gv", opts)
-    map("x", "K", ":move '<-2<CR>gv-gv", opts)
-    map("x", "<A-j>", ":move '>+1<CR>gv-gv", opts)
-    map("x", "<A-k>", ":move '<-2<CR>gv-gv", opts)
-
-    -- Stay in indent mode.
-    map("v", "<", "<gv", opts)
-    map("v", ">", ">gv", opts)
-    map("x", "<", "<gv", opts)
-    map("x", ">", ">gv", opts)
-
-    -- Better paste.
-    map("v", "p", '"_dP', opts)
-
-    -- Delete without yanking (z prefix).
-    map("n", "zdd", '"_dd', {desc = "Delete line without yank"})
-    map("n", "zdw", '"_dw', {desc = "Delete word without yank"})
-    map("n", "zD", '"_D', {desc = "Delete to end without yank"})
-    map("n", "zx", '"_x', {desc = "Delete char without yank"})
-    map("n", "zcc", '"_cc', {desc = "Change line without yank"})
-    map("n", "zcw", '"_cw', {desc = "Change word without yank"})
-    map("n", "zC", '"_C', {desc = "Change to end without yank"})
-    map("v", "zd", '"_d', {desc = "Delete selection without yank"})
-    map("v", "zc", '"_c', {desc = "Change selection without yank"})
-
-    -- VSCode-style indentation with Shift+< and Shift+>.
-    map("n", "<S-<>", "<<", {desc = "Outdent line"})
-    map("n", "<S->>", ">>", {desc = "Indent line"})
-    map("v", "<S-<>", "<gv", {desc = "Outdent selection"})
-    map("v", "<S->>", ">gv", {desc = "Indent selection"})
-    map("i", "<S-<>", "<C-o><<", {desc = "Outdent line (insert mode)"})
-    map("i", "<S->>", "<C-o>>>", {desc = "Indent line (insert mode)"})
-    map("s", "<S-<>", "<C-o><gv", {desc = "Outdent selection"})
-    map("s", "<S->>", "<C-o>>gv", {desc = "Indent selection"})
-
-    -- ========================================================================
-    -- TAB NAVIGATION & MANAGEMENT
-    -- ========================================================================
-
-    -- Tab navigation with Alt keys.
-    map("n", "<A-Left>", ":tabprevious<CR>", {desc = "Previous tab"})
-    map("n", "<A-Right>", ":tabnext<CR>", {desc = "Next tab"})
-    map("n", "<A-1>", "1gt", {desc = "Go to tab 1"})
-    map("n", "<A-2>", "2gt", {desc = "Go to tab 2"})
-    map("n", "<A-3>", "3gt", {desc = "Go to tab 3"})
-    map("n", "<A-4>", "4gt", {desc = "Go to tab 4"})
-    map("n", "<A-5>", "5gt", {desc = "Go to tab 5"})
-    map("n", "<A-6>", "6gt", {desc = "Go to tab 6"})
-    map("n", "<A-7>", "7gt", {desc = "Go to tab 7"})
-    map("n", "<A-8>", "8gt", {desc = "Go to tab 8"})
-    map("n", "<A-9>", "9gt", {desc = "Go to tab 9"})
-
-    -- Move current tab.
-    map("n", "<A-h>", ":-tabmove<CR>", {desc = "Move tab left"})
-    map("n", "<A-l>", ":+tabmove<CR>", {desc = "Move tab right"})
-    map("n", "<S-Left>", ":-tabmove<CR>", {desc = "Move tab left"})
-    map("n", "<S-Right>", ":+tabmove<CR>", {desc = "Move tab right"})
-
-    -- Move current tab to the end/beginning.
-    map("n", "<S-A-Right>", function()
-        local total = vim.fn.tabpagenr("$")
-        vim.cmd("tabmove " .. total)
-        vim.notify("Tab moved to end", vim.log.levels.INFO)
-    end, {desc = "Move tab to end"})
-
-    map("n", "<S-A-Left>", function()
-        vim.cmd("tabmove 0")
-        vim.notify("Tab moved to start", vim.log.levels.INFO)
-    end, {desc = "Move tab to start"})
-
-    -- Tab navigation with F keys.
-    map("n", "<F5>", function()
-        local current = vim.fn.tabpagenr()
-        if current > 1 then
-            vim.cmd("tabprevious")
-        end
-    end, {desc = "Previous tab"})
-
-    map("n", "<F6>", function()
-        local current = vim.fn.tabpagenr()
-        local total = vim.fn.tabpagenr("$")
-        if current < total then
-            vim.cmd("tabnext")
-        end
-    end, {desc = "Next tab"})
-
-    -- New tab shortcuts.
-    map("n", "<C-t>", ":tabnew<CR>", {desc = "New tab"})
-
-    -- ========================================================================
-    -- FUNCTION KEYS (F1-F12)
-    -- ========================================================================
-
-    -- Disable F1 help (annoying).
-    map("n", "<F1>", "<nop>", {desc = "Disabled"})
-    map("i", "<F1>", "<nop>", {desc = "Disabled"})
-    map("v", "<F1>", "<nop>", {desc = "Disabled"})
-
-    -- F2 for smart save and format.
-    map("n", "<F2>", function()
-        local bufname = vim.api.nvim_buf_get_name(0)
-
-        -- Check if buffer is unnamed.
-        if bufname == "" or bufname:match("^%[No Name%]") then
-            vim.ui.input({
-                prompt = "Save as: ",
-                default = vim.fn.getcwd() .. "/",
-                completion = "file",
-            }, function(filename)
-                if filename and filename ~= "" then
-                    vim.cmd("write " .. vim.fn.fnameescape(filename))
-                    vim.notify("💾 Saved: " .. filename, vim.log.levels.INFO)
-                end
-            end)
-        else
-            safe_save.smart_write()
-        end
-    end, {desc = "Save and format file"})
-
-    map("i", "<F2>", function()
-        vim.cmd("stopinsert")
-
-        local bufname = vim.api.nvim_buf_get_name(0)
-
-        if bufname == "" or bufname:match("^%[No Name%]") then
-            vim.ui.input({
-                prompt = "Save as: ",
-                default = vim.fn.getcwd() .. "/",
-                completion = "file",
-            }, function(filename)
-                if filename and filename ~= "" then
-                    vim.cmd("write " .. vim.fn.fnameescape(filename))
-                    vim.notify("💾 Saved: " .. filename, vim.log.levels.INFO)
-                end
-                vim.cmd("startinsert")
-            end)
-        else
-            safe_save.smart_write()
-            vim.cmd("startinsert")
-        end
-    end, {desc = "Save and format file"})
-
-    -- F7 for Code Inspector.
-    map("n", "<F7>", function()
-        if _G.CodeInspector then
-            _G.CodeInspector()
-        else
-            vim.notify("Code Inspector not loaded", vim.log.levels.WARN)
-        end
-    end, {desc = "Code Inspector", silent = true})
-
-    -- F8 for Tabs List.
-    map("n", "<F8>", function()
-        if _G.TabsList and _G.TabsList.show_tabs_window then
-            _G.TabsList.show_tabs_window()
-        end
-    end, {desc = "Show tabs list", silent = true})
-
-    -- F9 for File Explorer.
-    map("n", "<F9>", function()
-        if _G.NvimTreeModal then
-            _G.NvimTreeModal()
-        end
-    end, {desc = "Open file explorer", silent = true})
-
-    -- F10 for Buffers List.
-    map("n", "<F10>", function()
-        require("telescope.builtin").buffers()
-    end, {desc = "Show buffers list", silent = true})
-
-    -- ========================================================================
-    -- CLEAR SEARCH & ESCAPE
-    -- ========================================================================
-
-    -- Clear search highlighting with Esc.
-    map("n", "<Esc>", ":nohlsearch<CR>",
-        {desc = "Clear search highlights", silent = true})
-
-    -- ========================================================================
-    -- LSP & DIAGNOSTICS (basic LSP keymaps - detailed ones in lsp.lua)
-    -- ========================================================================
-
-    -- Signature help with Ctrl+k.
-    map("n", "<C-k>", vim.lsp.buf.signature_help, {desc = "Signature Help"})
-    map("i", "<C-k>", vim.lsp.buf.signature_help, {desc = "Signature Help"})
-
-    -- Diagnostic navigation.
-    map("n", "[d", vim.diagnostic.goto_prev, {desc = "Previous diagnostic"})
-    map("n", "]d", vim.diagnostic.goto_next, {desc = "Next diagnostic"})
-
-    -- Quick diagnostic float.
-    map("n", "gl", function()
-        local diagnostic_opts = {
-            focusable = false,
-            close_events = {"BufLeave", "CursorMoved", "InsertEnter", "FocusLost"},
-            border = "rounded",
-            source = "always",
-            prefix = " ",
-            scope = "line"
-        }
-        vim.diagnostic.open_float(nil, diagnostic_opts)
-    end, {desc = "Show line diagnostics"})
-
-    -- LSP References quickfix.
-    map("n", "gL", function()
-        vim.diagnostic.setloclist()
-        vim.cmd("lopen")
-        vim.wo.cursorline = true
-        vim.wo.number = true
-        vim.wo.relativenumber = false
-        vim.keymap.set("n", "q", "<cmd>lclose<CR>", {
-            buffer = true,
-            silent = true,
-        })
-    end, {desc = "Open diagnostic quickfix list"})
-
-    -- ========================================================================
-    -- GIT NAVIGATION
-    -- ========================================================================
-
-    -- Git hunks navigation.
-    map("n", "]c", function()
-        if vim.wo.diff then return "]c" end
-        vim.schedule(function()
-            if package.loaded.gitsigns then
-                require("gitsigns").next_hunk()
-            end
-        end)
-        return "<Ignore>"
-    end, {expr = true, desc = "Next Git hunk"})
-
-    map("n", "[c", function()
-        if vim.wo.diff then return "[c" end
-        vim.schedule(function()
-            if package.loaded.gitsigns then
-                require("gitsigns").prev_hunk()
-            end
-        end)
-        return "<Ignore>"
-    end, {expr = true, desc = "Previous Git hunk"})
-
-    -- ========================================================================
-    -- TODO NAVIGATION
-    -- ========================================================================
-
-    -- TODO comments navigation.
-    map("n", "]t", function()
-        if package.loaded["todo-comments"] then
-            require("todo-comments").jump_next()
-        end
-    end, {desc = "Next TODO"})
-
-    map("n", "[t", function()
-        if package.loaded["todo-comments"] then
-            require("todo-comments").jump_prev()
-        end
-    end, {desc = "Previous TODO"})
-
-    -- ========================================================================
-    -- UNDO/REDO SHORTCUTS
-    -- ========================================================================
-
-    map("n", "<C-z>", "u", {desc = "Undo"})
-    map("n", "<C-y>", "<C-r>", {desc = "Redo"})
-    map("i", "<C-z>", "<C-o>u", {desc = "Undo (insert mode)"})
-    map("i", "<C-y>", "<C-o><C-r>", {desc = "Redo (insert mode)"})
-
-    -- ========================================================================
-    -- SPECIAL BEHAVIORS
-    -- ========================================================================
-
-    -- Force LSP tab behavior for mouse clicks.
-    map("n", "<C-LeftMouse>", function()
-        if _G.LspDefinitionInTab then
-            _G.LspDefinitionInTab()
-        else
-            vim.lsp.buf.definition()
-        end
-    end, {desc = "Go to definition (mouse)"})
-
-    -- Reassigning ZZ for smart behavior.
-    map("n", "ZZ", function()
-        if vim.bo.modified then
-            vim.cmd("write")
-        end
-        smart_tab_close()
-    end, {desc = "Save and smart close tab"})
-
-    -- ========================================================================
-    -- UTILITY FUNCTIONS
-    -- ========================================================================
-
-    -- Manual trailing spaces cleanup.
-    map("n", "<leader>dx", function()
-        local save_cursor = vim.fn.getpos(".")
-        vim.cmd([[%s/\s\+$//e]])
-        vim.fn.setpos(".", save_cursor)
-        vim.notify("Trailing spaces cleaned", vim.log.levels.INFO)
-    end, {desc = "Clean Trailing Spaces"})
-
-    -- Auto-clean trailing spaces on save
-    vim.api.nvim_create_autocmd("BufWritePre", {
-        group = vim.api.nvim_create_augroup("TrailingSpaces", { clear = true }),
-        pattern = "*",
-        callback = function()
-            if vim.bo.binary then return end
-            local save_cursor = vim.fn.getpos(".")
-            vim.cmd([[%s/\s\+$//e]])
-            vim.fn.setpos(".", save_cursor)
-        end,
-    })
-
-    -- Toggle trailing spaces visibility
-    map("n", "<leader>dt", function()
-        if vim.opt.list:get() then
-            vim.opt.list = false
-            vim.notify("Trailing spaces hidden", vim.log.levels.INFO)
-        else
-            vim.opt.list = true
-            vim.opt.listchars = { trail = "·" }
-            vim.notify("Trailing spaces visible", vim.log.levels.INFO)
-        end
-    end, {desc = "Toggle Trailing Spaces"})
-
-    -- ========================================================================
-    -- USER COMMANDS
-    -- ========================================================================
-
-    -- Smart quit commands with Dashboard-aware logic.
-    vim.api.nvim_create_user_command(
-        "Q",
-        function(opts)
-            local filetype = vim.bo.filetype
-            if filetype == "dashboard" then
-                if opts.bang then
-                    vim.cmd("qa!")
-                else
-                    vim.cmd("qa")
-                end
-            else
-                if opts.bang then
-                    force_close_tab()
-                else
-                    smart_tab_close()
-                end
-            end
-        end,
-        {bang = true, desc = "Smart quit command"}
-    )
-
-    vim.api.nvim_create_user_command(
-        "Wq",
-        function(opts)
-            vim.cmd("write")
-            if opts.bang then
-                force_close_tab()
-            else
-                smart_tab_close()
-            end
-        end,
-        {bang = true, desc = "Write and smart quit"}
-    )
-
-    vim.api.nvim_create_user_command(
-        "WQ",
-        function(opts)
-            vim.cmd("write")
-            if opts.bang then
-                force_close_tab()
-            else
-                smart_tab_close()
-            end
-        end,
-        {bang = true, desc = "Write and smart quit"}
-    )
-
-    -- Setup conditional command abbreviations.
-    setup_conditional_abbreviations()
-
-    -- Override :new to create new tab instead of split.
-    vim.cmd("cabbrev new tabnew")
+    vim.ui.select = require("config.picker").select
+    for _, entry in ipairs(M.entries) do
+        vim.keymap.set(entry[4] or "n", entry[1], entry[2], { silent = true, desc = entry[3] })
+    end
+    -- Keep native operators, Ctrl-W windows, Ctrl-T tags, Ctrl-K digraphs and z folds.
+    vim.keymap.set("x", "<", "<gv", { silent = true })
+    vim.keymap.set("x", ">", ">gv", { silent = true })
+    vim.api.nvim_create_user_command("TabsList", call("config.tabs-list", "show_tabs_window"), {})
+    vim.api.nvim_create_user_command("KeymapLegend", function() M.palette() end, {})
 end
-
--- User command for closing saved tabs.
-vim.api.nvim_create_user_command(
-    "CloseSavedTabs",
-    close_saved_tabs,
-    {desc = "Close all saved tabs and return to Dashboard"}
-)
-
--- Export functions for use in legendary.
-M.close_saved_tabs = close_saved_tabs
-M.smart_tab_close = smart_tab_close
-M.force_close_tab = force_close_tab
-
 return M

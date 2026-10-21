@@ -1,760 +1,428 @@
-# Neovim IDE - Professional Tab-Focused Development Environment
-
-## Overview
-
-This Neovim configuration creates a modern IDE experience focused on **tab-based workflow** rather than traditional buffer management. This approach makes it more similar to contemporary IDEs like VSCode, IntelliJ IDEA, or Sublime Text, where each file opens in its own tab for easier navigation and organization.
-
-## Key Philosophy: Tab-Centric Workflow
-
-Unlike traditional Vim workflows that rely heavily on buffers, this configuration prioritizes tabs:
-
-- **Files open in tabs** - Each file gets its own tab automatically
-- **LSP navigation opens in tabs** - Go to definition, references, etc. open in new tabs
-- **Telescope opens in tabs** - File search results open in tabs
-- **Smart tab management** - Orphaned buffers are automatically cleaned up
-- **Visual tab indicators** - Clear tab bar shows all open files
-
-## Core Features
-
-- **Language Server Protocol (LSP)** - Full IDE features for multiple languages
-- **Centralized hotkey system** - All commands through Legendary with Ukrainian layout support
-- **Smart file explorer** - Modal file tree with tab integration
-- **Advanced search** - Find files and text with tab results
-- **Theme switcher** - Multiple beautiful themes with live preview
-- **Terminal integration** - Built-in terminal with project awareness
-- **Git integration** - Visual git status and operations
-- **Minimal auto-startup** - Linters and formatters run manually
-- **Grouped hotkey system** - Logical organization of commands
-
-## Installation
-
-### 1. Install Dependencies and Tools
-
-Update system and install essential tools.
-
-```bash
-sudo apt remove -y npm;
-sudo apt autoremove -y;
-
-sudo apt update && \
-sudo apt install -y \
-  nodejs \
-  npm \
-  build-essential \
-  cmake \
-  gettext \
-  ninja-build \
-  unzip \
-  curl \
-  git \
-  libtool \
-  libtool-bin \
-  autoconf \
-  automake \
-  pkg-config \
-  clangd \
-  golang-go \
-  fd-find \
-  luarocks \
-  cargo \
-  composer \
-  xclip \
-  python3-pip \
-  ripgrep \
-  codespell \
-  libssl-dev \
-  libfreetype6-dev \
-  libfontconfig1-dev \
-  libxcb-shape0-dev \
-  libxcb-xfixes0-dev \
-  libxkbcommon-dev \
-  libxkbcommon-x11-dev \
-  libegl1-mesa-dev
-```
-
-### 2. Install Nerd Fonts
-
-Download and install popular Nerd Fonts.
-
-```bash
-adwaita="https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/AdwaitaMono.zip"
-anonymous="https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/AnonymousPro.zip"
-jetbrains="https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/JetBrainsMono.zip"
-firacode="https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/FiraCode.zip"
-cascadia="https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/CascadiaCode.zip"
-hack="https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/Hack.zip"
-sourcecode="https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/SourceCodePro.zip"
-ubuntu="https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/UbuntuMono.zip"
-dejavu="https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/DejaVuSansMono.zip"
-inconsolata="https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/Inconsolata.zip"
-
-mkdir -p ~/.local/share/fonts && \
-mkdir -p ~/tmp/fonts && \
-cd ~/tmp/fonts && \
-wget $adwaita && \
-wget $anonymous && \
-wget $jetbrains && \
-wget $firacode && \
-wget $cascadia && \
-wget $hack && \
-wget $sourcecode && \
-wget $ubuntu && \
-wget $dejavu && \
-wget $inconsolata && \
-unzip -o "*.zip" -d ~/.local/share/fonts/ && \
-rm *.zip && \
-fc-cache -fv
-```
-
-**⚠️ IMPORTANT**: Set one of the `UbuntuMono Nerd Font Mono` fonts as your terminal's default font for proper icon display.
-
-### 3. Install Neovim
-
-Remove old version.
-
-```bash
-sudo apt remove neovim
-sudo rm -f /usr/bin/nvim
-sudo rm -f /usr/local/bin/nvim
-sudo rm -rf /usr/local/share/nvim/
-sudo rm -rf /opt/nvim-linux-x86_64
-sudo rm -rf /opt/nvim-linux-arm64
-sudo rm -rf /opt/nvim
-```
-
-Clear cache.
-
-```bash
-rm -rf ~/.local/share/nvim/
-rm -rf ~/.local/state/nvim/
-```
-
-Temporary directory.
-
-```bash
-mkdir -p /tmp/nvim
-cd /tmp/nvim
-```
-
-Install for x86_64.
-
-```bash
-curl -LO https://github.com/neovim/neovim/releases/download/v0.11.5/nvim-linux-x86_64.tar.gz
-tar xzvf nvim-linux-x86_64.tar.gz
-sudo mv nvim-linux-x86_64 /opt/nvim
-sudo ln -sf /opt/nvim/bin/nvim /usr/bin/nvim
-hash -r
-```
-
-Install for arm64.
-
-```bash
-curl -LO https://github.com/neovim/neovim/releases/download/v0.11.5/nvim-linux-arm64.tar.gz
-tar xzvf nvim-linux-arm64.tar.gz
-sudo mv nvim-linux-arm64 /opt/nvim
-sudo ln -sf /opt/nvim/bin/nvim /usr/bin/nvim
-hash -r
-```
-
-Check version.
-
-```bash
-nvim --version | head -n 5
-```
-
-```txt
-NVIM v0.11.5
-Build type: Release
-LuaJIT 2.1.1741730670
-Run "nvim -V1 -v" for more info
-```
-
-### 4. Install Python Tools
-
-Global Python formatter installation.
-
-```bash
-pip3 install black isort mypy
-```
-
-Or for specific project with virtual environment.
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install black isort django mypy # add other dependencies as needed
-```
-
-### 5. Install Neovim IDE Configuration
-
-Clear cache and clone this repo.
-
-```bash
-bash -lc '
-set -euo pipefail
-cd "$HOME"
-config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/nvim"
-data_dir="${XDG_DATA_HOME:-$HOME/.local/share}/nvim"
-state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/nvim"
-cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/nvim"
-[ -e "$config_dir" ] && mv "$config_dir" "$config_dir.bak.$(date +%s)"
-[ -e "$data_dir" ] && mv "$data_dir" "$data_dir.bak.$(date +%s)"
-[ -e "$state_dir" ] && mv "$state_dir" "$state_dir.bak.$(date +%s)"
-[ -e "$cache_dir" ] && mv "$cache_dir" "$cache_dir.bak.$(date +%s)"
-mkdir -p "$config_dir"
-mkdir -p "$data_dir"
-mkdir -p "$state_dir"
-mkdir -p "$cache_dir"
-echo -e "\n\nCloning Neovim IDE..."
-git clone --depth 1 https://github.com/valsorym/nvim-ide "$config_dir"
-# rm -rf "$config_dir/.git"
-nvim --headless "+Lazy! sync" "+qa"
-echo -e "\n\nNeovim IDE installed successfully: $config_dir"
-echo "Plugins will install automatically on first launch..."
-' && nvim
-```
-
-On first launch, Neovim will automatically:
-- Install all plugins through Lazy.nvim
-- Download LSP servers through Mason
-- Configure Treesitter parsers
-
-### 6. Set NVim as Default
-
-Set NVim as default editor.
-
-```bash
-sudo update-alternatives --install /usr/bin/vim vim /usr/local/bin/nvim 60
-sudo update-alternatives --install /usr/bin/vi vi /usr/local/bin/nvim 60
-sudo update-alternatives --install /usr/bin/editor editor /usr/local/bin/nvim 60
-```
-
-## Copilot
-
-### Update NodeJS
-
-Remove form ~/.bashrc
-
-```bash
-#export NVM_DIR="$HOME/.nvm"
-#[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-#[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-```
-
-And reload: `source ~/.bashrc`
-
-Remove old version of the Node.
-
-```bash
-sudo apt -y remove --purge nodejs npm
-sudo apt autoremove
-sudo apt autoclean
-
-sudo rm -rf /usr/local/lib/node_modules
-sudo rm -rf ~/.npm
-sudo rm -rf ~/.node-gyp
-rm -rf ~/.nvm
-
-sudo rm -f /usr/local/bin/node
-sudo rm -f /usr/local/bin/npm
-sudo rm -f /usr/local/bin/npx
-
-sudo rm -f /etc/apt/sources.list.d/nodesource.list
-sudo rm -f /etc/apt/sources.list.d/nodejs.list
-sudo apt update
-```
-
-Install new Node version.
-
-```bash
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-sudo apt install -y nodejs
-```
-
-Test version.
-
-```bash
-node --version
-npm --version
-which node
-```
-
-And test version and path in NVim.
-
-```bash
-:lua print(vim.fn.system("node --version"))
-:lua print(vim.fn.system("which node"))
-```
-
-### Copilot auth
-
-Open in browser: https://github.com/login/device
-
-In NVim press: `<leader>coa`
-
-```
-First copy your one-time code: E3A1-56C9
-Press ENTER to open GitHub in your browser
-```
-
-Enter the code in your browser and click "Authorize Plugin".
-
-### Daily Usage
-
-```bash
-<leader>cot          # Copilot Toggle
-<leader>cos          # Check Copilot status
-<leader>cosi          # Copilot Sign In
-<leader>coso          # Copilot Sign Out
-<leader>cose          # Copilot Setup
-
-# Disabled...
-<leader>coc          # Copilot Chat
-<leader>coe          # Copilot Explain Code
-<leader>cof          # Copilot Fix Code
-<leader>cor          # Copilot Review Code
-<leader>cod          # Copilot Generate Docs
-```
-
-### While Coding (when enabled)
-
-```bash
-# In Insert Mode:
-Ctrl+J               # Accept suggestion
-Ctrl+H               # Dismiss suggestion
-Ctrl+N               # Next suggestion
-Ctrl+P               # Previous suggestion
-```
-
-## Hotkey System and Commands
-
-### Centralized Command System
-
-The entire configuration uses **Legendary** for centralized command management with Ukrainian layout support.
-
-#### Main Command Menu
-```bash
-<Space>               # Main menu (or <leader>)
-<leader><leader>      # Search all commands
-<leader>?             # Browse by groups
-<leader>:             # Search commands
-```
-
-#### Command Groups (`<leader>` + letter)
-- **`<leader>t`** - 📑 **Tabs** (tab management)
-- **`<leader>w`** - 🏢 **Workspaces** (sessions and workspaces)
-- **`<leader>f`** - 🔍 **Find/Search** (search and replace)
-- **`<leader>e`** - 📁 **Explorer** (files and buffers)
-- **`<leader>c`** - 💻 **Code/LSP** (code and LSP operations)
-- **`<leader>x`** - ⚙️ **System** (system and settings)
-- **`<leader>g`** - 🔀 **Git** (Git operations)
-- **`<leader>y`** - 📋 **Yank** (clipboard)
-- **`<leader>u`** - 🎨 **UI/Themes** (interface and themes)
-- **`<leader>d`** - 📝 **Document** (formatting)
-- **`<leader>a`** - 🗺️ **Aerial** (code navigation)
-- **`<leader>s`** - 🔎 **Search** (advanced search)
-
-### Function Keys
-```bash
-F2    # Save and format
-F5    # Previous tab
-F6    # Next tab
-F7    # Code Inspector (document symbols)
-F8    # Tabs list
-F9    # File explorer
-F10   # Buffers list
-```
-
-### Tab Navigation
-```bash
-Alt+Left/Right        # Previous/next tab
-Alt+1..9             # Go to tab 1-9
-Alt+h/l              # Move tab left/right
-Ctrl+t               # New tab
-```
-
-### Core Navigation Hotkeys
-```bash
-gd                   # Go to definition (in new tab)
-gD                   # Go to declaration
-gi                   # Go to implementation
-gr                   # Show references
-K                    # Documentation under cursor
-Ctrl+k               # Function signature
-```
-
-## Language Support
-
-### 🐍 Python Development
-
-#### Virtual Environments
-```bash
-<leader>cva          # Activate venv
-<leader>cvd          # Deactivate venv
-<leader>cvs          # Venv status
-<leader>cvf          # Find venv
-<leader>cvc          # Select venv
-```
-
-#### Code Formatting
-```bash
-<leader>df           # Combined formatting (isort + black)
-<leader>ci           # Sort imports (isort)
-<leader>cb           # Black formatting
-F2                   # Save + format
-```
-
-#### Python Terminals
-```bash
-<leader>xtp          # Python REPL with active venv
-<leader>xtd          # Django shell (if manage.py exists)
-```
-
-#### Diagnostics and Tools
-```bash
-<leader>ca           # Code Actions
-<leader>cr           # Rename symbol
-<leader>cc           # Line diagnostics
-<leader>cC           # Project diagnostics
-```
-
-#### Python Configuration
-```bash
-:PythonToolsStatus   # Python tools status
-:CreatePyprojectToml # Create pyproject.toml
-:CreatePyrightConfig # Create pyrightconfig.json
-```
-
-#### Linters (manual trigger)
-```bash
-<leader>cks          # Python tools status
-<leader>ckp          # Create pyproject.toml
-<leader>ckr          # Create pyrightconfig.json
-```
-
-### 🚀 Go Development
-
-#### Formatting and Organization
-```bash
-<leader>df           # Format with goimports
-F2                   # Save + auto-format
-```
-
-#### Go-specific Commands
-```bash
-gd                   # Go to definition
-gi                   # Go to interface
-<leader>ca           # Code Actions (add imports, etc.)
-```
-
-#### Go Tools
-```bash
-:GoMod tidy          # Clean go.mod (via LSP)
-```
-
-### 🌐 HTML/CSS Development
-
-#### Template Support
-- **HTML**: Full HTML5 support with Emmet
-- **Django Templates**: Automatic recognition of `.html` files as Django templates
-- **CSS/SCSS**: Full support with autocompletion
-
-#### Formatting
-```bash
-<leader>df           # Format via Prettier
-F2                   # Save + format
-```
-
-#### Emmet Expansion
-```bash
-# In HTML files
-div.container>ul>li*3    # Expands to HTML structure
-Ctrl+y,              # Activate Emmet (if configured)
-```
-
-#### Rendering
-```bash
-<leader>dr           # Toggle rendering (Markdown/RST)
-```
-
-### 🔧 JavaScript/TypeScript
-
-#### Formatting and Linting
-```bash
-<leader>df           # Format via Prettier
-<leader>cke          # Toggle ESLint (placeholder)
-```
-
-#### TypeScript Specific
-```bash
-<leader>ca           # Code Actions
-<leader>cr           # Rename
-K                    # Hover info with types
-```
-
-## Linter and Formatter System
-
-### ⚠️ Important: Minimal Auto-startup
-
-This configuration uses **minimal auto-startup** linters to preserve performance. Most tools run **manually** via hotkeys.
-
-#### Automatic Actions
-- Format on save: `F2` or `:w`
-- Clean trailing spaces: automatically on save
-- LSP diagnostics: real-time
-
-#### Manual Linter Triggers
-```bash
-<leader>ckc          # Toggle Codespell (spell checking)
-<leader>ckd          # Toggle djlint (Django templates)
-<leader>cke          # Toggle ESLint (JavaScript)
-<leader>ckf          # Toggle Flake8 (Python)
-```
-
-## File and Project Management
-
-### File Explorer (F9)
-```bash
-F9 or <leader>ee     # Open file explorer
-
-# In explorer:
-Enter                # Open file/folder
-a                    # Create file/folder
-d                    # Delete
-rn                   # Rename
-c                    # Copy
-x                    # Cut
-p                    # Paste
-f                    # Filter files
-F                    # Clear filter
-H                    # Show/hide hidden files
-r                    # Refresh
-q or Esc             # Close
-```
-
-### Find Files and Text
-```bash
-<leader>ff           # Find files
-<leader>fg           # Live grep (search in text)
-<leader>fG           # Search including ignored files
-<leader>fb           # Find buffers
-<leader>fo           # Recent files
-<leader>fd           # Document symbols
-```
-
-### Text Replacement
-```bash
-<leader>fc           # Find & replace via Telescope
-<leader>fC           # Find & replace (including ignored)
-<leader>fx           # Replace current word
-
-# In current file
-:%s/old/new/g        # Replace all
-:%s/old/new/gc       # Replace with confirmation
-```
-
-## Theme Management
+# Neovim IDE 2.0
 
-### Temporary Theme Change
-```bash
-<leader>ut           # Open theme switcher
-# Navigate with arrows, Enter to apply
-# Theme only lasts until restart
-```
-
-### Permanent Theme Change
-```bash
-<leader>us           # Set permanent theme
-# Select theme and press Enter
-# Theme saves forever
-
-<leader>ui           # Current theme information
-```
-
-## Tab Management
-
-### Smart Tab Closing
-```bash
-<leader>tq           # Smart close (returns to Dashboard if last)
-<leader>tc           # Close all saved tabs
-<leader>tQ           # Force close without saving
-<leader>tA           # Close all and exit
-ZZ                   # Save and smart close tab
-```
-
-### Creation and Navigation
-```bash
-<leader>tn           # New tab
-Ctrl+t               # Alternative new tab
-<leader>tO           # Close other tabs
-```
-
-## Terminals and Tools
-
-### Built-in Terminal
-```bash
-<leader>xtf          # Floating terminal
-<leader>xth          # Horizontal terminal
-<leader>xtv          # Vertical terminal
-Ctrl+\               # Quick terminal access
-```
-
-### Specialized Terminals
-```bash
-<leader>xtp          # Python REPL with venv
-<leader>xtn          # Node.js REPL
-```
-
-## Git Integration
-
-### Git Hunk Operations
-```bash
-<leader>gs           # Stage hunk
-<leader>gr           # Reset hunk
-<leader>gp           # Preview hunk
-<leader>gb           # Blame line
-<leader>gd           # Diff current file
-<leader>gt           # Toggle blame
-```
-
-### Git Change Navigation
-```bash
-]c                   # Next Git hunk
-[c                   # Previous Git hunk
-```
-
-## Advanced Features
-
-### Code Analysis and Navigation
-```bash
-F7                   # Code Inspector (all file symbols)
-<leader>cs           # Document symbols
-<leader>cg           # Document symbols (grouped)
-<leader>cw           # Workspace symbols
-<leader>af           # Aerial symbols
-```
-
-### TODO Comments
-```bash
-<leader>st           # Find TODO comments
-<leader>sT           # Find TODO/FIX/FIXME
-]t                   # Next TODO
-[t                   # Previous TODO
-```
-
-### Document Formatting
-```bash
-<leader>df           # Format document (language-specific)
-<leader>dr           # Toggle rendering (Markdown/RST)
-
-# Indentation settings
-<leader>ds2          # 2 spaces
-<leader>ds4          # 4 spaces
-<leader>dst          # Toggle tabs ↔ spaces
-
-# ColorColumn
-<leader>dc0          # Toggle ColorColumn
-<leader>dc1          # ColorColumn at 79 characters
-<leader>dc2          # ColorColumn at 120 characters
-```
-
-### Clipboard
-```bash
-<leader>ya           # Copy entire file
-<leader>yy           # Copy selection
-<leader>yp           # Paste from system clipboard
-```
-
-## Settings and System
-
-### Configuration
-```bash
-<leader>xr           # Reload configuration
-<leader>xm           # Mason (LSP server management)
-<leader>xu           # Undotree (change history)
-<leader>xf           # Toggle auto-format on save
-```
-
-### Diagnostics and Errors
-```bash
-]d                   # Next diagnostic
-[d                   # Previous diagnostic
-<leader>cc           # Line diagnostics
-<leader>cC           # Project diagnostics
-<leader>cl           # Diagnostic list
-<leader>cq           # Quickfix list
-```
-
-## Configuration Structure
-
-```
-~/.config/nvim/
-├── lua/
-│   ├── config/
-│   │   ├── keymaps.lua        # All base hotkeys
-│   │   ├── safe-save.lua      # Safe file saving
-│   │   └── langmap-helper.lua # Ukrainian layout support
-│   └── plugins/
-│       ├── legendary.lua      # Centralized command system
-│       ├── additional.lua     # Core plugins
-│       ├── lsp.lua           # Language servers
-│       ├── mason.lua         # LSP installer
-│       ├── formatting.lua    # Formatting and linting
-│       ├── nvim-tree.lua     # File explorer
-│       ├── telescope.lua     # Search and navigation
-│       ├── theme.lua         # Theme system
-│       └── dashboard.lua     # Start screen
-└── .last_colorscheme         # Saved theme
-```
-
-## Quick Start Guide
-
-### 1. Open File Explorer
-```bash
-F9                   # Open file manager
-<leader>ee           # Alternative way
-```
-
-### 2. Navigate Between Tabs
-```bash
-Alt + Left / F5      # Previous tab
-Alt + Right / F6     # Next tab
-Alt + 1-9            # Go to tab number 1-9
-```
-
-### 3. Search and Replace
-```bash
-<leader>fg           # Search text in all files
-:%s/old/new/g        # Replace in current file
-```
-
-### 4. Code Navigation
-```bash
-gd                   # Go to definition
-gr                   # Show references
-F7                   # Browse document symbols
-<leader>ca           # Code actions
-```
-
-### 5. Python Development
-```bash
-<leader>cvc          # Select virtual environment
-<leader>xtp          # Python terminal with venv
-<leader>df           # Format (isort + black)
-F2                   # Save and format
-```
+[Українська](README.UK.md)
 
-## Tips and Best Practices
-
-1. **Master the tab system** - Let files open in tabs naturally
-2. **Use Legendary** - Press `<Space>` and explore available options
-3. **Master F-keys** - F7-F10 provide instant access to panels
-4. **Use LSP navigation** - Use `gd`, `gr`, `gi` for code exploration
-5. **Experiment with themes** - Use `<leader>ut` to find your preference
-6. **Configure linters gradually** - Enable tools as needed for projects
-7. **Use modal file explorer** - `F9` for quick operations, `Esc` to close
-8. **Combine search tools** - Use Telescope + quickfix for mass replacements
-9. **Utilize terminal integration** - `Ctrl+\` for quick access
-10. **Keep workspace clean** - Use `<leader>tq` for smart tab management
-
-This configuration transforms Neovim into a powerful, modern IDE while maintaining the efficiency and flexibility that makes Vim exceptional. The tab-centric approach bridges the gap between traditional Vim workflows and contemporary IDE expectations.
+A terminal editor with file tabs, a floating explorer, searchable commands and
+language tools. The dashboard, dark themes and tab workflow remain familiar;
+version 2 uses native Neovim facilities for sessions, terminals, comments and snippets.
+
+## Requirements and installation
+
+- Neovim **0.11.3+**; this configuration is tested with **0.11.5**.
+- Git for plugins and ripgrep (`rg`) for file and text search.
+- A C compiler for Tree-sitter parsers; `make` enables the optional native Telescope sorter.
+- A Nerd Font for icons and a terminal with 24-bit colour.
+- Language runtimes and servers only for the languages you use. Node.js is required
+  by several web/Python language servers; Python, Go and C/C++ tools have their own runtimes.
+- Alacritty is optional, for the separate desktop window. Clipboard integration
+  uses the provider available on your OS (`:checkhealth vim.provider`).
+
+Back up an existing `~/.config/nvim` before installing. Keep its data and state
+until you have checked your sessions and plugins. Clone into an empty destination:
+
+```sh
+git clone https://github.com/valsorym/nvim-ide.git ~/.config/nvim
+nvim
+```
+
+The first start installs plugins. Subsequent starts do not check for updates or
+install language servers automatically. Install language support explicitly:
+
+```vim
+:ParsersInstall
+:LanguageToolsInstall
+```
+
+The second command installs the complete supported server set. Use `:Mason` or
+`:LspInstall pyright lua_ls` to choose individual servers instead. Parser builds
+need a compiler and network access. Restart after installing language tools.
+`:Lazy restore` restores the plugin revisions
+in `lazy-lock.json`; update plugins deliberately with `:Lazy update`.
+
+## Ukrainian keyboard layouts
+
+Command keys follow physical QWERTY positions. **`mac` is the default on every OS**:
+
+| Setting | Physical `b` | Physical `s` |
+| --- | --- | --- |
+| `mac` (default) | `і` / `І` | `и` / `И` |
+| `windows` | `и` / `И` | `і` / `І` |
+
+Choose the layout before startup, for example in your shell configuration:
+
+```sh
+export NVIM_IDE_UKRAINIAN_LAYOUT=mac
+# For the Windows-style Ukrainian layout:
+export NVIM_IDE_UKRAINIAN_LAYOUT=windows
+```
+
+Alternatively, set this **before** `require("config.langmap").setup()` in `init.lua`:
+
+```lua
+vim.g.nvim_ide_ukrainian_layout = "mac" -- or "windows"
+```
+
+An explicit Lua value takes precedence over the environment variable. Restart
+Neovim after changing it. This selects keyboard positions; it does not change
+the OS layout or infer it from the OS name.
+
+`<leader>` is **Space**. `Space wD`, `Space цВ`, `Space wВ` and `Space цD` all delete
+the current session. Native commands such as `dw` also work at the same physical
+positions. Command maps receive Ukrainian aliases as they are registered,
+including lazy plugins and buffer-local menus; the command legend lists only
+the English spelling. Insert, search and Ex-command text is not transliterated.
+Ctrl/Alt combinations still depend on the keycodes sent by your terminal; the
+layout option does not intercept terminal or OS shortcuts.
+
+## Keys and command groups
+
+`Space Space` searches the command legend; `Space ?` selects a group.
+Keys are sequential, not held together. Uppercase letters require Shift.
+The tables below list configured global mappings. `n` = Normal, `x` = Visual,
+`o` = operator-pending, `i` = Insert. Native Vim commands remain available.
+
+| Prefix | Group |
+| --- | --- |
+| `Space b` | Buffers and explorer |
+| `Space c` | Code navigation, symbols and environments |
+| `Space d` | Document formatting and indentation |
+| `Space e` | Editing and clipboard |
+| `Space f` | Finding and replacing |
+| `Space g` | Git |
+| `Space o` | Tool managers and configuration |
+| `Space r` | Running terminals and REPLs |
+| `Space t` | Tabs |
+| `Space u` | Appearance |
+| `Space w` | Workspaces and sessions |
+| `Space x` | Checks and diagnostics |
+
+| Key | Mode | Action |
+| --- | --- | --- |
+| `<leader><leader>` | n | Search commands |
+| `<leader>?` | n | Browse key groups |
+| `<leader>:` | n | Search Ex commands |
+| `<leader>bb` | n | Find buffer |
+| `<leader>bn` | n | Next buffer |
+| `<leader>bp` | n | Previous buffer |
+| `<leader>bd` | n | Delete buffer |
+| `<leader>be` | n | File explorer |
+| `<leader>bh` | n | Project history |
+| `<leader>ca` | n/x | Code action |
+| `<leader>cr` | n | Rename symbol |
+| `<leader>cd` | n | Go to definition in tab |
+| `<leader>cD` | n | Go to declaration in tab |
+| `<leader>ci` | n | Go to implementation in tab |
+| `<leader>ct` | n | Go to type definition in tab |
+| `<leader>ch` | n | Signature help |
+| `<leader>cs` | n | Document symbols |
+| `<leader>cS` | n | Grouped document symbols |
+| `<leader>cw` | n | Workspace symbols |
+| `<leader>co` | n | Toggle code outline |
+| `<leader>cO` | n | Outline navigation |
+| `<leader>cva` | n | Detect Python environment |
+| `<leader>cvc` | n | Select Python environment |
+| `<leader>cvd` | n | Use system Python |
+| `<leader>cvs` | n | Python environment status |
+| `<leader>cvf` | n | Refresh Python environment |
+| `<leader>cpt` | n | Toggle Copilot |
+| `<leader>cps` | n | Copilot status |
+| `<leader>cpa` | n | Copilot setup |
+| `<leader>cpx` | n | Copilot sign out |
+| `<leader>df` | n | Format document |
+| `<leader>di` | n | Sort Python imports |
+| `<leader>db` | n | Format Python with Black |
+| `<leader>ds` | n | Toggle format on save |
+| `<leader>dx` | n | Trim trailing whitespace |
+| `<leader>d2` | n | Use two-space indentation |
+| `<leader>d4` | n | Use four-space indentation |
+| `<leader>dt` | n | Use tab indentation |
+| `<leader>dS` | n | Convert tabs to spaces |
+| `<leader>dT` | n | Convert spaces to tabs |
+| `<leader>dI` | n | Show indentation settings |
+| `<leader>dr` | n | Toggle Markdown / RST rendering |
+| `<leader>ed` | n/x | Delete without yanking |
+| `<leader>ec` | n/x | Change without yanking |
+| `<leader>ey` | n/x | Yank to system clipboard |
+| `<leader>ep` | n/x | Paste system clipboard |
+| `<leader>ea` | n | Yank entire document |
+| `<leader>eu` | n | Undo history |
+| `<leader>ej` | x | Move selection down |
+| `<leader>ek` | x | Move selection up |
+| `<leader>ff` | n | Find files |
+| `<leader>fg` | n | Search project text |
+| `<leader>fG` | n | Search including ignored files |
+| `<leader>fo` | n | Recent files |
+| `<leader>fh` | n | Find help |
+| `<leader>fr` | n | Find and replace in project |
+| `<leader>fR` | n | Find and replace including ignored files |
+| `<leader>fw` | n | Replace current word in project |
+| `<leader>fj` | n/x/o | Flash jump |
+| `<leader>fJ` | n/x/o | Flash syntax selection |
+| `<leader>gs` | n/x | Stage Git hunk |
+| `<leader>gr` | n/x | Reset Git hunk |
+| `<leader>gp` | n | Preview Git hunk |
+| `<leader>gb` | n | Blame current line |
+| `<leader>gd` | n | Diff current file |
+| `<leader>gt` | n | Toggle line blame |
+| `<leader>ol` | n | Plugin manager |
+| `<leader>om` | n | Language tool manager |
+| `<leader>oc` | n | Open editor configuration |
+| `<leader>rf` | n | Floating terminal |
+| `<leader>rh` | n | Horizontal terminal |
+| `<leader>rv` | n | Vertical terminal |
+| `<leader>rp` | n | Python REPL |
+| `<leader>rn` | n | Node REPL |
+| `<leader>rd` | n | Django shell |
+| `<leader>rr` | n | Django development server |
+| `<leader>tn` | n | New tab |
+| `<leader>tq` | n | Close current tab |
+| `<leader>tQ` | n | Discard and close current tab |
+| `<leader>tc` | n | Close saved tabs |
+| `<leader>to` | n | Close other tabs |
+| `<leader>tl` | n | Tab list |
+| `<leader>th` | n | Move tab left |
+| `<leader>tj` | n | Move tab right |
+| `<leader>ta` | n | Quit editor |
+| `<leader>ut` | n | Preview and select theme |
+| `<leader>us` | n | Select and save theme |
+| `<leader>ui` | n | Current theme |
+| `<leader>uI` | n | Toggle indent guides |
+| `<leader>uw` | n | Toggle wrapping |
+| `<leader>ul` | n | Toggle whitespace marks |
+| `<leader>uc` | n | Toggle column guide |
+| `<leader>ws` | n | Save session |
+| `<leader>wr` | n | Restore session |
+| `<leader>wl` | n | Restore last session |
+| `<leader>wD` | n | Delete current session |
+| `<leader>wf` | n | Find session |
+| `<leader>wL` | n | Import legacy session |
+| `<leader>ww` | n | Find workspace |
+| `<leader>wa` | n | Add workspace |
+| `<leader>xx` | n | Line diagnostics |
+| `<leader>xb` | n | Buffer diagnostics |
+| `<leader>xw` | n | Workspace diagnostics |
+| `<leader>xq` | n | Quickfix list |
+| `<leader>xl` | n | Location list |
+| `<leader>xt` | n | Find TODO comments |
+| `<leader>xT` | n | Find TODO / FIXME |
+| `<leader>xp` | n | Python tools status |
+| `<leader>xi` | n | LSP health |
+| `<leader>xh` | n | Editor / terminal health |
+| `<leader>xL` | n | Buffer performance mode |
+| `<F2>` | n/i | Save file |
+| `<F5>` | n | Previous tab |
+| `<F6>` | n | Next tab |
+| `<F7>` | n | Document symbols |
+| `<F8>` | n | Tab list |
+| `<F9>` | n | File explorer |
+| `<F10>` | n | Buffer list |
+| `gd` | n | Go to definition in tab |
+| `gD` | n | Go to declaration in tab |
+| `gri` | n | Go to implementation in tab |
+| `grt` | n | Go to type definition in tab |
+| `gl` | n | Line diagnostics |
+| `<C-LeftMouse>` | n | Go to definition in tab |
+| `zR` | n | Open all folds |
+| `zM` | n | Close all folds |
+| `zr` | n | Open folds except configured kinds |
+| `zm` | n | Fold one more level |
+| `zp` | n | Preview fold |
+| `]t` | n | Next TODO |
+| `[t` | n | Previous TODO |
+| `]c` | n | Next Git hunk |
+| `[c` | n | Previous Git hunk |
+| `<Esc>` | n | Clear search highlight |
+
+### Native editing and local menus
+
+Use `hjkl`, `w/b/e`, `f/t`, `ciw`, `dap`, `y/p`, `u`, `Ctrl-r` and text objects as
+in Vim. `gc` comments a motion or selection; `gcc` comments a line. `=` indents
+and `gq` wraps text. Window commands use `Ctrl-w`; `gt`/`gT` switch tabs.
+`Ctrl-t` returns through the tag stack, `Ctrl-o`/`Ctrl-i` through jumps.
+Native `:q`, `:new`, `:split` and `:vsplit` retain their meanings. `:Q` closes the
+current IDE tab with a save/discard/cancel prompt; `:Q!` discards its changes.
+
+- Completion: `Ctrl-n`/`Ctrl-p` navigate, `Ctrl-Space` requests completion,
+  `Tab` accepts the current/first suggestion or advances a snippet, `Shift-Tab`
+  goes back. `Enter` accepts only an explicitly selected suggestion, otherwise
+  inserts a newline. `Ctrl-e` closes completion. Command-line completion is native.
+- Telescope: `Ctrl-n`/`Ctrl-p` (also `Ctrl-j`/`Ctrl-k`) move, `Tab` selects multiple
+  results, `Enter` accepts. File results open or reuse a tab. `Esc` leaves Insert
+  mode; another `Esc` closes the picker.
+- Explorer: `Enter` opens a file in a tab, `t` expands a directory, `T` collapses,
+  `C` makes the selected directory the root, `B` uses the working directory,
+  `P` goes to the parent, `gR` asks for a root path. `R` refreshes, `H` toggles
+  hidden files, `F` filters, `X` clears the filter; `n/d/r/c/x/p` create/delete/
+  rename/copy/cut/paste. `g?` shows local help, `Esc` closes the explorer.
+- Project history (`Space bh`): `/` filters paths, `j/k` move, `Enter` selects,
+  `d` removes an entry, `C` clears history and `q` closes the window.
+- Tab list: `j/k` move, `/` or `i` searches, `Enter` selects, `d` closes with
+  unsaved-work protection, `q` closes the list.
+- Terminal: `Ctrl-\ Ctrl-n` returns to Normal mode. Run the same terminal mapping
+  again to hide/show its buffer. Jobs are reused by working directory and task.
+- Copilot remains optional and disabled initially. `Space cpt` enables it;
+  `Space cpa` configures authentication. Insert-mode `Ctrl-g Ctrl-y` accepts,
+  `Ctrl-g Ctrl-n`/`Ctrl-g Ctrl-p` cycle, `Ctrl-g Ctrl-e` dismisses suggestions.
+
+## Language support
+
+Filetype settings are retained for all previously supported languages. A server
+starts only when its executable exists and a supported, ordinary-sized file opens.
+
+| Files | Language servers | External formatting (`Space df`) |
+| --- | --- | --- |
+| Python | pyright | isort, then Black |
+| JavaScript, TypeScript, JSX, TSX | ts_ls, emmet_ls | Prettier |
+| Vue | vue_ls + ts_ls with Vue TypeScript plugin | Prettier |
+| HTML | html, emmet_ls | Prettier |
+| Django HTML | html, emmet_ls | Native `=` / `gq`; external formatting disabled |
+| CSS, SCSS, Less | cssls; emmet_ls for CSS/SCSS | Prettier |
+| Sass | Native syntax/indentation | Native `=` |
+| Go | gopls | gofmt |
+| C, C++ | clangd | clang-format |
+| JSON, JSONC | jsonls with SchemaStore | Prettier |
+| YAML | yamlls with SchemaStore | Prettier |
+| Lua | lua_ls | StyLua |
+| Shell | bashls | shfmt |
+| Dockerfile | dockerls | Native `=` |
+| Markdown | marksman | Prettier |
+| reStructuredText | Native syntax + local renderer | Native `gq` |
+| TOML, XML, INI, Make, plain text | Native filetype settings | Native `=` / `gq` |
+
+LSP provides completion, definitions, references (`grr`), rename and diagnostics.
+The table lists integrations, not bundled language runtimes. Linters such as
+mypy and flake8 are optional external tools; no background lint job is started.
+`:PythonToolsStatus` reports executable availability, not lint results.
+
+Python environments are resolved per project (`.venv`, `venv`, `env`, `.env`,
+then an inherited `VIRTUAL_ENV`, then system Python). `Space cvc` selects an
+environment directory, `Space cvd` chooses system Python for the current project.
+This does not rewrite the process PATH or change other projects' pyright clients.
+For Vue, install both `vue-language-server` and `typescript-language-server`
+through Mason. For C/C++, provide `compile_commands.json` when the project needs it.
+
+### Formatting and replacement
+
+Formatting is manual by default. `Space df` processes the in-memory document
+asynchronously; it applies results only if the buffer has not changed in the
+meantime. Formatters receive stdin and never overwrite your file directly.
+Project Python tools and `node_modules/.bin` take precedence over PATH. If no
+external formatter is available, an attached LSP formatter is used when supported.
+
+`Space ds` toggles formatting on save for this editor process. Saving then waits
+up to 1.5 seconds per formatter; a failure leaves the text unchanged. Set
+`vim.g.format_on_save = true` before setup for a persistent preference. Install
+only the tools you need, e.g. `python -m pip install black isort` inside a project
+virtual environment, or Prettier as a project development dependency.
+Trailing whitespace is removed only by `Space dx`; Markdown hard breaks survive
+ordinary saves. Formatting Django templates is deliberately left to native commands.
+
+`Space fr` searches for **literal, case-sensitive** text. Mark result lines with
+`Tab`, then `Ctrl-r` in the prompt (or `r` in the results' Normal mode) to enter a
+replacement. Without a selection, all currently collected result lines are used.
+Review the confirmation before applying. Changes remain in undoable buffers;
+review them with `:ls` and save with `:wall`. Already modified/read-only buffers,
+large files and changed result lines are skipped. `Space fR` includes ignored
+files except `.git`. Native `:%s` remains available for regular expressions.
+
+## Performance and large files
+
+Buffers larger than **1 MiB** or **20,000 lines** enter large-file mode. That
+buffer skips Tree-sitter, LSP attachment, completion, diagnostics, folding and
+indent guides. Other buffers keep their language tools. The original text and
+normal editing remain available. `Space xL` / `:LargeFileInfo` shows the mode.
+A growing buffer is checked on leaving Insert mode and after saving; reopen a
+reduced file to reclassify it. Configure limits before module setup:
+
+```lua
+vim.g.nvim_ide_large_file_bytes = 2 * 1024 * 1024
+vim.g.nvim_ide_large_file_lines = 30000
+```
+
+Completion searches only the current buffer. Python diagnostics cover open files.
+Only the selected theme loads at startup; pickers, outlines and tool managers
+load on demand. Tree-sitter indentation is disabled in favour of filetype rules.
+Tab movement occurs once when a buffer becomes modified. To keep tab order fixed:
+
+```lua
+vim.g.nvim_ide_move_modified_tabs = false
+```
+
+## Sessions, tabs and themes
+
+File search, the explorer and definition navigation open/reuse file tabs; native
+splits remain usable. `Space tq` asks before discarding unsaved work. `Space tc`
+closes only tabs whose windows contain no modified buffers. Hidden unrelated
+buffers are retained. `F2` saves the current file, asking for a name when needed.
+
+Sessions use native `:mksession` under `stdpath("state")/sessions-v2`. They preserve
+files, directories, tabs, windows and folds, **not unsaved buffer text**. Eligible
+project sessions save on exit; restore is explicit. `Space wD` deletes the current
+session and prevents automatic recreation until `Space ws` explicitly saves it.
+Restoring sessions or switching workspaces is refused while buffers are modified.
+`Space wa` names the current directory; `Space ww` selects saved workspaces.
+
+For version 1 sessions, use `Space wL` (`:SessionLegacy`), then `Space ws` after
+restoring. Existing legacy files are retained. Add workspace names with `Space wa`.
+
+`Space ut` previews themes, `Space us` selects and remembers one. The chosen name
+is stored in Neovim's state directory; a legacy `.last_colorscheme` is read as a
+fallback. Themes: Catppuccin, Tokyo Night, Gruvbox Material, Kanagawa, Nord, OneDark.
+Restart after editing configuration; files are not automatically re-sourced.
+
+## Terminal, desktop window and tmux
+
+Use `nvim`, `nvim file` or `nvim -p first.py second.py` in any supported terminal.
+For an independent Alacritty window on Linux:
+
+```sh
+mkdir -p ~/.local/bin ~/.local/share/applications
+install -m 755 ~/.config/nvim/bin/nvim-ide ~/.local/bin/nvim-ide
+install -m 644 ~/.config/nvim/extras/nvim-ide.desktop ~/.local/share/applications/nvim-ide.desktop
+nvim-ide -p first.py second.py
+```
+
+Ensure `~/.local/bin` is on PATH. The launcher maximizes Alacritty directly and
+needs no `wmctrl`. `nvim-ide --terminal file` runs in the current terminal.
+It uses the same Neovim configuration and accepts ordinary Neovim arguments.
+
+For true colours in tmux, include the supplied fragment in `~/.tmux.conf`:
+
+```tmux
+source-file ~/.config/nvim/extras/tmux.conf
+```
+
+Reload with `tmux source-file ~/.tmux.conf`, detach/reattach the client and create
+a new pane. The fragment sets `default-terminal` to `tmux-256color` and advertises
+RGB for Alacritty and `xterm-256color` clients. Add your actual outer terminal
+name if it differs. Keep the terminal's real TERM value; do not force it in shell
+startup files. `tmux-256color` terminfo must exist on the host (including SSH hosts).
+See the [tmux colour FAQ](https://github.com/tmux/tmux/wiki/FAQ) for terminal-specific setup.
+
+`:checkhealth nvim_ide` checks editor, keyboard and terminal settings;
+`:checkhealth vim.lsp` checks language clients. RGB support is separate from the
+font: use a Nerd Font if icons are missing. A Linux virtual console may not
+support the same palette or glyphs as a graphical terminal emulator.
+
+## Upgrading from version 1
+
+Version 2 reorganizes leader mappings by action; consult `Space ?` and the tables
+above. Formatting is under `Space d`, checks under `Space x`, terminals under
+`Space r`. Native `z` folds, `Ctrl-w` windows, `Ctrl-t` tags and `Ctrl-k` digraphs
+are available. The command legend uses one registry in `lua/config/keymaps.lua`.
+
+Legendary, duplicate session managers, ToggleTerm, LuaSnip and redundant formatting
+adapters are replaced by local modules/native APIs. Existing language support,
+explorer, themes, Git signs, undo tree and optional Copilot remain. Install the
+compatible parsers explicitly after upgrading. Back up configuration and state
+before migrating; no legacy session deletion or broad package removal is required.
+
+## Configuration layout
+
+- `init.lua`: defaults, keyboard layout, module setup and lazy.nvim bootstrap.
+- `lua/config/`: keys, tabs, sessions, Python environments, formatting, search and UI helpers.
+- `lua/plugins/`: one owner per plugin configuration and its load conditions.
+- `ftplugin/`: local indentation, comments and text options for each language.
+- `lua/nvim_ide/health.lua`: `:checkhealth nvim_ide`.
+- `bin/` and `extras/`: desktop launcher and terminal integration.
+- `lazy-lock.json`: tested plugin revisions. Release version: `lua/plugins/dashboard.lua`.

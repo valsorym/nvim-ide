@@ -4,7 +4,7 @@
 return {
     "folke/todo-comments.nvim",
     dependencies = { "nvim-lua/plenary.nvim" },
-    event = "VeryLazy",
+    cmd = { "TodoTelescope", "TodoQuickFix" },
     config = function()
         require("todo-comments").setup({
             signs = true,
@@ -53,7 +53,7 @@ return {
             merge_keywords = true,
 
             highlight = {
-                multiline = true,
+                multiline = false,
                 multiline_pattern = "^.",
                 multiline_context = 10,
                 before = "",
@@ -87,21 +87,5 @@ return {
             },
         })
 
-        -- Keymaps
-        vim.keymap.set("n", "]t", function()
-            require("todo-comments").jump_next()
-        end, {desc = "Next todo comment"})
-
-        vim.keymap.set("n", "[t", function()
-            require("todo-comments").jump_prev()
-        end, {desc = "Previous todo comment"})
-
-        -- Telescope integration
-        vim.keymap.set("n", "<leader>st", "<cmd>TodoTelescope<cr>",
-            {desc = "Find TODO comments"})
-
-        vim.keymap.set("n", "<leader>sT",
-            "<cmd>TodoTelescope keywords=TODO,FIX,FIXME<cr>",
-            {desc = "Find TODO/FIX"})
     end,
 }

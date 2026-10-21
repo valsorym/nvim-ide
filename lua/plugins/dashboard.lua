@@ -2,11 +2,12 @@
 -- Dashboard.
 
 -- Release version.
-local release_version = "v1.3.1"
+local release_version = "v2.0.0"
 
 return {
     "nvimdev/dashboard-nvim",
     event = "VimEnter",
+    cmd = "Dashboard",
     dependencies = {"nvim-tree/nvim-web-devicons"},
     config = function()
         local db = require("dashboard")
@@ -52,15 +53,8 @@ return {
                             icon = "  ",
                             desc = "Find & Replace",
                             key = "f",
-                            action = function()
-                                -- Close dashboard first
-                                vim.cmd("bd")
-                                -- Trigger <leader>fc
-                                vim.schedule(function()
-                                    local keys = vim.api.nvim_replace_termcodes("<leader>fc", true, false, true)
-                                    vim.api.nvim_feedkeys(keys, "m", false)
-                                end)
-                            end
+                            action = function() require("config.replace").search(false) end
+
                         },
                         {
                             icon = "  ",
@@ -90,23 +84,8 @@ return {
                             icon = "󰗼  ",
                             desc = "Quit",
                             key = "q",
-                            action = function()
-                                -- Show prompt
-                                print("Really quit? [y/n]")
+                            action = "confirm qall"
 
-                                -- Get single character
-                                local char = vim.fn.getchar()
-                                local key = vim.fn.nr2char(char)
-
-                                -- Clear the command line
-                                vim.cmd("echo ''")
-
-                                if key:lower() == "y" then
-                                    vim.cmd("qa")
-                                else
-                                    print("Cancelled.")
-                                end
-                            end
                         }
                     },
                     footer = {
@@ -118,38 +97,5 @@ return {
             }
         )
 
-        -- Stronger version: force-disable numbers by window options.
-        local function hide_numbers()
-            if vim.bo.filetype == "dashboard" then
-                local win = vim.api.nvim_get_current_win()
-                vim.wo[win].number = false
-                vim.wo[win].relativenumber = false
-                vim.wo[win].signcolumn = "no"
-                vim.wo[win].foldcolumn = "0"
-                pcall(
-                    function()
-                        vim.wo[win].statuscolumn = ""
-                    end
-                )
-            end
-        end
-
-        vim.api.nvim_create_autocmd(
-            {"FileType", "BufWinEnter", "WinEnter", "TabEnter"},
-            {
-                pattern = "dashboard",
-                callback = hide_numbers
-            }
-        )
-
-        -- Apply muted colors only for dashboard.
-        vim.api.nvim_create_autocmd("FileType", {
-            pattern = "dashboard",
-            callback = function()
-                local muted = "#5c6370"
-                vim.api.nvim_set_hl(0, "DashboardFooter", { fg = muted })
-            end,
-        })
-
-    end
+    end,
 }

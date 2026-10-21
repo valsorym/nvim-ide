@@ -3,6 +3,18 @@
 
 return {
     "nvim-tree/nvim-tree.lua",
+    cmd = { "NvimTreeModal", "NvimTreeToggle", "NvimTreeOpen", "NvimTreeFocus", "NvimTreeRootHistory", "NvimTreeClearHistory" },
+    init = function()
+        vim.g.loaded_netrw = 1
+        vim.g.loaded_netrwPlugin = 1
+        vim.api.nvim_create_autocmd("VimEnter", { once = true, callback = function()
+            local path = vim.fn.argv(0)
+            if type(path) == "string" and vim.fn.isdirectory(path) == 1 then
+                require("lazy").load({ plugins = { "nvim-tree.lua" } })
+                require("nvim-tree.api").tree.open({ path = path })
+            end
+        end })
+    end,
     dependencies = {
         "nvim-tree/nvim-web-devicons",
         "nvim-lua/plenary.nvim",
@@ -116,8 +128,10 @@ return {
             if strwidth(s) <= maxw then return s end
             local ell = "…"
             local keep = math.max(1, maxw - strwidth(ell))
-            -- keep tail; simple byte trim is ok for paths.
-            return ell .. s:sub(#s - keep + 1)
+            -- Trim characters, not UTF-8 bytes, for Ukrainian filenames.
+            local chars = vim.fn.strchars(s)
+            while chars > 0 and strwidth(vim.fn.strcharpart(s, chars - 1)) <= keep do chars = chars - 1 end
+            return ell .. vim.fn.strcharpart(s, chars)
         end
 
         local function on_dashboard()
@@ -131,26 +145,12 @@ return {
             return false
         end
 
-        local function find_tab_for_file(path)
-            local npath = normalize(path)
-            for t = 1, vim.fn.tabpagenr("$") do
-                local bufs = vim.fn.tabpagebuflist(t)
-                for _, b in ipairs(bufs) do
-                    if normalize(vim.fn.bufname(b)) == npath then
-                        return t
-                    end
-                end
-            end
-            return nil
-        end
-
         local function recenter_tree_top()
             vim.defer_fn(function()
                 local win = api.tree.winid()
                 if win and vim.api.nvim_win_is_valid(win) then
                     vim.api.nvim_win_set_cursor(win, {1, 0})
-                    vim.cmd.normal({args = {"gg"}, bang = true})
-                    vim.cmd.normal({args = {"j"}, bang = true})
+
                 end
             end, 60)
         end
@@ -165,18 +165,12 @@ return {
         end
 
         local function open_tree_modal()
-            if api.tree.is_visible() then
-                api.tree.close()
+            local buf = vim.api.nvim_get_current_buf()
+            if api.tree.is_visible() then api.tree.close(); return end
+            api.tree.open({ current_window = false, find_file = false, update_root = false })
+            if vim.api.nvim_buf_get_name(buf) ~= "" and vim.bo[buf].buftype == "" then
+                api.tree.find_file({ buf = buf, open = true, focus = true })
             end
-            api.tree.open({
-                current_window = false,
-                find_file = false,
-                update_root = false,
-            })
-            local cur = get_current_file()
-            vim.schedule(function()
-                if cur ~= "" then api.tree.find_file(cur) end
-            end)
         end
 
         -- HISTORY WINDOW
@@ -188,9 +182,14 @@ return {
                 return
             end
 
+            if vim.o.columns < 30 or vim.o.lines < 10 then
+                vim.notify("Enlarge the terminal to show project history", vim.log.levels.WARN)
+                return
+            end
+            -- Main buffer / window.
             local buf = vim.api.nvim_create_buf(false, true)
             local maxw = math.min(80, vim.o.columns - 10)
-            local h = math.min(15, #hist + 5)
+            local h = math.min(vim.o.lines - 4, #hist + 4)
             local row = math.floor((vim.o.lines - h) / 2)
             local col = math.floor((vim.o.columns - maxw) / 2)
 
@@ -204,48 +203,144 @@ return {
                 border = "rounded",
                 title = " Root Directories History ",
                 title_pos = "center",
+                footer = {
+                    {"─ [ ", "FloatBorder"},
+                    {"/", "FooterKey"}, {" - filter", "FooterDesc"},
+                    {" | ", "FloatBorder"},
+                    {"d", "FooterKey"}, {" - del", "FooterDesc"},
+                    {" | ", "FloatBorder"},
+                    {"C", "FooterKey"}, {" - clear", "FooterDesc"},
+                    {" | ", "FloatBorder"},
+                    {"q", "FooterKey"}, {" - close", "FooterDesc"},
+                    {" ] ─", "FloatBorder"},
+                },
+                footer_pos = "center",
                 zindex = 1000,
             })
 
-            local lines, idx = {}, {}
-            table.insert(lines, "")
-            table.insert(lines, (" 󰋚  Recent projects: %d"):format(#hist))
-            table.insert(lines, string.rep("─", maxw))
-            table.insert(lines, "")
+            -- Prompt buffer / window (overlaid on header row 3).
+            local prompt_buf = vim.api.nvim_create_buf(false, true)
+            local prompt_win = vim.api.nvim_open_win(prompt_buf, false, {
+                relative = "win",
+                win = win,
+                width = maxw - 4,
+                height = 1,
+                row = 2,
+                col = 1,
+                style = "minimal",
+                border = "none",
+                zindex = 1001,
+            })
+            vim.bo[prompt_buf].buftype = "prompt"
+            vim.bo[prompt_buf].bufhidden = "wipe"
+            vim.fn.prompt_setprompt(prompt_buf, " 🔍 Filter: ")
 
-            -- Calculate the width needed for timestamps
-            local time_width = 18  -- "24.09.2025 14:14 " length
-            local number_width = 4 -- " 99. " width
+            -- State.
+            local filter_text = ""
+            local line_to_path = {}
 
-            -- Available width for paths after number and time
-            local path_width = maxw - number_width - time_width - 1 -- -1 for spacing
+            local time_width = 18
+            local number_width = 4
+            local path_width = maxw - number_width - time_width - 1
 
-            for i, e in ipairs(hist) do
-                local t = os.date("%d.%m.%Y %H:%M ", e.ts)
-                local disp = strshort(e.path, path_width)
-
-                -- Create line with fixed-width formatting
-                -- Format: " 99. path..." + spaces to fill + "24.09.2025 14:14"
-                local left_part = (" %2d. %s"):format(i, disp)
-                local left_width = strwidth(left_part)
-
-                -- Calculate spaces needed to right-align timestamp
-                local spaces_needed = maxw - left_width - strwidth(t)
-                if spaces_needed < 1 then spaces_needed = 1 end
-
-                local line = left_part .. string.rep(" ", spaces_needed) .. t
-
-                table.insert(lines, line)
-                idx[#lines] = e.path
+            -- Filter history entries.
+            local function filter_hist(text)
+                if text == "" then return hist end
+                local lower = text:lower()
+                local out = {}
+                for _, e in ipairs(hist) do
+                    if e.path:lower():find(lower, 1, true) then
+                        table.insert(out, e)
+                    end
+                end
+                return out
             end
 
-            vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-            vim.bo[buf].modifiable = false
+            -- Render list into main buffer.
+            local function render()
+                local filtered = filter_hist(filter_text)
+                line_to_path = {}
+
+                local lines = {}
+                -- Header: empty, title, empty (prompt overlays line 3).
+                table.insert(lines, "")
+                table.insert(lines, (" 󰋚  Recent projects: %d/%d")
+                    :format(#filtered, #hist))
+                table.insert(lines, "")
+                -- Separator.
+                table.insert(lines, string.rep("─", maxw))
+
+                if #filtered == 0 then
+                    table.insert(lines, "")
+                    table.insert(lines, "   No matching projects")
+                else
+                    for i, e in ipairs(filtered) do
+                        local t = os.date("%d.%m.%Y %H:%M ", e.ts)
+                        local disp = strshort(e.path, path_width)
+                        local lp = (" %2d. %s"):format(i, disp)
+                        local lw = strwidth(lp)
+                        local sp = math.max(1,
+                            maxw - lw - strwidth(t))
+                        table.insert(lines,
+                            lp .. string.rep(" ", sp) .. t)
+                        line_to_path[#lines] = e.path
+                    end
+                end
+
+                vim.bo[buf].modifiable = true
+                vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+                vim.bo[buf].modifiable = false
+
+                -- Highlight separator (0-indexed line 3).
+                vim.api.nvim_buf_add_highlight(
+                    buf, -1, "FloatBorder", 3, 0, -1)
+
+                -- Cursor to first entry.
+                local first = 5
+                if line_to_path[first] and
+                   vim.api.nvim_win_is_valid(win) then
+                    pcall(vim.api.nvim_win_set_cursor,
+                        win, {first, 0})
+                end
+            end
+
             vim.bo[buf].buftype = "nofile"
             vim.bo[buf].bufhidden = "wipe"
             vim.wo[win].cursorline = true
+            vim.wo[win].scrolloff = 0
+
+            render()
+
+            -- Live filter on text change.
+            vim.api.nvim_create_autocmd("TextChangedI", {
+                buffer = prompt_buf,
+                callback = function()
+                    local line = vim.api.nvim_buf_get_lines(
+                        prompt_buf, 0, 1, false)[1]
+                    filter_text = line:gsub(
+                        "^%s*🔍%s*Filter:%s*", "")
+                    render()
+                end,
+            })
+
+            -- Keep cursor on entry lines only.
+            vim.api.nvim_create_autocmd("CursorMoved", {
+                buffer = buf,
+                callback = function()
+                    if not vim.api.nvim_win_is_valid(win) then
+                        return
+                    end
+                    local pos = vim.api.nvim_win_get_cursor(win)
+                    if pos[1] < 5 then
+                        vim.api.nvim_win_set_cursor(win, {math.min(5, vim.api.nvim_buf_line_count(buf)), 0})
+                    end
+                end,
+            })
 
             local function close_win()
+                if vim.api.nvim_win_is_valid(prompt_win) then
+                    pcall(vim.api.nvim_win_close, prompt_win, true)
+                end
                 if vim.api.nvim_win_is_valid(win) then
                     vim.api.nvim_win_close(win, true)
                 end
@@ -256,11 +351,33 @@ return {
                 _G.NvimTreeHistory.show_history()
             end
 
-            local km = {buffer = buf, nowait = true, silent = true}
+            -- Navigate to next/prev entry line.
+            local function go_next()
+                local cur = vim.api.nvim_win_get_cursor(win)[1]
+                local nxt = cur + 1
+                local max = vim.api.nvim_buf_line_count(buf)
+                while nxt <= max and not line_to_path[nxt] do
+                    nxt = nxt + 1
+                end
+                if line_to_path[nxt] then
+                    vim.api.nvim_win_set_cursor(win, {nxt, 0})
+                end
+            end
 
-            vim.keymap.set("n", "<CR>", function()
-                local l = vim.fn.line(".")
-                local path = idx[l]
+            local function go_prev()
+                local cur = vim.api.nvim_win_get_cursor(win)[1]
+                local prv = cur - 1
+                while prv >= 1 and not line_to_path[prv] do
+                    prv = prv - 1
+                end
+                if line_to_path[prv] then
+                    vim.api.nvim_win_set_cursor(win, {prv, 0})
+                end
+            end
+
+            local function select_entry()
+                local l = vim.api.nvim_win_get_cursor(win)[1]
+                local path = line_to_path[l]
                 if not path then return end
                 if not stat_isdir(path) then
                     print("Directory not found: " .. path)
@@ -270,21 +387,31 @@ return {
                 vim.schedule(function()
                     local rp = normalize(path)
                     vim.cmd("cd " .. vim.fn.fnameescape(rp))
-                    if on_dashboard() then
-                        pcall(api.tree.change_root, rp)
-                        vim.defer_fn(update_title, 40)
-                        print("Root: " .. rp)
-                    else
-                        api.tree.change_root(rp)
-                        vim.defer_fn(update_title, 40)
-                        print("Root: " .. rp)
-                    end
+                    api.tree.change_root(rp)
+                    vim.defer_fn(update_title, 40)
+                    print("Root: " .. rp)
                 end)
-            end, km)
+            end
+
+            -- Main window keymaps.
+            local km = {buffer = buf, nowait = true, silent = true}
+
+            vim.keymap.set("n", "<CR>", select_entry, km)
+
+            vim.keymap.set("n", "j", go_next, km)
+            vim.keymap.set("n", "k", go_prev, km)
+
+            local function enter_filter()
+                vim.api.nvim_set_current_win(prompt_win)
+                vim.cmd("startinsert")
+            end
+            vim.keymap.set("n", "/", enter_filter, km)
+            vim.keymap.set("n", "i", enter_filter, km)
+            vim.keymap.set("n", "<Tab>", enter_filter, km)
 
             vim.keymap.set("n", "d", function()
                 local l = vim.fn.line(".")
-                local path = idx[l]
+                local path = line_to_path[l]
                 if not path then return end
                 remove_from_history(path)
                 save_history()
@@ -306,41 +433,52 @@ return {
             vim.keymap.set("n", "q", close_win, km)
             vim.keymap.set("n", "<Esc>", close_win, km)
 
-            vim.keymap.set("n", "j", function()
-                local cur = vim.fn.line(".")
-                local nxt = cur + 1
-                while nxt <= #lines and not idx[nxt] do
-                    nxt = nxt + 1
-                end
-                if idx[nxt] then
-                    vim.api.nvim_win_set_cursor(win, {nxt, 0})
-                end
-            end, km)
+            -- Prompt window keymaps.
+            local pkm = {
+                buffer = prompt_buf, nowait = true, silent = true,
+            }
 
-            vim.keymap.set("n", "k", function()
-                local cur = vim.fn.line(".")
-                local prv = cur - 1
-                while prv >= 1 and not idx[prv] do
-                    prv = prv - 1
-                end
-                if idx[prv] then
-                    vim.api.nvim_win_set_cursor(win, {prv, 0})
-                end
-            end, km)
+            vim.keymap.set("i", "<Esc>", function()
+                vim.cmd("stopinsert")
+                vim.api.nvim_set_current_win(win)
+            end, pkm)
 
-            vim.api.nvim_create_autocmd("WinLeave", {
+            vim.keymap.set("i", "<Tab>", function()
+                vim.cmd("stopinsert")
+                vim.api.nvim_set_current_win(win)
+            end, pkm)
+
+            vim.keymap.set("i", "<C-c>", function()
+                vim.cmd("stopinsert")
+                close_win()
+            end, pkm)
+
+            vim.keymap.set("i", "<CR>", function()
+                vim.cmd("stopinsert")
+                vim.api.nvim_set_current_win(win)
+                select_entry()
+            end, pkm)
+
+            vim.keymap.set("i", "<Down>", go_next, pkm)
+            vim.keymap.set("i", "<C-n>", go_next, pkm)
+            vim.keymap.set("i", "<C-j>", go_next, pkm)
+            vim.keymap.set("i", "<Up>", go_prev, pkm)
+            vim.keymap.set("i", "<C-p>", go_prev, pkm)
+            vim.keymap.set("i", "<C-k>", go_prev, pkm)
+
+            -- Auto-close on focus loss.
+            vim.api.nvim_create_autocmd({"WinLeave", "BufLeave"}, {
                 buffer = buf,
                 once = true,
                 callback = function()
-                    vim.defer_fn(close_win, 80)
+                    vim.defer_fn(function()
+                        local cur = vim.api.nvim_get_current_win()
+                        if cur ~= win and cur ~= prompt_win then
+                            close_win()
+                        end
+                    end, 100)
                 end,
             })
-
-            -- Set cursor to first history entry
-            for ln, _ in pairs(idx) do
-                vim.api.nvim_win_set_cursor(win, {ln, 0})
-                break
-            end
         end
 
         -- NVIM-TREE SETUP
@@ -348,14 +486,16 @@ return {
         require("nvim-tree").setup({
             sync_root_with_cwd = true,
             respect_buf_cwd = true,
-            reload_on_bufenter = true,
+            reload_on_bufenter = false,
             update_focused_file = {
                 enable = true,
-                update_root = true,
+                update_root = false,
                 ignore_list = {},
             },
             view = {
                 width = 80,
+                -- All sign-producing tree features are disabled; do not reserve a blank gutter.
+                signcolumn = "no",
                 float = {
                     enable = true,
                     quit_on_focus_loss = true,
@@ -366,6 +506,8 @@ return {
                             math.floor(vim.o.lines * 0.8))
                         local r = math.floor((vim.o.lines - h) / 2)
                         local c = math.floor((vim.o.columns - w) / 2)
+                        local cwd = vim.fn.fnamemodify(
+                            vim.fn.getcwd(), ":~")
                         return {
                             relative = "editor",
                             border = "rounded",
@@ -373,8 +515,30 @@ return {
                             height = h,
                             row = r,
                             col = c,
-                            title = " File Explorer ",
+                            title = {
+                                {" ", "FloatBorder"},
+                                {" ", "DiagnosticInfo"},
+                                {" " .. cwd .. " ", "FloatTitle"},
+                            },
                             title_pos = "center",
+                            footer = {
+                                {"─ [ ", "FloatBorder"},
+                                {"n", "FooterKey"}, {" - new", "FooterDesc"},
+                                {" | ", "FloatBorder"},
+                                {"d", "FooterKey"}, {" - del", "FooterDesc"},
+                                {" | ", "FloatBorder"},
+                                {"r", "FooterKey"}, {" - ren", "FooterDesc"},
+                                {" | ", "FloatBorder"},
+                                {"H", "FooterKey"}, {" - dot", "FooterDesc"},
+                                {" | ", "FloatBorder"},
+                                {"F", "FooterKey"}, {" - filter", "FooterDesc"},
+                                {" | ", "FloatBorder"},
+                                {"T", "FooterKey"}, {" - fold", "FooterDesc"},
+                                {" | ", "FloatBorder"},
+                                {"P", "FooterKey"}, {" - up", "FooterDesc"},
+                                {" ] ─", "FloatBorder"},
+                            },
+                            footer_pos = "center",
                         }
                     end,
                 },
@@ -480,30 +644,9 @@ return {
                         return
                     end
                     local file = normalize(node.absolute_path)
-                    local tab = find_tab_for_file(file)
                     api.tree.close()
-                    if tab then
-                        vim.cmd(tostring(tab) .. "tabnext")
-                        return
-                    end
+                    require("config.nvim-tabs").open(file)
 
-                    -- Always open in new tab at the end
-                    local total_tabs = vim.fn.tabpagenr("$")
-                    local open_cmd = on_dashboard() and "edit" or "tablast | tabnew"
-
-                    local ok, err = pcall(function()
-                        vim.cmd(open_cmd .. " " .. vim.fn.fnameescape(file))
-                    end)
-
-                    if not ok then
-                        if err:match("E325") then
-                            vim.notify("Swap file detected. Use :e! to force open",
-                                vim.log.levels.WARN)
-                        else
-                            vim.notify("Error opening file: " .. tostring(err),
-                                vim.log.levels.ERROR)
-                        end
-                    end
                 end, { buffer = bufnr, desc = "Open / toggle" })
 
 
@@ -535,7 +678,7 @@ return {
                     change_root_to(vim.fn.getcwd())
                 end, { buffer = bufnr, desc = "Root to CWD" })
 
-                vim.keymap.set("n", "<S-p>", function()
+                vim.keymap.set("n", "gR", function()
                     vim.ui.input({
                         prompt = "New root: ",
                         default = vim.fn.getcwd(),
@@ -548,7 +691,7 @@ return {
                             print("No such dir: " .. input)
                         end
                     end)
-                end, { buffer = bufnr, desc = "Parent root" })
+                end, { buffer = bufnr, desc = "Enter root directory" })
 
                 vim.keymap.set("n", "P", function()
                     local cur = vim.fn.getcwd()
@@ -695,16 +838,6 @@ return {
             callback = function(ev)
                 if ev.data and ev.data.new_root then
                     push_history(ev.data.new_root)
-                end
-            end,
-        })
-
-        -- Crash protection when reloading.
-        vim.api.nvim_create_autocmd("BufEnter", {
-            pattern = "NvimTree_*",
-            callback = function()
-                if vim.fn.winnr("$") == 1 then
-                    vim.cmd "quit"
                 end
             end,
         })

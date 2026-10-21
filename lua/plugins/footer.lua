@@ -3,6 +3,7 @@
 
 return {
     "nvim-lualine/lualine.nvim",
+    event = "VeryLazy",
     dependencies = {
         "nvim-tree/nvim-web-devicons",
         -- Optional, but enables zero-shell git info:
@@ -85,8 +86,8 @@ return {
         local function selection_info()
             local m = vim.fn.mode()
             if m ~= "v" and m ~= "V" and m ~= "\22" then return "" end
-            local s = vim.fn.getpos("'<")
-            local e = vim.fn.getpos("'>")
+            local s = vim.fn.getpos("v")
+            local e = vim.fn.getpos(".")
             if m == "v" then
                 if s[2] == e[2] then
                     local n = math.abs(e[3] - s[3]) + 1
@@ -107,11 +108,8 @@ return {
 
         -- FILE SIZE
         local function file_size()
-            local p = vim.fn.expand("%:p")
-            if p == "" then return "" end
-            local st = vim.loop.fs_stat(p)
-            if not st or not st.size then return "" end
-            local sz = st.size
+            if vim.bo.buftype ~= "" then return "" end
+            local sz = vim.api.nvim_buf_get_offset(0, vim.api.nvim_buf_line_count(0))
             if sz < 1024 then return sz .. "B" end
             if sz < 1048576 then
                 return string.format("%.1fK", sz / 1024)
@@ -121,18 +119,9 @@ return {
 
         -- PYTHON VENV
         local function python_venv()
-            local v = vim.fn.getenv("VIRTUAL_ENV")
-            if v and v ~= "" and v ~= vim.NIL then
-                return icons.python .. " " ..
-                    vim.fn.fnamemodify(v, ":t")
-            end
-            if vim.fn.isdirectory(".venv") == 1 then
-                return icons.python .. " .venv"
-            end
-            if vim.fn.isdirectory("venv") == 1 then
-                return icons.python .. " venv"
-            end
-            return ""
+            if vim.bo.filetype ~= "python" then return "" end
+            local venv = require("config.python-venv").get_current_venv()
+            return venv and venv.name or ""
         end
 
         -- INDENT INFO
@@ -166,22 +155,6 @@ return {
                 return ""  -- Don't show when disabled (clean UI)
             end
         end
-
-        -- -- LOCATION
-        -- local function loc_fmt(_)
-        --     local l = vim.fn.line(".")
-        --     local l_length = vim.fn.line("$")
-
-        --     local c = vim.fn.col(".")
-        --     local line_text = vim.fn.getline(".") or ""
-        --     local c_length = string.len(line_text)
-        --     -- return icons.col .. "" .. c .. "/" .. c_length .. "  " .. icons.line .. "" .. l .. "/" .. l_length
-        --     local cl_prefix = "%#Comment# %*"
-        --     local col_part = icons.col .. c .. "%#Comment#/" .. c_length .. "%*"
-        --     local line_part = icons.line .. l .. "%#Comment#/" .. l_length .. "%*"
-
-        --     return cl_prefix .. col_part .. "  " .. line_part
-        -- end
 
         -- LOCATION with dynamic zero-padding
         local function loc_fmt(_)
@@ -221,7 +194,7 @@ return {
         -- SETUP
         lualine.setup({
             options = {
-                theme = "catppuccin",
+                theme = "auto",
                 component_separators = { left = "", right = "" },
                 section_separators = { left = "", right = "" },
                 disabled_filetypes = {
@@ -312,7 +285,7 @@ return {
             tabline = {},
             winbar = {},
             inactive_winbar = {},
-            extensions = { "nvim-tree", "toggleterm", "mason" },
+            extensions = { "nvim-tree", "mason" },
         })
     end,
 }
