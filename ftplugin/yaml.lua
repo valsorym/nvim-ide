@@ -1,7 +1,6 @@
 -- ~/.config/nvim/ftplugin/yaml.lua
--- YAML settings: no colorcolumn
+-- YAML specific settings
 
-vim.opt_local.colorcolumn = ""
 vim.opt_local.wrap = false
 vim.opt_local.expandtab = true
 vim.opt_local.tabstop = 4

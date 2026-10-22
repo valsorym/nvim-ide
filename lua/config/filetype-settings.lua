@@ -1,11 +1,11 @@
 -- ~/.config/nvim/lua/config/filetype-settings.lua
--- Minimal filetype settings - most handled by ftplugin/*.lua
+-- Indentation lives in ftplugin/*.lua; window profiles must follow the buffer.
 
 local M = {}
+local line_width = require("config.line-width")
 
 function M.setup()
-    -- Set global defaults: 4 spaces, colorcolumn at 79
-    vim.opt.colorcolumn = "79"
+    vim.opt.colorcolumn = ""
     vim.opt.wrap = false
     vim.opt.expandtab = true
     vim.opt.tabstop = 4
@@ -14,53 +14,71 @@ function M.setup()
     vim.opt.smartindent = true
     vim.opt.autoindent = true
 
-    local views = {}
+    local views, applied = {}, {}
     local options = { "wrap", "linebreak", "breakindent", "showbreak", "colorcolumn" }
+    local function apply(buf, win)
+        if vim.bo[buf].buftype ~= "" then
+            vim.wo[win].colorcolumn = ""
+            return
+        end
+        local prose = line_width.is_prose(buf)
+        if prose then
+            -- Soft wrapping changes only the display, even with EditorConfig.
+            vim.bo[buf].textwidth = 0
+            vim.bo[buf].wrapmargin = 0
+            vim.bo[buf].formatoptions = vim.bo[buf].formatoptions:gsub("[ta]", "")
+        end
+        local saved = views[win] and views[win][buf]
+        local ft = vim.bo[buf].filetype
+        local settings = saved and saved.filetype == ft and vim.deepcopy(saved.settings) or {
+            wrap = prose, linebreak = prose, breakindent = prose,
+            showbreak = prose and "↪ " or "", colorcolumn = line_width.column(buf),
+        }
+        if saved and settings.colorcolumn == saved.column then
+            settings.colorcolumn = line_width.column(buf)
+        end
+        if prose then settings.colorcolumn = "" end
+        for name, value in pairs(settings) do vim.wo[win][name] = value end
+        applied[win] = applied[win] or {}
+        applied[win][buf] = ft
+    end
     local group = vim.api.nvim_create_augroup("BufferWindowOptions", { clear = true })
     vim.api.nvim_create_autocmd("BufWinLeave", { group = group, callback = function(args)
         if vim.bo[args.buf].buftype ~= "" then return end
-        local win = vim.api.nvim_get_current_win()
-        views[win] = views[win] or {}
-        local saved = {}
-        for _, name in ipairs(options) do saved[name] = vim.wo[win][name] end
-        views[win][args.buf] = saved
+        -- :only can close a different window; the current one may show another file.
+        for _, win in ipairs(vim.fn.win_findbuf(args.buf)) do
+            views[win] = views[win] or {}
+            local saved = {}
+            for _, name in ipairs(options) do saved[name] = vim.wo[win][name] end
+            views[win][args.buf] = { filetype = vim.bo[args.buf].filetype, settings = saved,
+                column = line_width.column(args.buf) }
+        end
     end })
     vim.api.nvim_create_autocmd("BufWinEnter", { group = group, callback = function(args)
-        if vim.bo[args.buf].buftype ~= "" then return end
         local win = vim.api.nvim_get_current_win()
-        local prose = vim.tbl_contains({ "markdown", "rst", "text" }, vim.bo[args.buf].filetype)
-        local saved = views[win] and views[win][args.buf]
-        local settings = saved or { wrap = prose, linebreak = prose, breakindent = prose,
-            showbreak = prose and "↪ " or "", colorcolumn = prose and "" or "79" }
-        for name, value in pairs(settings) do vim.wo[win][name] = value end
+        apply(args.buf, win)
     end })
-    vim.api.nvim_create_autocmd("WinClosed", { group = group, callback = function(args) views[tonumber(args.match)] = nil end })
+    vim.api.nvim_create_autocmd("WinClosed", { group = group, callback = function(args)
+        local win = tonumber(args.match)
+        views[win], applied[win] = nil, nil
+    end })
     vim.api.nvim_create_autocmd("BufWipeout", { group = group, callback = function(args)
         for _, buffers in pairs(views) do buffers[args.buf] = nil end
+        for _, buffers in pairs(applied) do buffers[args.buf] = nil end
     end })
-
-    -- Hide colorcolumn for special buffers
-    local group = vim.api.nvim_create_augroup(
-        "FileTypeSettings",
-        {clear = true}
-    )
 
     vim.api.nvim_create_autocmd("FileType", {
         group = group,
-        callback = function()
-            local buftype = vim.bo.buftype
-            local filetype = vim.bo.filetype
-
-            -- Hide colorcolumn for special buffers
-            if buftype ~= "" or
-               filetype == "NvimTree" or
-               filetype == "neo-tree" or
-               filetype == "oil" or
-               filetype == "help" or
-               filetype == "dashboard" or
-               filetype == "alpha" then
-                vim.opt_local.colorcolumn = ""
-            end
+        callback = function(args)
+            -- Run after native ftplugins and EditorConfig, including :setfiletype.
+            vim.schedule(function()
+                if not vim.api.nvim_buf_is_valid(args.buf) then return end
+                for _, win in ipairs(vim.fn.win_findbuf(args.buf)) do
+                    if not applied[win] or applied[win][args.buf] ~= vim.bo[args.buf].filetype then
+                        apply(args.buf, win)
+                    end
+                end
+            end)
         end,
     })
 end

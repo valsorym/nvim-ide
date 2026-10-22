@@ -6,13 +6,31 @@ local executable = require("config.tools").executable
 
 local function commands(buf, only)
     local ft, path = vim.bo[buf].filetype, vim.api.nvim_buf_get_name(buf)
+    local line_width = require("config.line-width")
+    local width = tostring(line_width.width(buf) or line_width.default_width(buf))
     local result = {}
+    local function configured(files)
+        -- Only invoked on formatting; project configuration owns formatter policy.
+        for parent in vim.fs.parents(path ~= "" and path or (vim.fn.getcwd() .. "/untitled")) do
+            for name, section in pairs(files) do
+                local file = parent .. "/" .. name
+                if vim.fn.filereadable(file) == 1 then
+                    if section == true then return true end
+                    local contents = table.concat(vim.fn.readfile(file), "\n")
+                    if contents:find(section) then return true end
+                end
+            end
+        end
+        return false
+    end
     local function add(name, args)
         if only and only ~= name then return end
         local exe = executable(name, buf)
         if exe then table.insert(result, vim.list_extend({ exe }, args)) end
     end
     if ft == "python" then
+        local ruff_config = configured({ ["ruff.toml"] = true, [".ruff.toml"] = true,
+            ["pyproject.toml"] = "%[%s*tool%.ruff[%].%s]" })
         local formatter = vim.g.nvim_ide_python_formatter or "ruff"
         if formatter ~= "ruff" and formatter ~= "black" then error("Python formatter must be ruff or black") end
         local ruff = formatter == "ruff" and executable("ruff", buf)
@@ -21,23 +39,51 @@ local function commands(buf, only)
                 result[#result + 1] = { ruff, "check", "--select", "I", "--fix", "--exit-zero", "--stdin-filename", path, "-" }
             end
             if not only then
-                result[#result + 1] = { ruff, "format", "--line-length", "79", "--config", "format.quote-style='preserve'", "--stdin-filename", path, "-" }
+                local args = { ruff, "format", "--stdin-filename", path, "-" }
+                if not ruff_config then
+                    vim.list_extend(args, { "--line-length", width, "--config", "format.quote-style='preserve'" })
+                end
+                result[#result + 1] = args
             end
         else
-            add("isort", { "--profile", "black", "--line-length", "79", "--filename", path, "-" })
-            add("black", { "--line-length", "79", "--skip-string-normalization", "--stdin-filename", path, "-" })
+            local isort = { "--filename", path, "-" }
+            if not configured({ [".isort.cfg"] = true, ["pyproject.toml"] = "%[%s*tool%.isort%s*%]",
+                ["setup.cfg"] = "%[%s*isort%s*%]", ["tox.ini"] = "%[%s*isort%s*%]" }) then
+                vim.list_extend(isort, { "--profile", "black", "--line-length", width })
+            end
+            add("isort", isort)
+            local black = { "--stdin-filename", path, "-" }
+            if not configured({ ["pyproject.toml"] = "%[%s*tool%.black%s*%]" }) then
+                vim.list_extend(black, { "--line-length", width, "--skip-string-normalization" })
+            end
+            add("black", black)
         end
     elseif ft == "lua" then
-        add("stylua", { "--column-width", "79", "--stdin-filepath", path, "-" })
+        local args = { "--search-parent-directories", "--stdin-filepath", path, "-" }
+        if not configured({ ["stylua.toml"] = true, [".stylua.toml"] = true }) then
+            vim.list_extend(args, { "--column-width", width })
+        end
+        add("stylua", args)
     elseif vim.tbl_contains({ "javascript", "javascriptreact", "typescript", "typescriptreact", "vue",
         "json", "jsonc", "yaml", "html", "css", "scss", "less", "markdown" }, ft) then
-        add("prettier", { "--stdin-filepath", path, "--print-width", "79" })
+        local args = { "--stdin-filepath", path }
+        if ft == "markdown" then
+            -- Preserve paragraph boundaries even when the project requests reflow.
+            vim.list_extend(args, { "--prose-wrap", "preserve" })
+        else
+            vim.list_extend(args, { "--print-width", width, "--config-precedence", "prefer-file" })
+        end
+        add("prettier", args)
     elseif ft == "go" then
         add("gofmt", {})
     elseif ft == "sh" or ft == "bash" then
         add("shfmt", { "-i", tostring(vim.bo[buf].expandtab and vim.bo[buf].shiftwidth or 0) })
     elseif ft == "c" or ft == "cpp" then
-        add("clang-format", { "--assume-filename=" .. path })
+        local args = { "--assume-filename=" .. path }
+        if not configured({ [".clang-format"] = true, ["_clang-format"] = true }) then
+            vim.list_extend(args, { "--style={BasedOnStyle: LLVM, ColumnLimit: " .. width .. "}" })
+        end
+        add("clang-format", args)
     end
     return result
 end

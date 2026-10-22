@@ -1,4 +1,4 @@
-# Neovim IDE 2.2.0
+# Neovim IDE 2.3.0
 
 [Українська](README.UK.md)
 
@@ -334,6 +334,70 @@ This does not rewrite the process PATH or change other projects' pyright clients
 For Vue, install both `vue-language-server` and `typescript-language-server`
 through Mason. For C/C++, provide `compile_commands.json` when the project needs it.
 
+### Line widths and wrapping
+
+The filetype detected by Neovim selects these defaults automatically. These are
+practical preferences for this configuration; a project's style guide can differ.
+The marker occupies the **first column beyond** the preferred width, so Python's
+79-column recommendation puts the marker at column 80. Widths count display
+columns, including expanded tabs, rather than bytes.
+
+| Language / format | Preferred width | Marker column | Guidance |
+| --- | --- | --- | --- |
+| Python | 79 | 80 | PEP 8; comments and docstrings preferably 72 |
+| C | 100 | 101 | Project default; Linux kernel style prefers 80 |
+| C++ | 100 | 101 | Project default; Google C++ style uses 80 |
+| Go | 120 | 121 | Soft guide; gofmt has no fixed line-length limit |
+| JavaScript, TypeScript, JSX, TSX, Vue | 100 | 101 | Keep expressions readable |
+| HTML, Django HTML, XML | 120 | 121 | Allow room for attributes |
+| CSS, SCSS, Sass, Less | 100 | 101 | Keep declarations readable |
+| Lua | 100 | 101 | Shared by the guide and StyLua fallback |
+| Shell / Bash | 80 | 81 | Shell style convention |
+| Dockerfile, Makefile | 100 | 101 | Guide only; long commands can be split manually |
+| JSON, JSONC, YAML, TOML, INI | 100 | 101 | Project configuration can override this |
+| Vimscript | 80 | 81 | Guide only |
+| Vim help source | 78 | 79 | When editing a help source as an ordinary file |
+| TXT, reStructuredText, Markdown | Window width | None | Soft wrapping for reading; preserve paragraphs |
+| `.gitignore`, help viewer, tool windows | — | None | No column guide |
+| Other ordinary files | 100 | 101 | Fallback when no language profile applies |
+
+`Space uc` toggles the current file's guide; `Space uw` toggles display wrapping.
+These window preferences survive switching away and back. TXT, RST and Markdown
+always have no guide, including after `Space uc`. They use word-aware display
+wrapping with an indented continuation. Typing and ordinary saves do not insert
+line breaks into paragraphs (`textwidth=0`, `wrapmargin=0`, no automatic reflow).
+Explicit `gq` remains available. Markdown formatting uses Prettier's
+`proseWrap: preserve`, including when a project requests paragraph reflow.
+
+An `.editorconfig` `max_line_length` overrides the guide for code; `off` hides it.
+For TXT/RST/Markdown the reading profile takes priority and keeps the guide off
+and automatic reflow disabled. For example:
+
+```ini
+root = true
+
+[*.py]
+max_line_length = 99
+
+[*.{c,cpp,h,hpp}]
+max_line_length = 100
+```
+
+Reopen a file after changing its EditorConfig rules. The guide itself never
+rewrites code. Ruff, Black/isort, StyLua, Prettier and clang-format use the profile
+width as a fallback; their project configuration takes precedence. Keep the
+formatter's width and EditorConfig in agreement if the project chooses another
+width: the guide does not parse each formatter's configuration. `gofmt` and
+`shfmt` retain their native formatting rules.
+
+References: [PEP 8](https://peps.python.org/pep-0008/#maximum-line-length),
+[Go review comments](https://go.dev/wiki/CodeReviewComments#linelength),
+[Linux kernel style](https://docs.kernel.org/process/coding-style.html#breaking-long-lines-and-strings),
+[Google C++ style](https://google.github.io/styleguide/cppguide.html#Line_Length),
+[Shell style](https://google.github.io/styleguide/shellguide.html#s5.1-line-length-and-long-strings).
+Prettier's [print width](https://prettier.io/docs/options#print-width) is a
+formatting preference rather than a hard limit; 100/120 here are our defaults.
+
 ### Formatting and replacement
 
 `Space fs` / `:FindInBuffer` opens a floating search dialog for the current
@@ -370,8 +434,9 @@ up to 1.5 seconds per formatter; a failure leaves the text unchanged. Set
 only the tools you need, e.g. `python -m pip install ruff` inside a project virtual
 environment, or `:MasonInstall ruff`. Prettier can be a project development dependency.
 
-Python uses Ruff for import sorting and formatting (79 columns, existing quote
-style preserved). If Ruff is absent, installed isort/Black tools are used.
+Python uses Ruff for import sorting and formatting (79 columns and existing quote
+style preserved by default; project formatter configuration takes precedence).
+If Ruff is absent, installed isort/Black tools are used.
 `Space di` sorts imports with Ruff or isort; `Space db` explicitly requests Black.
 To prefer the previous pipeline, set `vim.g.nvim_ide_python_formatter = "black"`
 before setup and install `black isort` in the project environment. Ruff is used

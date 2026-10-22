@@ -177,7 +177,7 @@ M.entries = {
     { "<leader>uI", function() require("ibl").setup_buffer(0, { enabled = not require("ibl.config").get_config(0).enabled }) end, "Toggle indent guides", uk = "Показати / сховати напрямні відступів" },
     { "<leader>uw", function() vim.wo.wrap = not vim.wo.wrap end, "Toggle wrapping", uk = "Увімкнути / вимкнути перенесення рядків" },
     { "<leader>ul", function() vim.wo.list = not vim.wo.list end, "Toggle whitespace marks", uk = "Показати / сховати позначки пробілів" },
-    { "<leader>uc", function() vim.wo.colorcolumn = vim.wo.colorcolumn == "" and "79" or "" end, "Toggle column guide", uk = "Показати / сховати межу колонки" },
+    { "<leader>uc", function() require("config.line-width").toggle() end, "Toggle column guide", uk = "Показати / сховати межу колонки" },
     { "<leader>ws", command("SessionSave"), "Save session", uk = "Зберегти сесію" },
     { "<leader>wr", command("SessionRestore"), "Restore session", uk = "Відновити сесію" },
     { "<leader>wl", command("SessionLast"), "Restore last session", uk = "Відновити останню сесію" },
