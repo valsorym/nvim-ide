@@ -1,4 +1,4 @@
-# Neovim IDE 2.3.0
+# Neovim IDE 2.3.1
 
 [Українська](README.UK.md)
 
@@ -7,6 +7,11 @@ language tools. The dashboard, dark themes and tab workflow remain familiar;
 version 2 uses native Neovim facilities for sessions, terminals, comments and snippets.
 
 ## Requirements and installation
+
+For a complete Debian setup, follow [SETUP_DEBIAN.md](SETUP_DEBIAN.md)
+([українською](SETUP_DEBIAN.UK.md)): installing Neovim, selecting a Nerd Font,
+setting up the terminal, language tools, clipboard, tmux colours and an optional
+application-menu launcher. This README covers configuration and everyday use.
 
 - Neovim **0.11.3+**; this configuration is tested with **0.11.5**.
 - Git for plugins and ripgrep (`rg`) for file and text search.
@@ -508,6 +513,9 @@ fallback. Themes: Catppuccin, Tokyo Night, Gruvbox Material, Kanagawa, Nord, One
 Restart after editing configuration; files are not automatically re-sourced.
 
 ## Terminal, desktop window and tmux
+
+For the full OS setup, font configuration and application-menu entry, see the
+[Debian installation guide](SETUP_DEBIAN.md#6-optional-launch-as-a-desktop-ide-in-alacritty).
 
 Use `nvim`, `nvim file` or `nvim -p first.py second.py` in any supported terminal.
 For an independent Alacritty window on Linux:
