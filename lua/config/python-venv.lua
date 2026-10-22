@@ -7,7 +7,7 @@ function M.root(path)
     if path == "" then path = vim.fn.getcwd() end
     -- The statusline calls this frequently; avoid walking parent directories on redraw.
     if roots[path] then return roots[path] end
-    roots[path] = vim.fs.root(path, { "pyproject.toml", "setup.py", "requirements.txt", ".git" })
+    roots[path] = vim.fs.root(path, require("config.project").python_markers)
         or (vim.fn.isdirectory(path) == 1 and path or vim.fs.dirname(path))
     return roots[path]
 end
@@ -48,10 +48,19 @@ function M.get_current_venv() return M.find_venv() end
 
 local function update_clients(root)
     for _, client in ipairs(vim.lsp.get_clients({ name = "pyright" })) do
-        if client.config.root_dir == root then
-            client.config.settings = vim.tbl_deep_extend("force", client.config.settings or {},
+        local matches = require("config.project").normalize(client.config.root_dir)
+            == require("config.project").normalize(root)
+        if not client.config.root_dir then
+            for buf in pairs(client.attached_buffers) do
+                if M.root(vim.api.nvim_buf_get_name(buf)) == root then matches = true; break end
+            end
+        end
+        if matches then
+            -- workspace/configuration reads client.settings, not a replaced config table.
+            client.settings = vim.tbl_deep_extend("force", client.settings or {},
                 { python = { pythonPath = M.python(root) } })
-            client:notify("workspace/didChangeConfiguration", { settings = client.config.settings })
+            client.config.settings = client.settings
+            client:notify("workspace/didChangeConfiguration", { settings = client.settings })
         end
     end
 end

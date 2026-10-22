@@ -11,6 +11,13 @@ return {
     },
     config = function()
         local lualine = require("lualine")
+        local function color(group, mocha)
+            return function()
+                local fg = vim.g.colors_name == "catppuccin-mocha" and mocha
+                    or vim.api.nvim_get_hl(0, { name = group, link = false }).fg
+                return { fg = type(fg) == "number" and string.format("#%06x", fg) or fg }
+            end
+        end
 
         -- ICONS
         local icons = {
@@ -220,7 +227,7 @@ return {
                     {
                         git_branch_with_status,
                         icon = "",
-                        color = { fg = "#a6e3a1" },
+                        color = color("DiagnosticOk", "#a6e3a1"),
                     },
                 },
                 lualine_c = {
@@ -236,19 +243,19 @@ return {
                             newfile = " " .. icons.new,
                         },
                     },
-                    { file_size, color = { fg = "#fab387" } },
+                    { file_size, color = color("Number", "#fab387") },
                 },
                 lualine_x = {
-                    { selection_info, color = { fg = "#f9e2af" } },
-                    { python_venv, color = { fg = "#89b4fa" } },
-                    { indent_info, color = { fg = "#a6e3a1" } },
+                    { selection_info, color = color("DiagnosticWarn", "#f9e2af") },
+                    { python_venv, color = color("Function", "#89b4fa") },
+                    { indent_info, color = color("DiagnosticOk", "#a6e3a1") },
                     {
                         copilot_status,
                         color = function()
                             if vim.g.copilot_enabled == 1 then
-                                return { fg = "#50fa7b" }  -- Green when enabled
+                                return color("DiagnosticOk", "#50fa7b")()  -- Green when enabled
                             else
-                                return { fg = "#6272a4" }  -- Gray when disabled
+                                return color("Comment", "#6272a4")()  -- Gray when disabled
                             end
                         end,
                     },
@@ -264,7 +271,7 @@ return {
                         },
                         update_in_insert = false,
                     },
-                    { lsp_status, color = { fg = "#cba6f7" } },
+                    { lsp_status, color = color("Type", "#cba6f7") },
                     { "encoding" },
                     { "fileformat" },
                     { "filetype" },

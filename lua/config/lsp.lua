@@ -1,6 +1,12 @@
 -- Let Neovim handle per-client offset encodings, then open converted locations in tabs.
 local M = {}
-function M.jump(method)
+function M.jump(method, fallback)
+    if #vim.lsp.get_clients({ bufnr = 0, method = "textDocument/" .. method }) == 0 then
+        if fallback then
+            vim.cmd.normal({ args = { vim.api.nvim_replace_termcodes(fallback, true, false, true) }, bang = true })
+        else vim.notify("No language server supports " .. method, vim.log.levels.INFO) end
+        return
+    end
     local origin = vim.api.nvim_get_current_win()
     local pos = vim.api.nvim_win_get_cursor(origin)
     local from = { vim.api.nvim_get_current_buf(), pos[1], pos[2] + 1, 0 }

@@ -45,10 +45,16 @@ return {
         -- Initialize plugin.
         render.setup(opts)
 
-        -- Optional highlight tuning.
-        vim.api.nvim_set_hl(0, "RenderMarkdownCode", { fg = "#a6adc8" })
-        vim.api.nvim_set_hl(0, "RenderMarkdownHeading", {
-            fg = "#89b4fa", bold = true
+        local function highlights()
+            local mocha = vim.g.colors_name == "catppuccin-mocha"
+            local comment = vim.api.nvim_get_hl(0, { name = "Comment", link = false })
+            local title = vim.api.nvim_get_hl(0, { name = "Title", link = false })
+            vim.api.nvim_set_hl(0, "RenderMarkdownCode", { fg = mocha and "#a6adc8" or comment.fg })
+            vim.api.nvim_set_hl(0, "RenderMarkdownHeading", { fg = mocha and "#89b4fa" or title.fg, bold = true })
+        end
+        vim.api.nvim_create_autocmd("ColorScheme", {
+            group = vim.api.nvim_create_augroup("MarkdownHighlights", { clear = true }), callback = highlights,
         })
+        highlights()
     end
 }

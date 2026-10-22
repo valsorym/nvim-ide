@@ -7,12 +7,17 @@ function M.pick(save)
     require("lazy").load({ plugins = plugins })
     require("telescope.builtin").colorscheme({
         enable_preview = true,
-        attach_mappings = function()
+        attach_mappings = function(prompt, map)
             if save then
-                require("telescope.actions").select_default:enhance({ post = function()
-                    vim.fn.mkdir(vim.fn.stdpath("state"), "p")
-                    vim.fn.writefile({ vim.g.colors_name }, saved_path)
-                end })
+                local function select_and_save()
+                    if not require("telescope.actions.state").get_selected_entry() then return end
+                    -- Run Telescope's original selection so preview cancellation stays correct.
+                    require("telescope.actions").select_default(prompt)
+                    local ok, err = require("config.state").write(saved_path, vim.g.colors_name .. "\n")
+                    if not ok then vim.notify(err, vim.log.levels.ERROR) end
+                end
+                map("i", "<CR>", select_and_save)
+                map("n", "<CR>", select_and_save)
             end
             return true
         end,

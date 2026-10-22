@@ -2,19 +2,7 @@
 local M = {}
 local running = {}
 
-local function executable(name, buf)
-    local path = vim.api.nvim_buf_get_name(buf)
-    if vim.bo[buf].filetype == "python" then
-        local python = require("config.python-venv").python(path)
-        local candidate = vim.fs.dirname(python) .. "/" .. name
-        if vim.fn.executable(candidate) == 1 then return candidate end
-    end
-    local root = vim.fs.root(path, { "package.json", ".git" })
-    if root and vim.fn.executable(root .. "/node_modules/.bin/" .. name) == 1 then
-        return root .. "/node_modules/.bin/" .. name
-    end
-    return vim.fn.executable(name) == 1 and name or nil
-end
+local executable = require("config.tools").executable
 
 local function commands(buf, only)
     local ft, path = vim.bo[buf].filetype, vim.api.nvim_buf_get_name(buf)
@@ -25,8 +13,20 @@ local function commands(buf, only)
         if exe then table.insert(result, vim.list_extend({ exe }, args)) end
     end
     if ft == "python" then
-        add("isort", { "--profile", "black", "--line-length", "79", "--filename", path, "-" })
-        add("black", { "--line-length", "79", "--skip-string-normalization", "--stdin-filename", path, "-" })
+        local formatter = vim.g.nvim_ide_python_formatter or "ruff"
+        if formatter ~= "ruff" and formatter ~= "black" then error("Python formatter must be ruff or black") end
+        local ruff = formatter == "ruff" and executable("ruff", buf)
+        if ruff and only ~= "black" then
+            if not only or only == "isort" then
+                result[#result + 1] = { ruff, "check", "--select", "I", "--fix", "--exit-zero", "--stdin-filename", path, "-" }
+            end
+            if not only then
+                result[#result + 1] = { ruff, "format", "--line-length", "79", "--config", "format.quote-style='preserve'", "--stdin-filename", path, "-" }
+            end
+        else
+            add("isort", { "--profile", "black", "--line-length", "79", "--filename", path, "-" })
+            add("black", { "--line-length", "79", "--skip-string-normalization", "--stdin-filename", path, "-" })
+        end
     elseif ft == "lua" then
         add("stylua", { "--column-width", "79", "--stdin-filepath", path, "-" })
     elseif vim.tbl_contains({ "javascript", "javascriptreact", "typescript", "typescriptreact", "vue",
@@ -106,7 +106,20 @@ function M.format(opts)
         for _, win in ipairs(vim.fn.win_findbuf(buf)) do
             views[win] = vim.api.nvim_win_call(win, vim.fn.winsaveview)
         end
-        vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+        -- Apply minimal hunks from the end so untouched lines keep marks and extmarks.
+        local diff = vim.text and vim.text.diff or vim.diff
+        local hunks = diff(input, output, { result_type = "indices" })
+        for i = #hunks, 1, -1 do
+            local old_start, old_count, new_start, new_count = unpack(hunks[i])
+            local replacement = {}
+            for row = new_start, new_start + new_count - 1 do replacement[#replacement + 1] = lines[row] end
+            local first = old_count == 0 and old_start or old_start - 1
+            vim.api.nvim_buf_call(buf, function()
+                if i < #hunks then vim.cmd("undojoin") end
+                vim.api.nvim_buf_set_lines(buf, first, first + old_count, false, replacement)
+            end)
+        end
+        vim.bo[buf].endofline = output:sub(-1) == "\n"
         for win, view in pairs(views) do
             if vim.api.nvim_win_is_valid(win) then
                 vim.api.nvim_win_call(win, function() vim.fn.winrestview(view) end)
@@ -122,7 +135,7 @@ function M.format(opts)
             local ok, result = pcall(function()
                 return vim.system(cmd, { stdin = output, text = true, cwd = cwd }):wait(timeout)
             end)
-            if not ok or result.code ~= 0 then failed(ok and result.stderr or tostring(result)); return end
+            if not ok or result.code ~= 0 then failed(ok and (result.stderr ~= "" and result.stderr or "Formatter failed (exit " .. result.code .. ")") or tostring(result)); return end
             output = result.stdout
         end
         apply(output)
@@ -166,7 +179,7 @@ function M.setup()
     end, { desc = "Toggle formatting before saving" })
     vim.api.nvim_create_user_command("PythonToolsStatus", function()
         local found = {}
-        for _, name in ipairs({ "black", "isort", "mypy", "flake8" }) do
+        for _, name in ipairs({ "ruff", "black", "isort", "mypy", "flake8" }) do
             found[#found + 1] = name .. ": " .. (executable(name, 0) or "not installed")
         end
         vim.notify(table.concat(found, "\n"))

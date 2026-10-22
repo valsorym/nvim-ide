@@ -1,12 +1,12 @@
--- ~/.config/nvim/ftplugin/rst.lua
--- reStructuredText specific settings
+-- ~/.config/nvim/ftplugin/text.lua
+-- Plain-text settings
 
-vim.wo.colorcolumn = ""
-vim.wo.wrap = true
-vim.wo.linebreak = true
-vim.wo.breakindent = true
-vim.wo.showbreak = "↪ "
-vim.bo.expandtab = true
-vim.bo.tabstop = 2
-vim.bo.shiftwidth = 2
-vim.bo.softtabstop = 2
+vim.opt_local.colorcolumn = ""
+vim.opt_local.wrap = true
+vim.opt_local.linebreak = true
+vim.opt_local.breakindent = true
+vim.opt_local.showbreak = "↪ "
+vim.opt_local.expandtab = true
+vim.opt_local.tabstop = 2
+vim.opt_local.shiftwidth = 2
+vim.opt_local.softtabstop = 2

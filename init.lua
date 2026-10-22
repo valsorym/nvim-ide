@@ -2,7 +2,15 @@
 if vim.fn.has("nvim-0.11.3") == 0 then
     error("Neovim IDE requires Neovim 0.11.3 or newer")
 end
+-- This configuration uses Lua plugins; language servers run as separate processes.
+local enabled_providers = vim.g.nvim_ide_enabled_providers or {}
+for _, provider in ipairs({ "python3", "perl", "ruby", "node" }) do
+    local name = "loaded_" .. provider .. "_provider"
+    if not enabled_providers[provider] and vim.g[name] == nil then vim.g[name] = 0 end
+end
 vim.loader.enable()
+-- Tool discovery does not require loading Mason's registry on the first file.
+vim.env.PATH = vim.fn.stdpath("data") .. "/mason/bin:" .. (vim.env.PATH or "")
 vim.g.mapleader = " "
 vim.g.maplocalleader = ","
 vim.opt.termguicolors = true
@@ -49,6 +57,15 @@ if not vim.uv.fs_stat(lazypath) then
     local result = vim.fn.system({ "git", "clone", "--filter=blob:none",
         "--branch=stable", "https://github.com/folke/lazy.nvim.git", lazypath })
     if vim.v.shell_error ~= 0 then error("Cannot install lazy.nvim: " .. result) end
+    local lockpath = vim.fn.stdpath("config") .. "/lazy-lock.json"
+    if vim.fn.filereadable(lockpath) == 1 then
+        local lock = vim.json.decode(table.concat(vim.fn.readfile(lockpath), "\n"))
+        local revision = lock["lazy.nvim"] and lock["lazy.nvim"].commit
+        if revision then
+            local checked = vim.fn.system({ "git", "-C", lazypath, "checkout", "--detach", revision })
+            if vim.v.shell_error ~= 0 then error("Cannot restore lazy.nvim revision: " .. checked) end
+        end
+    end
 end
 vim.opt.rtp:prepend(lazypath)
 require("lazy").setup("plugins", {

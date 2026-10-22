@@ -47,66 +47,36 @@ return {
             return vim.fn.fnamemodify(path, ":p")
         end
 
-        local function read_file(path)
-            local f = io.open(path, "r")
-            if not f then return nil end
-            local s = f:read("*a")
-            f:close()
-            return s
-        end
-
-        local function write_file(path, s)
-            local f = io.open(path, "w")
-            if not f then return false end
-            f:write(s)
-            f:close()
-            return true
-        end
-
+        local store = require("config.state")
         local function load_history()
-            if state.history then return state.history end
-            local ok, decoded
-            local raw = read_file(state.history_path)
-            if raw and raw ~= "" then
-                ok, decoded = pcall(vim.json.decode, raw)
-            end
-            state.history = (ok and type(decoded) == "table")
-                and decoded
-                or {}
-            return state.history
+            local value, err = store.read_json(state.history_path, {})
+            if not value then vim.notify(err, vim.log.levels.ERROR); return {} end
+            state.history = value
+            return value
         end
-
-        local function save_history()
-            if not state.history then return end
-            write_file(state.history_path,
-                vim.json.encode(state.history))
+        local function update_history(change)
+            local value, err = store.update_json(state.history_path, {}, change)
+            if not value then vim.notify(err, vim.log.levels.ERROR); return end
+            state.history = value
         end
-
-        local function remove_from_history(path)
-            local hist = load_history()
+        local function remove_entry(hist, path)
             local npath = normalize(path)
             for i = #hist, 1, -1 do
-                if normalize(hist[i].path) == npath then
-                    table.remove(hist, i)
-                end
+                if normalize(hist[i].path) == npath then table.remove(hist, i) end
             end
         end
-
+        local function remove_from_history(path)
+            update_history(function(hist) remove_entry(hist, path); return hist end)
+        end
         local function push_history(path)
-            if not path or path == "" then return end
-            if not stat_isdir(path) then return end
-            local hist = load_history()
-            remove_from_history(path)
-            table.insert(hist, 1, {
-                path = normalize(path),
-                name = vim.fn.fnamemodify(path, ":t"),
-                parent = vim.fn.fnamemodify(path, ":h:t"),
-                ts = os.time(),
-            })
-            while #hist > state.max_history do
-                table.remove(hist)
-            end
-            save_history()
+            if not path or path == "" or not stat_isdir(path) then return end
+            update_history(function(hist)
+                remove_entry(hist, path)
+                table.insert(hist, 1, { path = normalize(path),
+                    name = vim.fn.fnamemodify(path, ":t"), parent = vim.fn.fnamemodify(path, ":h:t"), ts = os.time() })
+                while #hist > state.max_history do table.remove(hist) end
+                return hist
+            end)
         end
 
         _G.NvimTreeHistory = {
@@ -292,8 +262,7 @@ return {
                 vim.bo[buf].modifiable = false
 
                 -- Highlight separator (0-indexed line 3).
-                vim.api.nvim_buf_add_highlight(
-                    buf, -1, "FloatBorder", 3, 0, -1)
+                vim.hl.range(buf, vim.api.nvim_create_namespace("ProjectHistoryBorder"), "FloatBorder", { 3, 0 }, { 3, -1 })
 
                 -- Cursor to first entry.
                 local first = 5
@@ -337,7 +306,11 @@ return {
                 end,
             })
 
+            local close_group, closed
             local function close_win()
+                if closed then return end
+                closed = true
+                if close_group then pcall(vim.api.nvim_del_augroup_by_id, close_group) end
                 if vim.api.nvim_win_is_valid(prompt_win) then
                     pcall(vim.api.nvim_win_close, prompt_win, true)
                 end
@@ -414,7 +387,6 @@ return {
                 local path = line_to_path[l]
                 if not path then return end
                 remove_from_history(path)
-                save_history()
                 refresh()
             end, km)
 
@@ -422,8 +394,7 @@ return {
                 vim.ui.input({prompt = "Clear history? (y/N): "},
                     function(inp)
                         if inp and inp:lower() == "y" then
-                            state.history = {}
-                            save_history()
+                            update_history(function() return {} end)
                             close_win()
                             print("History cleared")
                         end
@@ -466,19 +437,20 @@ return {
             vim.keymap.set("i", "<C-p>", go_prev, pkm)
             vim.keymap.set("i", "<C-k>", go_prev, pkm)
 
-            -- Auto-close on focus loss.
-            vim.api.nvim_create_autocmd({"WinLeave", "BufLeave"}, {
-                buffer = buf,
-                once = true,
-                callback = function()
+            -- Moving between the list and its prompt must not consume the close handler.
+            close_group = vim.api.nvim_create_augroup("ProjectHistory" .. buf, { clear = true })
+            vim.api.nvim_create_autocmd({ "WinLeave", "BufLeave" }, {
+                group = close_group,
+                callback = function(args)
+                    if args.buf ~= buf and args.buf ~= prompt_buf then return end
                     vim.defer_fn(function()
                         local cur = vim.api.nvim_get_current_win()
-                        if cur ~= win and cur ~= prompt_win then
-                            close_win()
-                        end
+                        if cur ~= win and cur ~= prompt_win then close_win() end
                     end, 100)
                 end,
             })
+            vim.api.nvim_create_autocmd("BufWipeout", { group = close_group, buffer = buf,
+                callback = function() vim.schedule(close_win) end })
         end
 
         -- NVIM-TREE SETUP
@@ -550,7 +522,7 @@ return {
                 },
                 change_dir = {
                     enable = true,
-                    global = false,
+                    global = true,
                     restrict_above_cwd = false,
                 },
             },
@@ -659,7 +631,6 @@ return {
                     vim.cmd("cd " .. vim.fn.fnameescape(rp))
 
                     update_title()
-                    push_history(rp)
                     recenter_tree_top()
                     print("Root: " .. vim.fn.fnamemodify(rp, ":~"))
                 end
@@ -693,14 +664,15 @@ return {
                     end)
                 end, { buffer = bufnr, desc = "Enter root directory" })
 
-                vim.keymap.set("n", "P", function()
-                    local cur = vim.fn.getcwd()
-                    local parent = vim.fn.fnamemodify(cur, ":h")
-                    api.tree.change_root_to_parent()
-                    update_title()
-                    push_history(parent)
-                    recenter_tree_top()
-                end, { buffer = bufnr, desc = "Parent dir" })
+                local function parent_root()
+                    change_root_to(vim.fs.dirname(vim.fn.getcwd()))
+                end
+                vim.keymap.set("n", "P", parent_root, { buffer = bufnr, desc = "Parent dir" })
+                vim.keymap.set("n", "-", parent_root, { buffer = bufnr, desc = "Parent dir" })
+                vim.keymap.set("n", "<C-]>", function()
+                    local node = api.tree.get_node_under_cursor()
+                    if node then change_root_to(node.type == "directory" and node.absolute_path or vim.fs.dirname(node.absolute_path)) end
+                end, { buffer = bufnr, desc = "Choose root dir" })
 
                 vim.keymap.set("n", "<Esc>", api.tree.close,
                     { buffer = bufnr, desc = "Close tree" })
@@ -827,20 +799,14 @@ return {
             "NvimTreeEx", { clear = true }
         )
 
-        vim.api.nvim_create_autocmd({"DirChanged", "VimEnter"}, {
+        vim.api.nvim_create_autocmd("DirChanged", {
             group = aug,
-            callback = update_title,
-        })
-
-        vim.api.nvim_create_autocmd("User", {
-            group = aug,
-            pattern = "NvimTreeRootChanged",
-            callback = function(ev)
-                if ev.data and ev.data.new_root then
-                    push_history(ev.data.new_root)
-                end
+            callback = function()
+                update_title()
+                if vim.v.event.scope == "global" then push_history(vim.v.event.cwd) end
             end,
         })
+        update_title()
 
         vim.api.nvim_create_user_command(
             "NvimTreeModal", open_tree_modal,
@@ -856,8 +822,7 @@ return {
         vim.api.nvim_create_user_command(
             "NvimTreeClearHistory",
             function()
-                state.history = {}
-                save_history()
+                update_history(function() return {} end)
                 print("History cleared")
             end,
             { desc = "Clear root history" }

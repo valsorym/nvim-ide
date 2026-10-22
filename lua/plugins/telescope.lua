@@ -6,20 +6,22 @@ return {
         { "nvim-telescope/telescope-fzf-native.nvim", build = "make", cond = function() return vim.fn.executable("make") == 1 end } },
     config = function()
         local actions = require("telescope.actions")
+        local search = require("config.search")
         require("telescope").setup({
             defaults = {
                 path_display = { "truncate" },
                 sorting_strategy = "ascending",
                 layout_config = { prompt_position = "top", width = 0.9, height = 0.8 },
                 preview = { filesize_limit = 1, timeout = 200 },
-                file_ignore_patterns = { "%.git/", "node_modules/", "__pycache__/", "%.venv/", "venv/" },
+                file_ignore_patterns = {},
+                vimgrep_arguments = search.grep_args(false),
                 mappings = {
                     i = { ["<C-j>"] = actions.move_selection_next, ["<C-k>"] = actions.move_selection_previous },
                 },
             },
             pickers = {
-                find_files = { mappings = { i = { ["<CR>"] = actions.select_tab_drop }, n = { ["<CR>"] = actions.select_tab_drop } }, hidden = true, find_command = { "rg", "--files", "--hidden", "--glob", "!.git/**" } },
-                live_grep = { mappings = { i = { ["<CR>"] = actions.select_tab_drop }, n = { ["<CR>"] = actions.select_tab_drop } }, additional_args = { "--hidden", "--glob", "!.git/**" } },
+                find_files = { mappings = { i = { ["<CR>"] = actions.select_tab_drop }, n = { ["<CR>"] = actions.select_tab_drop } }, hidden = true, find_command = search.file_args() },
+                live_grep = { mappings = { i = { ["<CR>"] = actions.select_tab_drop }, n = { ["<CR>"] = actions.select_tab_drop } } },
                 buffers = { sort_mru = true, mappings = { i = { ["<CR>"] = actions.select_tab_drop }, n = { ["<CR>"] = actions.select_tab_drop } } },
                 oldfiles = { mappings = { i = { ["<CR>"] = actions.select_tab_drop }, n = { ["<CR>"] = actions.select_tab_drop } } },
             },

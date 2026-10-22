@@ -35,7 +35,7 @@ local function open(key, argv, direction)
     vim.wo[item.win].relativenumber = false
     vim.wo[item.win].signcolumn = "no"
     if not item.job then
-        item.job = vim.fn.jobstart(argv, {
+        local ok, job = pcall(vim.fn.jobstart, argv, {
             term = true, cwd = cwd,
             on_exit = function(_, code)
                 item.job = nil
@@ -48,11 +48,14 @@ local function open(key, argv, direction)
                 end)
             end,
         })
-        if item.job <= 0 then
-            item.job = nil
+        if not ok or job <= 0 then
+            if item.win and vim.api.nvim_win_is_valid(item.win) then vim.api.nvim_win_close(item.win, true) end
+            pcall(vim.api.nvim_buf_delete, item.buf, { force = true })
+            terminals[key] = nil
             vim.notify("Could not start terminal", vim.log.levels.ERROR)
             return
         end
+        item.job = job
         vim.bo[item.buf].bufhidden = "hide"
     end
     vim.cmd("startinsert")

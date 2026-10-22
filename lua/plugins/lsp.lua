@@ -2,17 +2,19 @@
 return {
     "neovim/nvim-lspconfig",
     event = { "BufReadPre", "BufNewFile" },
-    cmd = "LanguageToolsInstall",
-    dependencies = { "mason-org/mason.nvim", "mason-org/mason-lspconfig.nvim", "hrsh7th/cmp-nvim-lsp" },
+    cmd = { "LanguageToolsInstall", "LspInstall", "LspUninstall" },
+    dependencies = { "hrsh7th/cmp-nvim-lsp" },
     config = function()
         local python = require("config.python-venv")
         local servers = {
             pyright = {
+                root_markers = require("config.project").python_markers,
                 settings = { python = { analysis = {
                     diagnosticMode = "openFilesOnly", autoSearchPaths = true, useLibraryCodeForTypes = true,
                 } } },
                 before_init = function(_, config)
-                    config.settings.python.pythonPath = python.python(config.root_dir)
+                    local uri = config.root_dir or vim.api.nvim_buf_get_name(0)
+                    config.settings.python.pythonPath = python.python(uri)
                 end,
             },
             ts_ls = {
@@ -33,10 +35,11 @@ return {
             dockerls = {},
             yamlls = { settings = { yaml = { schemaStore = { enable = true } } } },
             jsonls = { on_init = function(client)
-                client.config.settings = vim.tbl_deep_extend("force", client.config.settings or {}, {
+                client.settings = vim.tbl_deep_extend("force", client.settings or {}, {
                     json = { schemas = require("schemastore").json.schemas(), validate = { enable = true } },
                 })
-                client:notify("workspace/didChangeConfiguration", { settings = client.config.settings })
+                client.config.settings = client.settings
+                client:notify("workspace/didChangeConfiguration", { settings = client.settings })
             end },
             lua_ls = { settings = { Lua = {
                 runtime = { version = "LuaJIT" }, diagnostics = { globals = { "vim" } },
@@ -59,15 +62,29 @@ return {
                 require("config.performance").check(buf)
                 if require("config.performance").is_large(buf) then return end
                 if type(cmd) == "table" and vim.fn.executable(cmd[1]) == 0 then return end
-                if root_dir then root_dir(buf, on_dir) else
-                    on_dir(vim.fs.root(buf, markers or { ".git" }) or vim.fs.dirname(vim.api.nvim_buf_get_name(buf)) or vim.fn.getcwd())
+                local function start(root)
+                    -- A standalone file must not turn HOME or / into an indexed project.
+                    if root and not require("config.project").safe_root(root) then return end
+                    on_dir(root)
                 end
+                if root_dir then root_dir(buf, start)
+                else start(vim.fs.root(buf, markers or { ".git" })) end
             end })
             vim.lsp.enable(name)
         end
-        require("mason-lspconfig").setup({ ensure_installed = {}, automatic_enable = false })
+        local function installers()
+            require("lazy").load({ plugins = { "mason.nvim" } })
+            require("mason-lspconfig").setup({ ensure_installed = {}, automatic_enable = false })
+        end
+        for _, name in ipairs({ "LspInstall", "LspUninstall" }) do
+            vim.api.nvim_create_user_command(name, function(opts)
+                installers()
+                vim.cmd(name .. (opts.bang and "!" or "") .. " " .. opts.args)
+            end, { nargs = "*", bang = true })
+        end
         vim.api.nvim_create_user_command("LanguageToolsInstall", function()
             -- Installation is explicit; opening a file must not download a toolchain.
+            installers()
             local names = vim.tbl_keys(servers)
             table.sort(names)
             vim.cmd("LspInstall " .. table.concat(names, " "))

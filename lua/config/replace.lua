@@ -1,5 +1,15 @@
 -- Literal project replacement from reviewed search results, kept in undoable buffers.
 local M = {}
+vim.api.nvim_create_autocmd("BufWinEnter", {
+    group = vim.api.nvim_create_augroup("ReplacementBuffers", { clear = true }),
+    callback = function(args)
+        if vim.b[args.buf].nvim_ide_deferred_read then
+            vim.b[args.buf].nvim_ide_deferred_read = nil
+            -- Run normal read hooks once the result is actually opened; no disk reload.
+            vim.api.nvim_exec_autocmds("BufReadPost", { buffer = args.buf, modeline = false })
+        end
+    end,
+})
 
 function M.apply(entries, search, replacement, cwd)
     if search == "" then return { changed = 0, skipped = 0 } end
@@ -12,7 +22,16 @@ function M.apply(entries, search, replacement, cwd)
     local result = { changed = 0, skipped = 0 }
     for path, matches in pairs(files) do
         local buf = vim.fn.bufadd(path)
-        vim.fn.bufload(buf)
+        if not vim.api.nvim_buf_is_loaded(buf) then
+            -- Search-only buffers must not start language clients for every result file.
+            local previous = vim.o.eventignore
+            vim.o.eventignore = "all"
+            local ok, err = pcall(vim.fn.bufload, buf)
+            vim.o.eventignore = previous
+            if not ok then error(err) end
+            vim.b[buf].nvim_ide_deferred_read = true
+            require("config.performance").check(buf)
+        end
         if vim.bo[buf].modified or vim.bo[buf].readonly or not vim.bo[buf].modifiable
             or require("config.performance").is_large(buf) then
             result.skipped = result.skipped + 1
@@ -33,7 +52,10 @@ function M.apply(entries, search, replacement, cwd)
                     vim.api.nvim_buf_set_lines(buf, update.row - 1, update.row, false, { update.text })
                 end)
             end
-            if #updates > 0 then result.changed = result.changed + 1 end
+            if #updates > 0 then
+                vim.bo[buf].buflisted = true
+                result.changed = result.changed + 1
+            end
         end
     end
     return result
@@ -43,10 +65,9 @@ function M.search(ignored, initial)
     local cwd = vim.fn.getcwd()
     local actions = require("telescope.actions")
     local state = require("telescope.actions.state")
-    local args = { "--fixed-strings", "--case-sensitive", "--hidden", "--glob", "!.git/**" }
-    if ignored then args[#args + 1] = "--no-ignore" end
+    local args = { "--fixed-strings", "--case-sensitive" }
     require("telescope.builtin").live_grep({
-        file_ignore_patterns = ignored and {} or nil,
+        vimgrep_arguments = require("config.search").grep_args(ignored),
         cwd = cwd, default_text = initial or "", additional_args = args,
         prompt_title = "Literal replace • Ctrl-R to review replacement",
         attach_mappings = function(prompt_buf, map)

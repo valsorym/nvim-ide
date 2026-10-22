@@ -6,7 +6,7 @@ function M.setup()
         text = { [vim.diagnostic.severity.ERROR] = "", [vim.diagnostic.severity.WARN] = "",
             [vim.diagnostic.severity.INFO] = "", [vim.diagnostic.severity.HINT] = "" },
     }, underline = false, update_in_insert = false, severity_sort = true,
-        float = { border = "rounded", source = "always", focusable = false } })
+        float = { border = "rounded", source = true, focusable = false } })
     local function apply()
         local normal = vim.api.nvim_get_hl(0, { name = "Normal", link = false })
         vim.api.nvim_set_hl(0, "NormalFloat", { fg = normal.fg, bg = normal.bg })

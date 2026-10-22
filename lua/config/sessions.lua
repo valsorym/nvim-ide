@@ -1,27 +1,36 @@
 -- Native :mksession with one store; deletion also prevents automatic recreation.
 local M = {}
-local disabled = {}
+local disabled, managed = {}, {}
+local store = require("config.state")
 local dir = vim.fn.stdpath("state") .. "/sessions-v2"
 local index_path = dir .. "/index.json"
 
+local function normalize(index)
+    for _, key in ipairs({ "sessions", "workspaces" }) do
+        if type(index[key]) ~= "table" or next(index[key]) == nil then index[key] = vim.empty_dict() end
+    end
+    if type(index.last) ~= "string" then index.last = nil end
+    for cwd, entry in pairs(index.sessions) do
+        if type(entry) ~= "table" or type(entry.path) ~= "string" then index.sessions[cwd] = nil
+        else entry.cwd, entry.time = entry.cwd or cwd, tonumber(entry.time) or 0 end
+    end
+    for cwd, name in pairs(index.workspaces) do
+        if type(name) ~= "string" then index.workspaces[cwd] = nil end
+    end
+    return index
+end
 local function read_index()
-    local file = io.open(index_path, "r")
-    if not file then return { sessions = {}, workspaces = {} } end
-    local text = file:read("*a")
-    file:close()
-    local ok, value = pcall(vim.json.decode, text)
-    return ok and value or { sessions = {}, workspaces = {} }
+    local index, err = store.read_json(index_path, {})
+    if not index then vim.notify(err, vim.log.levels.ERROR); return normalize({}) end
+    return normalize(index)
 end
-
-local function write_index(index)
-    vim.fn.mkdir(dir, "p")
-    local temp = index_path .. "." .. vim.fn.getpid() .. ".tmp"
-    vim.fn.writefile({ vim.json.encode(index) }, temp)
-    assert(vim.uv.fs_rename(temp, index_path))
+local function update_index(change)
+    local result, err = store.update_json(index_path, {}, function(index) return change(normalize(index)) end)
+    if not result then vim.notify(err, vim.log.levels.ERROR) end
+    return result
 end
-
 local function eligible(cwd)
-    if cwd == vim.env.HOME or cwd == "/" or cwd == "/tmp" then return false end
+    if not require("config.project").safe_root(cwd) then return false end
     for _, buf in ipairs(vim.api.nvim_list_bufs()) do
         if vim.bo[buf].buflisted and vim.bo[buf].buftype == "" and vim.api.nvim_buf_get_name(buf) ~= "" then return true end
     end
@@ -30,26 +39,32 @@ end
 
 function M.save(automatic)
     local cwd = vim.fn.getcwd()
-    if automatic and (disabled[cwd] or not eligible(cwd)) then return end
-    vim.fn.mkdir(dir, "p")
+    -- A quick `nvim file` visit cannot replace a deliberately saved project session.
+    if automatic and (not managed[cwd] or disabled[cwd] or not eligible(cwd)) then return end
     local path = dir .. "/" .. vim.fn.sha256(cwd) .. ".vim"
-    local temp = path .. "." .. vim.fn.getpid() .. ".tmp"
-    local previous = vim.o.sessionoptions
-    vim.opt.sessionoptions = { "buffers", "curdir", "folds", "tabpages", "winsize" }
-    local ok, err = pcall(vim.cmd, "mksession! " .. vim.fn.fnameescape(temp))
-    vim.o.sessionoptions = previous
-    if not ok then
-        if not automatic then vim.notify(err, vim.log.levels.ERROR) end
-        return
-    end
-    local renamed, rename_err = vim.uv.fs_rename(temp, path)
-    if not renamed then vim.notify(rename_err, vim.log.levels.ERROR); return end
-    local index = read_index()
-    index.sessions[cwd] = { path = path, cwd = cwd, time = os.time() }
-    index.last = cwd
-    write_index(index)
-    disabled[cwd] = nil
+    local updated = update_index(function(index)
+        local temp = path .. "." .. vim.fn.getpid() .. ".tmp"
+        local previous = vim.o.sessionoptions
+        vim.opt.sessionoptions = { "buffers", "curdir", "folds", "tabpages", "winsize" }
+        local ok, err = pcall(vim.cmd, "mksession! " .. vim.fn.fnameescape(temp))
+        vim.o.sessionoptions = previous
+        if not ok then vim.uv.fs_unlink(temp); error(err) end
+        local old = io.open(path, "rb")
+        if old then
+            local text = old:read("*a"); old:close()
+            local backed, backup_err = store.write(path .. ".bak", text)
+            if not backed then vim.uv.fs_unlink(temp); error(backup_err) end
+        end
+        local renamed, rename_err = vim.uv.fs_rename(temp, path)
+        assert(renamed, rename_err)
+        index.sessions[cwd] = { path = path, cwd = cwd, time = os.time() }
+        index.last = cwd
+        return index
+    end)
+    if not updated then return end
+    managed[cwd], disabled[cwd] = true, nil
     if not automatic then vim.notify("Session saved: " .. cwd) end
+    return true
 end
 
 function M.restore(entry)
@@ -65,21 +80,26 @@ function M.restore(entry)
         end
     end
     local ok, err = pcall(vim.cmd, "source " .. vim.fn.fnameescape(entry.path))
-    if not ok then vim.notify(err, vim.log.levels.ERROR) end
+    if not ok then vim.notify(err, vim.log.levels.ERROR); return end
+    managed[vim.fn.getcwd()], disabled[vim.fn.getcwd()] = true, nil
+    return true
 end
 
 function M.delete()
     local cwd = vim.fn.getcwd()
-    local index = read_index()
-    local entry = index.sessions[cwd]
-    if entry then
-        local ok, err = vim.uv.fs_unlink(entry.path)
-        if not ok and vim.fn.filereadable(entry.path) == 1 then vim.notify(err, vim.log.levels.ERROR); return end
-        index.sessions[cwd] = nil
-        if index.last == cwd then index.last = nil end
-        write_index(index)
-    end
-    disabled[cwd] = true
+    local updated = update_index(function(index)
+        local entry = index.sessions[cwd]
+        if entry then
+            local ok, err = vim.uv.fs_unlink(entry.path)
+            assert(ok or vim.fn.filereadable(entry.path) == 0, err)
+            vim.uv.fs_unlink(entry.path .. ".bak")
+            index.sessions[cwd] = nil
+            if index.last == cwd then index.last = nil end
+        end
+        return index
+    end)
+    if not updated then return end
+    disabled[cwd], managed[cwd] = true, nil
     vim.notify("Session deleted; automatic saving paused until SessionSave")
 end
 
@@ -104,9 +124,10 @@ end
 function M.add_workspace()
     vim.ui.input({ prompt = "Workspace name: ", default = vim.fs.basename(vim.fn.getcwd()) }, function(name)
         if not name or name == "" then return end
-        local index = read_index()
-        index.workspaces[vim.fn.getcwd()] = name
-        write_index(index)
+        update_index(function(index)
+            index.workspaces[vim.fn.getcwd()] = name
+            return index
+        end)
     end)
 end
 

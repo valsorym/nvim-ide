@@ -20,9 +20,6 @@ return {
             return {"treesitter", "indent"}
         end,
         open_fold_hl_timeout = 150,
-        close_fold_kinds_for_ft = {
-            default = {"imports", "comment"}
-        },
         preview = {
             win_config = {
                 border = {"", "─", "", "", "", "─", "", ""},
@@ -103,29 +100,21 @@ return {
         -- Setup nvim-ufo.
         require("ufo").setup(opts)
 
-        -- Highlight customization for better visual appearance.
-        -- Folded text.
-        vim.api.nvim_set_hl(0, "Folded", {
-            fg = "#a9b1d6", -- "#6c7086",
-            sp = "#45475a",
-            bg = "NONE",
-            italic = true,
-            underline = true
+        local function highlights()
+            local normal = vim.api.nvim_get_hl(0, { name = "Normal", link = false })
+            local comment = vim.api.nvim_get_hl(0, { name = "Comment", link = false })
+            local ok = vim.api.nvim_get_hl(0, { name = "DiagnosticOk", link = false })
+            local mocha = vim.g.colors_name == "catppuccin-mocha"
+            vim.api.nvim_set_hl(0, "Folded", { fg = mocha and "#a9b1d6" or normal.fg,
+                sp = comment.fg, italic = true, underline = true })
+            for _, name in ipairs({ "FoldedPrefix", "FoldedSuffix" }) do
+                vim.api.nvim_set_hl(0, name, { fg = mocha and "#a6e3a1" or ok.fg, bg = normal.bg, bold = true })
+            end
+        end
+        vim.api.nvim_create_autocmd("ColorScheme", {
+            group = vim.api.nvim_create_augroup("FoldHighlights", { clear = true }), callback = highlights,
         })
-
-        -- Prefix.
-        vim.api.nvim_set_hl(0, "FoldedPrefix", {
-            fg = "#a6e3a1", -- "#89b4fa",
-            bg = "#1e1e2e",
-            bold = true
-        })
-
-        -- Suffix.
-        vim.api.nvim_set_hl(0, "FoldedSuffix", {
-            fg = "#a6e3a1",
-            bg = "#1e1e2e",
-            bold = true
-        })
+        highlights()
 
     end,
 }

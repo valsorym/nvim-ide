@@ -14,6 +14,31 @@ function M.setup()
     vim.opt.smartindent = true
     vim.opt.autoindent = true
 
+    local views = {}
+    local options = { "wrap", "linebreak", "breakindent", "showbreak", "colorcolumn" }
+    local group = vim.api.nvim_create_augroup("BufferWindowOptions", { clear = true })
+    vim.api.nvim_create_autocmd("BufWinLeave", { group = group, callback = function(args)
+        if vim.bo[args.buf].buftype ~= "" then return end
+        local win = vim.api.nvim_get_current_win()
+        views[win] = views[win] or {}
+        local saved = {}
+        for _, name in ipairs(options) do saved[name] = vim.wo[win][name] end
+        views[win][args.buf] = saved
+    end })
+    vim.api.nvim_create_autocmd("BufWinEnter", { group = group, callback = function(args)
+        if vim.bo[args.buf].buftype ~= "" then return end
+        local win = vim.api.nvim_get_current_win()
+        local prose = vim.tbl_contains({ "markdown", "rst", "text" }, vim.bo[args.buf].filetype)
+        local saved = views[win] and views[win][args.buf]
+        local settings = saved or { wrap = prose, linebreak = prose, breakindent = prose,
+            showbreak = prose and "↪ " or "", colorcolumn = prose and "" or "79" }
+        for name, value in pairs(settings) do vim.wo[win][name] = value end
+    end })
+    vim.api.nvim_create_autocmd("WinClosed", { group = group, callback = function(args) views[tonumber(args.match)] = nil end })
+    vim.api.nvim_create_autocmd("BufWipeout", { group = group, callback = function(args)
+        for _, buffers in pairs(views) do buffers[args.buf] = nil end
+    end })
+
     -- Hide colorcolumn for special buffers
     local group = vim.api.nvim_create_augroup(
         "FileTypeSettings",

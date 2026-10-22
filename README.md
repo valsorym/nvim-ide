@@ -1,4 +1,4 @@
-# Neovim IDE 2.0
+# Neovim IDE 2.1.0
 
 [Українська](README.UK.md)
 
@@ -81,6 +81,28 @@ Keys are sequential, not held together. Uppercase letters require Shift.
 The tables below list configured global mappings. `n` = Normal, `x` = Visual,
 `o` = operator-pending, `i` = Insert. Native Vim commands remain available.
 
+`Space h` / `:KeymapHelp` opens a read-only keyboard reference in a regular split.
+It lists every configured global mapping by group, local menu keys and native
+Vim essentials, with the mode and description for each entry. It loads on demand
+and does not load the plugins whose keys it describes. The command legend stays
+available through `Space Space` for finding and running actions.
+
+In the reference, `/` opens a literal filter; type a word or several words and
+press Enter. It searches English and Ukrainian descriptions and group names
+together, regardless of the display language. For example, `копіювати` or `copy`
+finds copying actions. All words must match; `c` clears the filter. `e` selects
+English, `u` Ukrainian, `[[` / `]]` move between sections, and `q` / Esc closes
+the reference. Enter on an entry never executes its action. Normal Vim scrolling,
+selection and copying work; `g/` starts native search within the displayed text,
+with `n` / `N` to repeat it.
+
+English is the default. `:KeymapHelp uk` opens Ukrainian directly; the last
+chosen language is remembered for this Neovim process. For a persistent default,
+set `vim.g.nvim_ide_help_language = "uk"` in `init.lua`. This preference is
+independent of the OS keyboard layout and `nvim_ide_ukrainian_layout`; key labels
+always use their canonical English spelling. Full native documentation remains
+available through `:help index`, and `g?` lists all active explorer mappings.
+
 | Prefix | Group |
 | --- | --- |
 | `Space b` | Buffers and explorer |
@@ -100,6 +122,7 @@ The tables below list configured global mappings. `n` = Normal, `x` = Visual,
 | --- | --- | --- |
 | `<leader><leader>` | n | Search commands |
 | `<leader>?` | n | Browse key groups |
+| `<leader>h` | n | Keyboard reference |
 | `<leader>:` | n | Search Ex commands |
 | `<leader>bb` | n | Find buffer |
 | `<leader>bn` | n | Next buffer |
@@ -224,7 +247,7 @@ The tables below list configured global mappings. `n` = Normal, `x` = Visual,
 | `<C-LeftMouse>` | n | Go to definition in tab |
 | `zR` | n | Open all folds |
 | `zM` | n | Close all folds |
-| `zr` | n | Open folds except configured kinds |
+| `zr` | n | Reduce fold level |
 | `zm` | n | Fold one more level |
 | `zp` | n | Preview fold |
 | `]t` | n | Next TODO |
@@ -271,7 +294,7 @@ starts only when its executable exists and a supported, ordinary-sized file open
 
 | Files | Language servers | External formatting (`Space df`) |
 | --- | --- | --- |
-| Python | pyright | isort, then Black |
+| Python | pyright | Ruff imports + format; isort/Black fallback |
 | JavaScript, TypeScript, JSX, TSX | ts_ls, emmet_ls | Prettier |
 | Vue | vue_ls + ts_ls with Vue TypeScript plugin | Prettier |
 | HTML | html, emmet_ls | Prettier |
@@ -290,6 +313,10 @@ starts only when its executable exists and a supported, ordinary-sized file open
 | TOML, XML, INI, Make, plain text | Native filetype settings | Native `=` / `gq` |
 
 LSP provides completion, definitions, references (`grr`), rename and diagnostics.
+Files without project markers use a single-file client where supported; broad
+roots such as HOME, `/` and `/tmp` are never used as indexed workspaces.
+Without a supporting LSP, `gd`/`gD` retain native Vim navigation and Ctrl-click
+uses tags. TODO highlighting loads on the first TODO command or `]t`/`[t`.
 The table lists integrations, not bundled language runtimes. Linters such as
 mypy and flake8 are optional external tools; no background lint job is started.
 `:PythonToolsStatus` reports executable availability, not lint results.
@@ -312,8 +339,15 @@ external formatter is available, an attached LSP formatter is used when supporte
 `Space ds` toggles formatting on save for this editor process. Saving then waits
 up to 1.5 seconds per formatter; a failure leaves the text unchanged. Set
 `vim.g.format_on_save = true` before setup for a persistent preference. Install
-only the tools you need, e.g. `python -m pip install black isort` inside a project
-virtual environment, or Prettier as a project development dependency.
+only the tools you need, e.g. `python -m pip install ruff` inside a project virtual
+environment, or `:MasonInstall ruff`. Prettier can be a project development dependency.
+
+Python uses Ruff for import sorting and formatting (79 columns, existing quote
+style preserved). If Ruff is absent, installed isort/Black tools are used.
+`Space di` sorts imports with Ruff or isort; `Space db` explicitly requests Black.
+To prefer the previous pipeline, set `vim.g.nvim_ide_python_formatter = "black"`
+before setup and install `black isort` in the project environment. Ruff is used
+as a formatter here; no additional background lint server is enabled.
 Trailing whitespace is removed only by `Space dx`; Markdown hard breaks survive
 ordinary saves. Formatting Django templates is deliberately left to native commands.
 
@@ -342,6 +376,13 @@ vim.g.nvim_ide_large_file_lines = 30000
 Completion searches only the current buffer. Python diagnostics cover open files.
 Only the selected theme loads at startup; pickers, outlines and tool managers
 load on demand. Tree-sitter indentation is disabled in favour of filetype rules.
+Unused Python/Ruby/Perl/Node remote-plugin providers are disabled before runtime
+loading; LSP and Copilot use their own processes. To enable a provider for an
+additional remote plugin, set e.g. `vim.g.nvim_ide_enabled_providers = { python3 = true }`
+before startup. The keymap registration API creates Ukrainian command aliases;
+recheck them after Neovim/plugin upgrades. This release is tested on Neovim 0.11;
+0.12 requires a separate Tree-sitter compatibility check.
+
 Tab movement occurs once when a buffer becomes modified. To keep tab order fixed:
 
 ```lua
@@ -356,8 +397,11 @@ closes only tabs whose windows contain no modified buffers. Hidden unrelated
 buffers are retained. `F2` saves the current file, asking for a name when needed.
 
 Sessions use native `:mksession` under `stdpath("state")/sessions-v2`. They preserve
-files, directories, tabs, windows and folds, **not unsaved buffer text**. Eligible
-project sessions save on exit; restore is explicit. `Space wD` deletes the current
+files, directories, tabs, windows and folds, **not unsaved buffer text**. Automatic
+saving on exit is enabled for a directory only after `SessionSave` or a successful
+restore in that editor process. A quick `nvim file` visit cannot overwrite its
+saved project session. The previous session is retained as a `.vim.bak` file.
+Restore is explicit. `Space wD` deletes the current
 session and prevents automatic recreation until `Space ws` explicitly saves it.
 Restoring sessions or switching workspaces is refused while buffers are modified.
 `Space wa` names the current directory; `Space ww` selects saved workspaces.
