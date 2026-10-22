@@ -1,4 +1,4 @@
-# Neovim IDE 2.1.0
+# Neovim IDE 2.2.0
 
 [Українська](README.UK.md)
 
@@ -81,7 +81,11 @@ Keys are sequential, not held together. Uppercase letters require Shift.
 The tables below list configured global mappings. `n` = Normal, `x` = Visual,
 `o` = operator-pending, `i` = Insert. Native Vim commands remain available.
 
-`Space h` / `:KeymapHelp` opens a read-only keyboard reference in a regular split.
+`Space h` / `:KeymapHelp` opens a read-only keyboard reference in a centered
+floating window, about 90% of the terminal width and 85% of its height. It adapts
+when the terminal is resized and leaves the source window sizes unchanged.
+The border shows the language, result count and key hints; closing returns
+focus to the window from which the reference was opened.
 It lists every configured global mapping by group, local menu keys and native
 Vim essentials, with the mode and description for each entry. It loads on demand
 and does not load the plugins whose keys it describes. The command legend stays
@@ -176,6 +180,8 @@ available through `:help index`, and `g?` lists all active explorer mappings.
 | `<leader>fG` | n | Search including ignored files |
 | `<leader>fo` | n | Recent files |
 | `<leader>fh` | n | Find help |
+| `<leader>fs` | n | Find text in current file |
+| `<leader>fc` | n | Replace text in current file |
 | `<leader>fr` | n | Find and replace in project |
 | `<leader>fR` | n | Find and replace including ignored files |
 | `<leader>fw` | n | Replace current word in project |
@@ -329,6 +335,28 @@ For Vue, install both `vue-language-server` and `typescript-language-server`
 through Mason. For C/C++, provide `compile_commands.json` when the project needs it.
 
 ### Formatting and replacement
+
+`Space fs` / `:FindInBuffer` opens a floating search dialog for the current
+buffer, including unsaved text. Type literal, single-line text: punctuation
+such as `.`, `#`, `/` and `[` needs no escaping. Matching follows Vim's
+`ignorecase` and `smartcase` settings. Results update after a short typing pause;
+`Ctrl-n` / `Ctrl-p` preview the next / previous match and wrap through the list.
+Enter jumps to the match and closes the dialog; native `n` / `N` then repeat
+the same search. Esc cancels the preview and restores the original cursor view.
+
+`Space fc` / `:ReplaceInBuffer` adds a replacement field. Enter in Find moves
+to Replace; Enter in Replace (or `Ctrl-r` in either field) replaces one match
+and advances. `Ctrl-a` explicitly replaces all matches in this buffer. Tab /
+Shift-Tab cycle through the fields and result list; Enter in the list jumps
+without replacing. `Ctrl-u` clears the active input field. An empty replacement
+deletes matches. Replacement text is literal, including `&`, `~` and backslashes.
+Each replacement action is one undo step; close the dialog and use `u` to undo.
+The dialog never saves files. Esc keeps completed replacements.
+
+The preview displays up to 2,000 matches, marked `2000+` when capped; replace-all
+still covers the entire buffer. Large-file mode searches only after an explicit
+Enter or navigation/replacement action, rather than on every typing pause.
+Native `/text` and `:%s#pattern#replacement#g` remain available for Vim patterns.
 
 Formatting is manual by default. `Space df` processes the in-memory document
 asynchronously; it applies results only if the buffer has not changed in the

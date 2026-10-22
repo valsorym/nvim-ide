@@ -139,6 +139,8 @@ M.entries = {
     { "<leader>fG", telescope("live_grep", { vimgrep_arguments = require("config.search").grep_args(true) }), "Search including ignored files", uk = "Пошук тексту включно з ігнорованими файлами" },
     { "<leader>fo", telescope("oldfiles"), "Recent files", uk = "Нещодавні файли" },
     { "<leader>fh", telescope("help_tags"), "Find help", uk = "Знайти довідку Neovim" },
+    { "<leader>fs", call("config.buffer-search", "open", false), "Find text in current file", uk = "Знайти текст у поточному файлі" },
+    { "<leader>fc", call("config.buffer-search", "open", true), "Replace text in current file", uk = "Замінити текст у поточному файлі" },
     { "<leader>fr", call("config.replace", "search", false), "Find and replace in project", uk = "Знайти й замінити в проєкті" },
     { "<leader>fR", call("config.replace", "search", true), "Find and replace including ignored files", uk = "Знайти й замінити включно з ігнорованими файлами" },
     { "<leader>fw", call("config.replace", "word"), "Replace current word in project", uk = "Замінити поточне слово в проєкті" },
@@ -230,6 +232,10 @@ function M.setup()
     vim.keymap.set("x", ">", ">gv", { silent = true, desc = "Indent selection right" })
     vim.api.nvim_create_user_command("TabsList", call("config.tabs-list", "show_tabs_window"), {})
     vim.api.nvim_create_user_command("KeymapLegend", function() M.palette() end, {})
+    vim.api.nvim_create_user_command("FindInBuffer", call("config.buffer-search", "open", false),
+        { desc = "Find literal text in the current buffer" })
+    vim.api.nvim_create_user_command("ReplaceInBuffer", call("config.buffer-search", "open", true),
+        { desc = "Replace literal text in the current buffer" })
     vim.api.nvim_create_user_command("KeymapHelp", function(opts)
         require("config.keymap-help").open(opts.args ~= "" and opts.args or nil)
     end, { nargs = "?", complete = function() return { "en", "uk" } end,

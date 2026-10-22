@@ -134,6 +134,18 @@ return {
         { "<C-r>", "i", "Project replacement: replace selected / collected result lines", "Заміна в проєкті: замінити вибрані / зібрані рядки результатів" },
         { "r", "n", "Project replacement: replace selected / collected result lines", "Заміна в проєкті: замінити вибрані / зібрані рядки результатів" },
     } },
+    { id = "buffer-search", en = "Current-file search / replace (Space fs / fc)", uk = "Пошук / заміна в поточному файлі (Space fs / fc)", entries = {
+        { "<C-n> / <C-p>", "n/i", "Preview next / previous match, wrapping through the list", "Переглянути наступний / попередній збіг із переходом по колу" },
+        { "<CR>", "i", "Find dialog: jump and close; Replace dialog: move to Replace / replace one", "Пошук: перейти й закрити; заміна: перейти до Replace / замінити один збіг" },
+        { "<CR>", "n", "Result list: jump to the match and close", "Список результатів: перейти до збігу й закрити" },
+        { "<C-r>", "n/i", "Replace the current match and advance", "Замінити поточний збіг і перейти далі" },
+        { "<C-a>", "n/i", "Replace all matches in the current buffer", "Замінити всі збіги в поточному буфері" },
+        { "<Tab> / <S-Tab>", "n/i", "Next / previous field or result list", "Наступне / попереднє поле або список результатів" },
+        { "<C-u>", "i", "Clear the active input field", "Очистити активне поле введення" },
+        { "j / k", "n", "Result list: next / previous match", "Список результатів: наступний / попередній збіг" },
+        { "<Esc> / <C-c>", "n/i", "Close the dialog; completed replacements stay undoable", "Закрити діалог; виконані заміни можна скасувати через undo" },
+        { "q", "n", "Close from the result list", "Закрити зі списку результатів" },
+    } },
     { id = "dashboard", en = "Dashboard", uk = "Початковий екран", entries = {
         { "f", "n", "Find and replace in project", "Знайти й замінити в проєкті" },
         { "r", "n", "Recent files", "Нещодавні файли" },

@@ -13,12 +13,25 @@ function M.jump(method, fallback)
     local word = vim.fn.expand("<cword>")
     local function open(item)
         if not item then return end
-        if vim.api.nvim_win_is_valid(origin) then
-            vim.fn.settagstack(origin, { items = { { tagname = word, from = from } } }, "t")
-        end
         local filename = item.filename or (item.bufnr and vim.api.nvim_buf_get_name(item.bufnr))
         if not filename or filename == "" then return end
-        require("config.nvim-tabs").open(filename)
+        local stack
+        if vim.api.nvim_win_is_valid(origin) then
+            stack = vim.fn.gettagstack(origin)
+            vim.fn.settagstack(origin, { items = { { tagname = word, from = from } } }, "t")
+        end
+        -- New tabs inherit the tag stack; restore it if opening was cancelled.
+        if not require("config.nvim-tabs").open(filename) then
+            if stack and vim.api.nvim_win_is_valid(origin) then
+                vim.fn.settagstack(origin, { items = stack.items, curidx = stack.curidx }, "r")
+            end
+            return
+        end
+        if stack and vim.api.nvim_win_is_valid(origin) and vim.api.nvim_get_current_win() ~= origin then
+            -- :tab drop can reuse a window or inherit a different tab's stack.
+            local destination = vim.fn.gettagstack(origin)
+            vim.fn.settagstack(0, { items = destination.items, curidx = destination.curidx }, "r")
+        end
         vim.api.nvim_win_set_cursor(0, { item.lnum, math.max(0, (item.col or 1) - 1) })
         vim.cmd("normal! zz")
     end

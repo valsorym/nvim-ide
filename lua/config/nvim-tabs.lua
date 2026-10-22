@@ -36,7 +36,39 @@ end
 
 function M.open(path)
     -- :tab drop selects the actual window, including a file shown in a split.
-    vim.cmd("tab drop " .. vim.fn.fnameescape(path))
+    local origin = vim.api.nvim_get_current_win()
+    local existing, visible = {}, {}
+    for _, tab in ipairs(vim.api.nvim_list_tabpages()) do
+        existing[tab] = true
+        for _, win in ipairs(vim.api.nvim_tabpage_list_wins(tab)) do visible[vim.api.nvim_win_get_buf(win)] = true end
+    end
+    local swap_seen = false
+    local handler = vim.api.nvim_create_autocmd("SwapExists", { callback = function() swap_seen = true end })
+    local ok, err = pcall(vim.cmd, "tab drop " .. vim.fn.fnameescape(path))
+    vim.api.nvim_del_autocmd(handler)
+    -- SwapExists handlers can also cancel silently, without raising E325.
+    local cancelled = swap_seen and vim.api.nvim_get_current_buf() ~= vim.fn.bufnr(path)
+    if ok and not cancelled then return true end
+    -- Cancelling the native swap-file prompt is an ordinary aborted open, not a Lua error.
+    if cancelled or tostring(err):find("E325:", 1, true) or tostring(err):find("E322:", 1, true) then
+        for _, tab in ipairs(vim.api.nvim_list_tabpages()) do
+            if not existing[tab] then
+                local disposable = true
+                for _, win in ipairs(vim.api.nvim_tabpage_list_wins(tab)) do
+                    local buf = vim.api.nvim_win_get_buf(win)
+                    local name = vim.api.nvim_buf_get_name(buf)
+                    if not visible[buf] and (vim.bo[buf].modified
+                        or (name ~= "" and name ~= vim.fn.fnamemodify(path, ":p"))) then disposable = false end
+                end
+                if disposable then vim.cmd(vim.api.nvim_tabpage_get_number(tab) .. "tabclose") end
+            end
+        end
+        if vim.api.nvim_win_is_valid(origin) then vim.api.nvim_set_current_win(origin) end
+        vim.notify("Opening cancelled: a swap file exists. Reopen to choose read-only access or recovery.", vim.log.levels.WARN)
+        return false
+    end
+    vim.notify(tostring(err), vim.log.levels.ERROR)
+    return false
 end
 
 function M.new()

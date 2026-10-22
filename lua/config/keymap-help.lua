@@ -6,6 +6,7 @@ local current
 local labels = {
     en = {
         title = "Neovim IDE · Keyboard reference",
+        short_title = "Keys", footer = { "Filter", "Language", "Clear", "Close" },
         controls = "/ Filter  c Clear  e English  u Українська  [[ / ]] Sections  q Close",
         intro = "<leader> = Space · Keys are sequential; uppercase needs Shift · Enter never runs an action.",
         modes = "n Normal · x Visual · o Operator-pending · i Insert · s Select · t Terminal",
@@ -17,6 +18,7 @@ local labels = {
     },
     uk = {
         title = "Neovim IDE · Довідка з клавіш",
+        short_title = "Клавіші", footer = { "Фільтр", "Мова", "Очистити", "Закрити" },
         controls = "/ Фільтр  c Очистити  e English  u Українська  [[ / ]] Розділи  q Закрити",
         intro = "<leader> = Пробіл · Клавіші натискаються послідовно; великі літери — із Shift · Enter не виконує дій.",
         modes = "n Звичайний · x Виділення · o Очікування оператора · i Вставлення · s Вибір · t Термінал",
@@ -27,6 +29,31 @@ local labels = {
         columns = "Клавіші                         Режим    Опис",
     },
 }
+
+local function window_config(state)
+    local columns, lines = vim.o.columns, vim.o.lines - vim.o.cmdheight
+    local width = math.max(1, math.min(math.floor(columns * 0.9), columns - 4))
+    local height = math.max(1, math.min(math.floor(lines * 0.85), lines - 4))
+    local text = labels[state.language]
+    local suffix = string.format(" · %s · %d / %d ", state.language:upper(), state.matched or 0, state.total or 0)
+    local title = " " .. text.title .. suffix
+    if vim.fn.strdisplaywidth(title) > width then title = " " .. text.short_title .. suffix end
+    local footer = {}
+    for i, key in ipairs({ "/", "e/u", "c", "q/Esc" }) do
+        footer[#footer + 1] = { " " .. key .. " ", "FooterKey" }
+        footer[#footer + 1] = { text.footer[i] .. " ", "FooterDesc" }
+        if i < 4 then footer[#footer + 1] = { "·", "FooterDesc" } end
+    end
+    local footer_text = ""
+    for _, chunk in ipairs(footer) do footer_text = footer_text .. chunk[1] end
+    if vim.fn.strdisplaywidth(footer_text) > width then
+        footer = { { width >= 26 and " / · e/u · c · q/Esc " or " q/Esc ", "FooterKey" } }
+    end
+    return { relative = "editor", border = "rounded", focusable = true, zindex = 70,
+        width = width, height = height, row = math.max(0, math.floor((lines - height - 2) / 2)),
+        col = math.max(0, math.floor((columns - width - 2) / 2)),
+        title = { { title, "FloatTitle" } }, title_pos = "center", footer = footer, footer_pos = "center" }
+end
 
 local function sections()
     local registry = require("config.keymaps")
@@ -117,10 +144,10 @@ local function render(state)
     for _, hl in ipairs(highlights) do
         vim.api.nvim_buf_set_extmark(state.buf, namespace, hl[1], hl[2], { end_col = hl[3], hl_group = hl[4] })
     end
-    state.headings = headings
+    state.headings, state.matched, state.total = headings, matched, total
     if vim.api.nvim_win_is_valid(state.win) and vim.api.nvim_win_get_buf(state.win) == state.buf then
         vim.api.nvim_win_set_cursor(state.win, { 1, 0 })
-        vim.wo[state.win].winbar = " " .. text.title .. " · " .. matched .. " / " .. total .. " · /  e/u  q "
+        vim.api.nvim_win_set_config(state.win, window_config(state))
     end
 end
 
@@ -134,6 +161,7 @@ function M.open(language)
     if current and vim.api.nvim_buf_is_valid(current.buf) then
         local windows = vim.fn.win_findbuf(current.buf)
         if #windows > 0 then
+            if vim.api.nvim_get_current_buf() ~= current.buf then current.origin = vim.api.nvim_get_current_win() end
             current.win = windows[1]
             vim.api.nvim_set_current_win(current.win)
             current.language = language
@@ -142,15 +170,12 @@ function M.open(language)
         end
     end
 
-    -- A regular split supports native scrolling, selection, copying and window commands.
-    -- :new creates a scratch view without editing or saving the originating buffer.
-    if vim.o.columns >= 140 then
-        vim.cmd("botright " .. math.floor(vim.o.columns * 0.65) .. "vnew")
-    else
-        vim.cmd("botright " .. math.max(6, math.floor(vim.o.lines * 0.6)) .. "new")
-    end
-    local state = { buf = vim.api.nvim_get_current_buf(), win = vim.api.nvim_get_current_win(),
+    -- Keep the source windows at their original sizes while reading the reference.
+    local state = { buf = vim.api.nvim_create_buf(false, true), origin = vim.api.nvim_get_current_win(),
         language = language, query = "", headings = {} }
+    local config = window_config(state)
+    config.style = "minimal" -- Apply once: repeating it resets window options such as signcolumn.
+    state.win = vim.api.nvim_open_win(state.buf, true, config)
     current = state
     vim.bo[state.buf].buftype = "nofile"
     vim.bo[state.buf].bufhidden = "wipe"
@@ -162,7 +187,7 @@ function M.open(language)
     vim.api.nvim_buf_set_name(state.buf, "nvim-ide://keyboard-reference")
     for name, value in pairs({ number = false, relativenumber = false, signcolumn = "no",
         foldcolumn = "0", foldenable = false, wrap = true, linebreak = true, breakindent = true,
-        showbreak = "  ", list = false, spell = false, colorcolumn = "", cursorline = false }) do
+        showbreak = "  ", list = false, spell = false, colorcolumn = "", cursorline = false, winbar = "" }) do
         vim.wo[state.win][name] = value
     end
     local function map(key, action, description)
@@ -178,12 +203,8 @@ function M.open(language)
     end
     local function close()
         if not vim.api.nvim_win_is_valid(state.win) then return end
-        if #vim.api.nvim_tabpage_list_wins(0) > 1 then
-            vim.api.nvim_win_close(state.win, true)
-        else
-            -- The originating window might have been closed while reading the reference.
-            vim.cmd("enew")
-        end
+        vim.api.nvim_win_close(state.win, true)
+        if vim.api.nvim_win_is_valid(state.origin) then vim.api.nvim_set_current_win(state.origin) end
     end
     map("q", close, "Close keyboard reference")
     map("<Esc>", close, "Close keyboard reference")
@@ -215,8 +236,13 @@ function M.open(language)
             if target then vim.api.nvim_win_set_cursor(state.win, { target, 0 }) end
         end, "Jump reference section")
     end
-    vim.api.nvim_create_autocmd("BufWipeout", { buffer = state.buf, once = true, callback = function()
+    local group = vim.api.nvim_create_augroup("KeymapHelp" .. state.buf, { clear = true })
+    vim.api.nvim_create_autocmd("VimResized", { group = group, callback = function()
+        if vim.api.nvim_win_is_valid(state.win) then vim.api.nvim_win_set_config(state.win, window_config(state)) end
+    end })
+    vim.api.nvim_create_autocmd("BufWipeout", { group = group, buffer = state.buf, once = true, callback = function()
         if current == state then current = nil end
+        vim.api.nvim_del_augroup_by_id(group)
     end })
     render(state)
 end
