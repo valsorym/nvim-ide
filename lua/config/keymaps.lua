@@ -197,6 +197,7 @@ M.entries = {
     { "<leader>xp", command("PythonToolsStatus"), "Python tools status", uk = "Стан інструментів Python" },
     { "<leader>xi", command("checkhealth vim.lsp"), "LSP health", uk = "Перевірити стан LSP" },
     { "<leader>xh", command("checkhealth nvim_ide"), "Editor / terminal health", uk = "Перевірити стан редактора / термінала" },
+    { "<leader>xH", call("config.ide-health", "open"), "Language tools and feature health", uk = "Діагностика інструментів і можливостей редактора" },
     { "<leader>xL", command("LargeFileInfo"), "Buffer performance mode", uk = "Режим швидкодії поточного буфера" },
     { "<F2>", call("config.safe-save", "smart_write"), "Save file", { "n", "i" }, uk = "Зберегти файл" },
     { "<F5>", command("tabprevious"), "Previous tab", uk = "Попередня вкладка" },
@@ -241,5 +242,9 @@ function M.setup()
         require("config.keymap-help").open(opts.args ~= "" and opts.args or nil)
     end, { nargs = "?", complete = function() return { "en", "uk" } end,
         desc = "Open the English or Ukrainian keyboard reference" })
+    vim.api.nvim_create_user_command("IdeHealth", function(opts)
+        require("config.ide-health").open(opts.args ~= "" and opts.args or nil)
+    end, { nargs = "?", complete = function() return { "en", "uk" } end,
+        desc = "Inspect language tools and feature availability" })
 end
 return M

@@ -22,12 +22,15 @@ function M.check()
     vim.health.start("Language tools")
     local tools = require("config.tools")
     local missing = {}
-    for _, name in ipairs({ "ruff", "black", "isort", "prettier", "stylua", "gofmt", "rustfmt", "shfmt", "clang-format" }) do
+    for _, name in ipairs({ "ruff", "black", "isort", "prettierd", "prettier", "stylua", "gofmt", "rustfmt", "shfmt", "clang-format" }) do
         local path = tools.executable(name, 0)
         if path then vim.health.ok(name .. ": " .. path) else missing[#missing + 1] = name end
     end
     vim.health.info("Optional formatters not installed: " .. table.concat(missing, ", "))
     vim.health.info("Python formatter preference: " .. (vim.g.nvim_ide_python_formatter or "ruff") .. "; Black/isort fallback")
+    local web = require("config.web-formatting").select(0)
+    vim.health.info("Web formatter: " .. (web.executable and web.name or "not installed")
+        .. "; preference=" .. web.preference .. "; prettier fallback when prettierd is absent")
     for _, name in ipairs({ "node", "make" }) do
         if vim.fn.executable(name) == 1 then vim.health.ok(name .. " available")
         else vim.health.info(name .. " absent (optional runtime/build tool)") end

@@ -4,9 +4,22 @@ local saved_path = vim.fn.stdpath("state") .. "/colorscheme"
 local plugins = { "catppuccin", "tokyonight.nvim", "gruvbox-material", "kanagawa.nvim", "nord.nvim", "onedark.nvim" }
 
 function M.pick(save)
+    local before, background = vim.g.colors_name or "default", vim.o.background
     require("lazy").load({ plugins = plugins })
-    require("telescope.builtin").colorscheme({
+    if vim.g.colors_name ~= before then
+        vim.o.background = background
+        vim.cmd.colorscheme(before)
+    end
+    local colors = { before }
+    for _, name in ipairs(vim.fn.getcompletion("", "color")) do
+        if name ~= before then colors[#colors + 1] = name end
+    end
+    local opts = {
         enable_preview = true,
+        finder = require("telescope.finders").new_table({ results = colors, entry_maker = function(name)
+            local display = name .. (name == before and " (default)" or "")
+            return { value = name, ordinal = display, display = display }
+        end }),
         attach_mappings = function(prompt, map)
             if save then
                 local function select_and_save()
@@ -21,7 +34,11 @@ function M.pick(save)
             end
             return true
         end,
-    })
+    }
+    if vim.bo.filetype == "dashboard" then
+        opts.previewer = require("config.theme-preview").dashboard(vim.api.nvim_get_current_buf())
+    end
+    require("telescope.builtin").colorscheme(opts)
 end
 
 function M.setup()

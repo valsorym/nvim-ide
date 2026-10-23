@@ -21,10 +21,10 @@ function M.setup_path()
     vim.env.PATH = table.concat(paths, separator)
 end
 
-function M.executable(name, buf)
+function M.executable(name, buf, filetype, source_path)
     buf = buf or vim.api.nvim_get_current_buf()
-    local path = vim.api.nvim_buf_get_name(buf)
-    if vim.bo[buf].filetype == "python" then
+    local path = source_path or vim.api.nvim_buf_get_name(buf)
+    if (filetype or vim.bo[buf].filetype) == "python" then
         local python = require("config.python-venv").python(path)
         local candidate = vim.fs.dirname(python) .. "/" .. name
         if vim.fn.executable(candidate) == 1 then return candidate end

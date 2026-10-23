@@ -47,6 +47,11 @@ end
 
 function M.get_current_venv() return M.find_venv() end
 
+function M.refresh()
+    -- Refresh discovery without discarding an explicitly selected interpreter.
+    cache, roots = {}, {}
+end
+
 local function update_clients(root)
     for _, client in ipairs(vim.lsp.get_clients({ name = "pyright" })) do
         local matches = require("config.project").normalize(client.config.root_dir)

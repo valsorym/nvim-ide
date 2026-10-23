@@ -2,6 +2,7 @@
 local M = {}
 local running = {}
 local warned_formatter = false
+local warned_web_formatter = false
 
 local executable = require("config.tools").executable
 
@@ -73,16 +74,13 @@ local function commands(buf, only)
             vim.list_extend(args, { "--column-width", width })
         end
         add("stylua", args)
-    elseif vim.tbl_contains({ "javascript", "javascriptreact", "typescript", "typescriptreact", "vue",
-        "json", "jsonc", "yaml", "html", "css", "scss", "less", "markdown" }, ft) then
-        local args = { "--stdin-filepath", path }
-        if ft == "markdown" then
-            -- Preserve paragraph boundaries even when the project requests reflow.
-            vim.list_extend(args, { "--prose-wrap", "preserve" })
-        else
-            vim.list_extend(args, { "--print-width", width, "--config-precedence", "prefer-file" })
+    elseif require("config.web-formatting").supports(ft) then
+        local plan = require("config.web-formatting").plan(buf)
+        if plan.invalid_preference and not warned_web_formatter then
+            vim.notify("Web formatter must be prettierd or prettier; using prettierd when available", vim.log.levels.WARN)
+            warned_web_formatter = true
         end
-        add("prettier", args)
+        if plan.command and (not only or only == plan.name) then return { plan.command }, nil, plan.cwd end
     elseif ft == "go" then
         add("gofmt", {})
     elseif ft == "rust" and executable("rustfmt", buf) then
@@ -149,7 +147,7 @@ function M.format(opts)
         running[buf] = nil
         vim.notify(message, vim.log.levels.ERROR)
     end
-    local pipeline, command_error = commands(buf, opts.only)
+    local pipeline, command_error, formatter_cwd = commands(buf, opts.only)
     if command_error then failed(command_error); return end
     if #pipeline == 0 then
         if opts.only then failed("Formatter not found: " .. opts.only); return end
@@ -212,7 +210,7 @@ function M.format(opts)
         end
     end
     running[buf] = true
-    local cwd = vim.fs.dirname(vim.api.nvim_buf_get_name(buf))
+    local cwd = formatter_cwd or vim.fs.dirname(vim.api.nvim_buf_get_name(buf))
     local timeout = opts.timeout_ms or 1500
     if opts.async == false then
         local output = input

@@ -8,6 +8,18 @@ entry in its own terminal window. Commands use Bash and the default XDG paths.
 Use your own paths if you set `XDG_CONFIG_HOME` or other XDG variables. Run `sh`
 blocks in a terminal; `vim` blocks are commands entered inside Neovim after `:`.
 
+
+Choose the route you need: sections 1–5 set up terminal editing and language
+support; section 6 adds the separate IDE window, menu entry and Cinnamon shortcut;
+sections 7–9 finish clipboard, tmux and verification. Install language tools for
+the languages you use. A working installation has three separate layers:
+
+| Layer | Installed by | What it provides |
+| --- | --- | --- |
+| Editor plugins | lazy.nvim on first start; `:Lazy restore` | Explorer, completion UI, theme picker and other editor features |
+| Syntax parsers | `:ParsersInstall` / `:TSInstall language` | Tree-sitter highlighting |
+| Runtimes, language servers and formatters | OS packages, Mason or project dependencies | Analysis, completion and formatting for the selected languages |
+
 For a server or SSH session, use the terminal route and install the font on the
 computer displaying the terminal. The Alacritty/menu steps need a graphical
 session. Debian 12 has older packages, including an Alacritty version with YAML
@@ -23,7 +35,7 @@ registers fonts. Ripgrep provides file and text search.
 ```sh
 sudo apt update
 sudo apt install --no-install-recommends \
-  git curl ca-certificates unzip build-essential fontconfig ripgrep
+  git curl ca-certificates unzip xz-utils build-essential fontconfig ripgrep
 ```
 
 Prepare your user executable directory:
@@ -87,10 +99,11 @@ is 0.10.4, which is too old. The commands below install the tested upstream
     mv "$HOME/.local/bin/nvim" "$HOME/.local/bin/nvim.bak.$(date +%Y%m%d-%H%M%S)"
   fi
   ln -s "$nvim_prefix/bin/nvim" "$HOME/.local/bin/nvim"
-)
-hash -r
-command -v nvim
-nvim --version | head -n 1
+) && {
+  hash -r
+  command -v nvim
+  nvim --version | head -n 1
+}
 ```
 
 The entire archive stays together under `~/.local/opt/nvim-0.11.5`, including
@@ -145,73 +158,172 @@ or `~/.cache/nvim` as a routine installation step.
 nvim
 ```
 
-For a fixed version, replace `--branch master` with `--branch v2.5.0`; a tag
+For a fixed version, replace `--branch master` with `--branch v2.6.0`; a tag
 checkout is detached and is updated by selecting another tag rather than pulling.
 The first launch needs network access to install the locked plugin revisions.
-Wait for installation to finish, then quit with `:qa` and reopen Neovim.
+Wait for installation to finish. Open the plugin window and restore the
+repository's locked plugin revisions:
+
+```vim
+:Lazy
+:Lazy restore
+```
+
+Wait for tasks to complete, quit with `:qa`, and reopen Neovim. Plugins are not
+language servers or formatter executables: install those in the next section.
+Avoid `:Lazy update` / `:Lazy sync` during installation if you want the tested
+revisions from `lazy-lock.json`.
+
 
 ## 5. Add search and the language tools you need
 
-Ripgrep is already installed in step 1. For the following shell commands, quit
-Neovim with `:qa` or use a second terminal.
+Ripgrep is already installed in step 1. Run shell commands in a second terminal
+or quit Neovim with `:qa`. Commands beginning with `:` belong inside Neovim.
 
-For Python/web language servers, install Node.js/npm; Python projects also need
-Python and venv support. Skip runtimes you do not use:
+### Runtimes
+
+Python needs its interpreter and venv support:
 
 ```sh
-sudo apt install --no-install-recommends nodejs npm python3 python3-venv
-node --version
-npm --version
+sudo apt install --no-install-recommends python3 python3-venv
 ```
 
-Some newer language-server releases require a newer Node.js than Debian ships;
-check the error in `:MasonLog` and use a supported LTS from the
-[official Node.js downloads](https://nodejs.org/en/download) when needed. A Node
-version manager must expose the chosen runtime to the desktop session too.
+Web language servers, pyright and optional Copilot use Node.js. For current
+packages use **Node.js 22+**. Check `node --version`; if a compatible runtime is
+already available to desktop applications, keep it. This optional user-space
+installation uses **Node.js v24.22.1 LTS**, including npm, and preserves existing
+user executables. It does not replace Debian's `/usr/bin/node`.
+The [official release list](https://nodejs.org/en/about/previous-releases) explains
+LTS support; the archive checksums come from the official distribution.
 
-Reopen `nvim`. Inside the editor, this installs all supported syntax parsers,
-two example language servers, and the optional Python formatter:
+```sh
+(
+  set -eu
+  node_version=v24.22.1
+  case "$(uname -m)" in
+    x86_64) node_platform=linux-x64; node_sha256=6c172a9ab6718f7b801fb5a7bd486af2ee5e32758086a04b84fcce2aa77095e6 ;;
+    aarch64|arm64) node_platform=linux-arm64; node_sha256=dbabf7a1cbf947e6059ffad2c27b80041db97dea1e553b62afdee7f13fca336e ;;
+    *) printf '%s\n' 'Use the official Node.js installer for this architecture.' >&2; exit 1 ;;
+  esac
+  node_prefix="$HOME/.local/opt/node-$node_version"
+  if [ -e "$node_prefix" ]; then
+    printf 'Already exists: %s; inspect it before reinstalling.\n' "$node_prefix" >&2
+    exit 1
+  fi
+  node_download_dir=$(mktemp -d)
+  trap 'rm -rf "$node_download_dir"' EXIT
+  node_archive="node-$node_version-$node_platform.tar.xz"
+  curl -fL --retry 3 \
+    "https://nodejs.org/dist/$node_version/$node_archive" \
+    -o "$node_download_dir/$node_archive"
+  (cd "$node_download_dir"; printf '%s  %s\n' "$node_sha256" "$node_archive" | sha256sum -c -)
+  tar -xJf "$node_download_dir/$node_archive" -C "$node_download_dir"
+  mkdir -p "$HOME/.local/opt" "$HOME/.local/bin"
+  mv "$node_download_dir/node-$node_version-$node_platform" "$node_prefix"
+  for executable in node npm npx; do
+    if [ -e "$HOME/.local/bin/$executable" ] || [ -L "$HOME/.local/bin/$executable" ]; then
+      mv "$HOME/.local/bin/$executable" "$HOME/.local/bin/$executable.bak.$(date +%Y%m%d-%H%M%S)"
+    fi
+    ln -s "$node_prefix/bin/$executable" "$HOME/.local/bin/$executable"
+  done
+) && {
+  hash -r
+  node --version
+  npm --version
+}
+```
+
+The complete Node.js directory must stay together. The symlinks in `~/.local/bin`
+make this runtime visible to the launcher after the PATH/login step in section 1.
+If using nvm/fnm or another version manager, its selected Node.js must also be
+visible to applications launched from the desktop menu.
+
+### Editor support and language servers
+
+Reopen `nvim`. A Python/Lua starting set is:
 
 ```vim
 :ParsersInstall
 :LspInstall pyright lua_ls
-:MasonInstall ruff
+:MasonInstall ruff stylua
 ```
 
-Alternatively, install the complete supported server set:
+`:ParsersInstall` installs the configured parser set; use `:TSInstall python lua`
+for a smaller selection. These commands need network access and a C compiler.
+Choose language servers individually with the commands below:
+
+| Language | Command inside Neovim |
+| --- | --- |
+| Python | `:LspInstall pyright` |
+| JavaScript / TypeScript / JSX / TSX | `:LspInstall ts_ls emmet_ls` |
+| Vue | `:LspInstall vue_ls ts_ls` |
+| HTML / Django HTML | `:LspInstall html emmet_ls` |
+| CSS / SCSS / Less | `:LspInstall cssls emmet_ls` |
+| Go | `:LspInstall gopls` |
+| C / C++ | `:LspInstall clangd` |
+| Lua | `:LspInstall lua_ls` |
+| Shell / Bash | `:LspInstall bashls` |
+| JSON / JSONC | `:LspInstall jsonls` |
+| YAML | `:LspInstall yamlls` |
+| Dockerfile | `:LspInstall dockerls` |
+| Markdown | `:LspInstall marksman` |
+
+For the full configured server set and the common external formatters:
 
 ```vim
 :LanguageToolsInstall
+:MasonInstall ruff prettierd stylua
 ```
 
-`:LanguageToolsInstall` installs servers, not every language runtime or formatter.
-`:Mason` lets you choose individual tools and shows installation failures. Some
-binaries are unavailable for particular architectures; use a system package or
-the tool's official instructions in that case. Restart Neovim after installation.
-Parsers and servers are not downloaded automatically when opening a file.
+`LanguageToolsInstall` installs servers; it does not install Go/Python/Node.js,
+compilers or every formatter. `:Mason` shows installation progress and failures;
+`:MasonLog` gives details. Restart Neovim after installation and open an actual
+project file so the corresponding client can attach.
 
-Additional system tools, only for languages you use:
+### Formatters and system toolchains
 
-| Language | Install | Purpose |
-| --- | --- | --- |
-| Go | `sudo apt install golang-go gopls` | Go toolchain, gofmt and language server |
-| C/C++ | `sudo apt install clangd clang-format` | Language server and formatter |
-| Rust | `sudo apt install cargo rustfmt` | Cargo edition lookup and current-buffer formatting |
-| Shell | `sudo apt install shfmt` | Shell formatter; bashls uses Node.js |
+These are executable programs, not additional Neovim plugins. Run `:MasonInstall`
+inside Neovim and `sudo apt install` in a terminal. Pick the rows you need:
 
-Use `:MasonInstall prettier stylua` for optional web/Lua formatters. Prettier may
-instead be a project's development dependency. For Python, Ruff can be installed
-in the project's own environment (run from the project directory):
+| Language / files | Install formatter / toolchain |
+| --- | --- |
+| Python | `:MasonInstall ruff` |
+| JavaScript / TypeScript / Vue / HTML / CSS / SCSS / Less / JSON / YAML / Markdown | `:MasonInstall prettierd` |
+| Lua | `:MasonInstall stylua` |
+| Go | `sudo apt install golang-go` |
+| C / C++ | `sudo apt install clang-format` |
+| Rust | `sudo apt install cargo rustfmt` |
+| Shell / Bash | `sudo apt install shfmt` |
+
+For Go, `gofmt` comes with the Go toolchain; `gopls` is a separate language
+server. For C/C++, install `clangd` as well as `clang-format` when you want both
+analysis and formatting (`sudo apt install clangd clang-format`). Rust currently
+has native editing plus rustfmt formatting; rust-analyzer is not configured.
+
+The web formatter defaults to prettierd, started only on the first format.
+If it is absent, the editor uses Prettier CLI (`:MasonInstall prettier` or a
+project development dependency). With Node.js 20, use the compatible
+`:MasonInstall prettierd@0.28.0`; newer releases require Node.js 22+.
+The project-local Prettier version/configuration is respected. See the
+[formatting settings](README.md#formatting-and-replacement) for the CLI switch,
+Markdown paragraph preservation and daemon restart after dependency updates.
+
+Django HTML deliberately keeps external formatting disabled; use native `=` / `gq`.
+Sass indentation, TXT/RST and TOML/XML/INI/Make use their native editing commands.
+No missing external formatter is an error for those native workflows.
+
+For Python, Ruff may instead live in the project's own environment:
 
 ```sh
 python3 -m venv .venv
 .venv/bin/python -m pip install ruff
 ```
 
-No global pip installation or Python provider package is needed for this config.
-Pyright analyzes the selected project environment; `Space cvc` selects another
-one. See [language support](README.md#language-support) for the full integration
-list and the distinction between servers, formatters and native editing commands.
+No global pip installation or Python provider package is needed. Pyright analyzes
+the selected environment; `Space cvc` selects another one. `Space df` formats the
+current document. Formatting on save is optional (`Space ds`). Open `Space xH`
+/ `:IdeHealth` to see resolved paths and missing requirements for the source project.
+Parsers and language tools are never downloaded just by opening a file.
 
 ## 6. Optional: launch as a desktop IDE in Alacritty
 
@@ -280,9 +392,44 @@ nvim-ide -p first.py second.py
 nvim-ide --terminal first.py
 ```
 
-On Cinnamon, a custom keyboard shortcut can run the absolute path
-`/home/YOUR_USER/.local/bin/nvim-ide`. Do not use a bare `~` in a desktop Exec field.
-The font and window settings are described in the [Alacritty manual](https://alacritty.org/config-alacritty.html).
+### Add a Cinnamon keyboard shortcut
+
+1. Print your launcher command in a terminal and copy the resulting quoted path:
+
+```sh
+printf '"%s"\n' "$HOME/.local/bin/nvim-ide"
+```
+
+2. Open **System Settings → Keyboard → Shortcuts → Custom Shortcuts** and choose
+   **Add custom shortcut**.
+3. Name it **Neovim IDE**. Paste the command from step 1, for example
+   `"/home/YOUR_USER/.local/bin/nvim-ide"`, then click **Add**.
+4. Select the new shortcut, double-click an **unassigned** entry under keyboard
+   bindings, and press an unused combination, for example **Super+Shift+N**.
+5. Close Settings and press the combination. It should open the maximized IDE
+   window. Pin **Neovim IDE** from the application menu to the panel if desired.
+
+The OS shortcut launches the editor; it is independent of Neovim's leader keys.
+Use the full path rather than a bare `~` or `$HOME` in the shortcut command.
+On another desktop, add the same command in its custom/application shortcut
+settings. The font and window settings are described in the
+[Alacritty manual](https://alacritty.org/config-alacritty.html).
+
+### Choose an editor theme
+
+Six theme families are configured: **Catppuccin**, **Tokyo Night**, **Gruvbox
+Material**, **Kanagawa**, **Nord** and **One Dark**, with several variants. The
+default is **Catppuccin Mocha**. Neovim also offers its built-in schemes.
+
+- `Space ut` previews and selects a theme for this session; Esc cancels the preview.
+- `Space us` selects and saves a theme for future starts.
+- `Space ui` shows the active theme.
+
+The theme active before opening the list is labelled **`(default)`** so it remains
+recognizable while previewing other entries. This marker refers to the starting
+selection, not necessarily the configuration's factory default. Dashboard previews
+are centered inside the preview pane. The terminal needs true colour for the
+palette and a Nerd Font for icons; a Neovim theme does not install a terminal font.
 
 ## 7. Enable the system clipboard
 
@@ -357,6 +504,10 @@ In Neovim:
 :checkhealth vim.lsp
 :checkhealth nvim-treesitter
 ```
+
+Start with `:IdeHealth` (`Space xH`): `/` filters both languages, `r` refreshes,
+`e` / `u` switches English/Ukrainian, and `q` closes. It shows which formatter is
+selected and gives installation suggestions; it does not execute or install tools.
 
 Open a file for an installed language before checking its LSP. Missing optional
 servers/formatters in health output do not prevent editing other languages.

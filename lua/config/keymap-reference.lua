@@ -184,6 +184,16 @@ return {
         { "<C-u> / <C-d>", "n", "Scroll fold preview up / down", "Прокрутити перегляд згортки вгору / вниз" },
         { "[ / ]", "n", "Jump to the top / bottom of the fold preview", "Перейти до початку / кінця перегляду згортки" },
     } },
+    { id = "health", en = "IDE health (Space xH)", uk = "Діагностика IDE (Пробіл xH)", entries = {
+        { "/", "n", "Filter features in both languages", "Фільтрувати можливості обома мовами" },
+        { "c", "n", "Clear health filter", "Очистити фільтр діагностики" },
+        { "r", "n", "Refresh tools for the source project", "Оновити інструменти вихідного проєкту" },
+        { "e / u", "n", "Switch health language to English / Ukrainian", "Перемкнути мову діагностики на англійську / українську" },
+        { "[[ / ]]", "n", "Previous / next health section", "Попередній / наступний розділ діагностики" },
+        { "g/", "n", "Native search in health text", "Вбудований пошук у тексті діагностики" },
+        { "<CR>", "n", "Read health without running commands", "Читати діагностику без запуску команд" },
+        { "q / <Esc>", "n", "Close IDE health", "Закрити діагностику IDE" },
+    } },
     { id = "reference", en = "Keyboard reference (Space h)", uk = "Довідка з клавіш (Space h)", entries = {
         { "/", "n", "Filter keys and descriptions in both languages; Enter applies", "Фільтрувати клавіші й описи обома мовами; Enter застосовує" },
         { "c", "n", "Clear the reference filter", "Очистити фільтр довідки" },

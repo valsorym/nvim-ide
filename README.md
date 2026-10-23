@@ -1,4 +1,4 @@
-# Neovim IDE 2.5.0
+# Neovim IDE 2.6.0
 
 [Українська](README.UK.md)
 
@@ -11,7 +11,9 @@ version 2 uses native Neovim facilities for sessions, terminals, comments and sn
 For a complete Debian setup, follow [SETUP_DEBIAN.md](SETUP_DEBIAN.md)
 ([українською](SETUP_DEBIAN.UK.md)): installing Neovim, selecting a Nerd Font,
 setting up the terminal, language tools, clipboard, tmux colours and an optional
-application-menu launcher. This README covers configuration and everyday use.
+application-menu launcher and a custom OS keyboard shortcut. The guide separates
+editor plugins, language servers and formatters, and includes theme selection and
+`:IdeHealth` checks. This README covers configuration and everyday use.
 
 - Neovim **0.11.3+**; this configuration is tested with **0.11.5**.
 - Git for plugins and ripgrep (`rg`) for file and text search.
@@ -35,11 +37,13 @@ install language servers automatically. Install language support explicitly:
 
 ```vim
 :ParsersInstall
-:LanguageToolsInstall
+:LspInstall pyright lua_ls
+:MasonInstall ruff stylua
 ```
 
-The second command installs the complete supported server set. Use `:Mason` or
-`:LspInstall pyright lua_ls` to choose individual servers instead. Parser builds
+These commands are a Python/Lua starting set. `:LanguageToolsInstall` installs
+the complete configured server set; web formatting also needs `:MasonInstall prettierd`
+and a compatible Node.js. Follow the setup guide for per-language choices. Parser builds
 need a compiler and network access. Restart after installing language tools.
 `:Lazy restore` restores the plugin revisions
 in `lazy-lock.json`; update plugins deliberately with `:Lazy update`.
@@ -242,6 +246,7 @@ available through `:help index`, and `g?` lists all active explorer mappings.
 | `<leader>xp` | n | Python tools status |
 | `<leader>xi` | n | LSP health |
 | `<leader>xh` | n | Editor / terminal health |
+| `<leader>xH` | n | Language tools and feature health |
 | `<leader>xL` | n | Buffer performance mode |
 | `<F2>` | n/i | Save file |
 | `<F5>` | n | Previous tab |
@@ -306,21 +311,21 @@ starts only when its executable exists and a supported, ordinary-sized file open
 | Files | Language servers | External formatting (`Space df`) |
 | --- | --- | --- |
 | Python | pyright | Ruff imports + format; isort/Black fallback |
-| JavaScript, TypeScript, JSX, TSX | ts_ls, emmet_ls | Prettier |
-| Vue | vue_ls + ts_ls with Vue TypeScript plugin | Prettier |
-| HTML | html, emmet_ls | Prettier |
+| JavaScript, TypeScript, JSX, TSX | ts_ls, emmet_ls | prettierd / Prettier |
+| Vue | vue_ls + ts_ls with Vue TypeScript plugin | prettierd / Prettier |
+| HTML | html, emmet_ls | prettierd / Prettier |
 | Django HTML | html, emmet_ls | Native `=` / `gq`; external formatting disabled |
-| CSS, SCSS, Less | cssls; emmet_ls for CSS/SCSS | Prettier |
+| CSS, SCSS, Less | cssls; emmet_ls for CSS/SCSS | prettierd / Prettier |
 | Sass | Native syntax/indentation | Native `=` |
 | Go | gopls | gofmt |
 | Rust | Native syntax/indentation | rustfmt |
 | C, C++ | clangd | clang-format |
-| JSON, JSONC | jsonls with SchemaStore | Prettier |
-| YAML | yamlls with SchemaStore | Prettier |
+| JSON, JSONC | jsonls with SchemaStore | prettierd / Prettier |
+| YAML | yamlls with SchemaStore | prettierd / Prettier |
 | Lua | lua_ls | StyLua |
 | Shell | bashls | shfmt |
 | Dockerfile | dockerls | Native `=` |
-| Markdown | marksman | Prettier |
+| Markdown | marksman | prettierd / Prettier |
 | reStructuredText | Native syntax + local renderer | Native `gq` |
 | TOML, XML, INI, Make, plain text | Native filetype settings | Native `=` / `gq` |
 
@@ -447,6 +452,26 @@ keeps Mason first, preserves the inherited PATH order, and appends existing
 This makes user-installed tools available in desktop windows too, without
 launching a shell or installing anything.
 
+Web formatting prefers `prettierd`; if it is not installed, the editor uses
+`prettier`. The daemon starts only on the first formatting request and is shared
+by files under the same nearest `package.json` / Git root. It can remain running
+between editor sessions. Install it with `:MasonInstall prettierd`; use
+`:MasonInstall prettier` if you prefer the CLI fallback.
+
+`vim.g.nvim_ide_web_formatter = "prettier"` explicitly selects the CLI;
+`"prettierd"` is the default. Both preserve project formatting settings, with
+our width as a fallback and `proseWrap: preserve` forced for Markdown.
+`prettierd` uses the project's installed Prettier and plugins when available;
+otherwise it uses its bundled Prettier. That bundled version may differ from
+another globally installed CLI. After upgrading Prettier or plugins, run
+`prettierd stop` in a terminal to stop its daemons; the next format starts them
+again. Syntax/configuration errors are reported without retrying with another
+backend. `Space xH` shows the selected backend and executable path.
+
+Newer prettierd versions require Node.js 22+. With Node.js 20, install the
+compatible version using `:MasonInstall prettierd@0.28.0`. The daemon remains an
+optional tool; it is never installed automatically.
+
 Rust formatting uses `rustfmt` on stdin for the current buffer. In Cargo projects,
 `cargo metadata --no-deps --offline --frozen` resolves the package edition, including
 workspace inheritance, without network access or lockfile changes. A metadata error
@@ -515,6 +540,13 @@ vim.g.nvim_ide_move_modified_tabs = false
 
 ## Sessions, tabs and themes
 
+Six theme families are included: Catppuccin (Mocha by default), Tokyo Night,
+Gruvbox Material, Kanagawa, Nord and One Dark, plus Neovim's built-in schemes.
+`Space ut` previews/selects for this session; `Space us` saves the selection;
+`Space ui` reports the active theme. The theme active when the picker opens is
+marked `(default)` throughout previewing. Dashboard content is centered inside
+the preview pane, with a compact header when the pane is narrow.
+
 File search, the explorer and definition navigation open/reuse file tabs; native
 splits remain usable. `Space tq` asks before discarding unsaved work. `Space tc`
 closes only tabs whose windows contain no modified buffers. Hidden unrelated
@@ -574,6 +606,35 @@ See the [tmux colour FAQ](https://github.com/tmux/tmux/wiki/FAQ) for terminal-sp
 `:checkhealth vim.lsp` checks language clients. RGB support is separate from the
 font: use a Nerd Font if icons are missing. A Linux virtual console may not
 support the same palette or glyphs as a graphical terminal emulator.
+
+## Tools and feature health
+
+`Space xH` / `:IdeHealth [en|uk]` opens a read-only modal report for the source
+buffer and project. It lists the configured languages, formatting, language servers,
+optional parsers, Markdown rendering and editor tools, with resolved paths and
+installation suggestions. Commands labelled `Debian:` are for Debian; Mason
+commands are entered inside Neovim. Installation remains a manual action.
+
+`OK` means found/available, `NO` means missing, `WARN` means limited,
+`NATIVE` means built in, `OFF` means not enabled/configured, and `INFO` provides
+context. Ruff satisfies Python formatting without Black/isort. An attached LSP
+formatter is shown as a fallback for the current file when no external formatter
+is available. Large-file mode and read-only buffers are explained separately.
+
+Use `/` to filter feature blocks across both languages, `c` to clear, `r` to
+refresh discovery, `e` / `u` to switch language, `[[` / `]]` to jump sections,
+and `q` / Esc to close. `g/` starts native Vim search. Enter runs no commands.
+The report keeps the original source context when it receives focus; reopening
+it from another file changes that context. Refresh preserves a manually selected
+Python environment. English is the default, following the keyboard reference's
+language when no separate health language has been chosen.
+
+This is a fast availability check: it does not run formatters, language servers,
+package managers or version probes, load optional plugins, or test connections.
+It cannot prove that an installed tool starts correctly or accepts the project's
+configuration. Use `:checkhealth nvim_ide`, `:checkhealth vim.lsp` and
+`:checkhealth vim.provider` for deeper checks. `Space xh` retains the existing
+editor/terminal health command.
 
 ## Upgrading from version 1
 
