@@ -1,4 +1,4 @@
-# Neovim IDE 2.3.2
+# Neovim IDE 2.4.0
 
 [Українська](README.UK.md)
 
@@ -332,10 +332,14 @@ The table lists integrations, not bundled language runtimes. Linters such as
 mypy and flake8 are optional external tools; no background lint job is started.
 `:PythonToolsStatus` reports executable availability, not lint results.
 
+Markdown opens in raw mode. `Space dr` loads and toggles its renderer on demand;
+opening the file alone does not load the renderer or the completion UI.
+
 Python environments are resolved per project (`.venv`, `venv`, `env`, `.env`,
 then an inherited `VIRTUAL_ENV`, then system Python). `Space cvc` selects an
 environment directory, `Space cvd` chooses system Python for the current project.
 This does not rewrite the process PATH or change other projects' pyright clients.
+Standalone Python directories also keep separate clients and interpreter choices.
 For Vue, install both `vue-language-server` and `typescript-language-server`
 through Mason. For C/C++, provide `compile_commands.json` when the project needs it.
 
@@ -423,7 +427,8 @@ Each replacement action is one undo step; close the dialog and use `u` to undo.
 The dialog never saves files. Esc keeps completed replacements.
 
 The preview displays up to 2,000 matches, marked `2000+` when capped; replace-all
-still covers the entire buffer. Large-file mode searches only after an explicit
+still covers the entire buffer. A capped preview stays near the current cursor,
+including positions beyond the first 2,000 matches. Large-file mode searches only after an explicit
 Enter or navigation/replacement action, rather than on every typing pause.
 Native `/text` and `:%s#pattern#replacement#g` remain available for Vim patterns.
 
@@ -441,6 +446,8 @@ environment, or `:MasonInstall ruff`. Prettier can be a project development depe
 
 Python uses Ruff for import sorting and formatting (79 columns and existing quote
 style preserved by default; project formatter configuration takes precedence).
+Import sorting and formatting share the same fallback width. An invalid Python
+formatter preference warns once and falls back to Ruff instead of interrupting saves.
 If Ruff is absent, installed isort/Black tools are used.
 `Space di` sorts imports with Ruff or isort; `Space db` explicitly requests Black.
 To prefer the previous pipeline, set `vim.g.nvim_ide_python_formatter = "black"`
@@ -456,6 +463,9 @@ Review the confirmation before applying. Changes remain in undoable buffers;
 review them with `:ls` and save with `:wall`. Already modified/read-only buffers,
 large files and changed result lines are skipped. `Space fR` includes ignored
 files except `.git`. Native `:%s` remains available for regular expressions.
+Files with another editor's swap, a recovery swap or a matching damaged swap in
+the configured swap directories are skipped too; the message counts them separately.
+Open such a file normally to review the conflict or recover its contents first.
 
 ## Performance and large files
 

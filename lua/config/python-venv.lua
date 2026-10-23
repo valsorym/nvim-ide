@@ -7,7 +7,8 @@ function M.root(path)
     if path == "" then path = vim.fn.getcwd() end
     -- The statusline calls this frequently; avoid walking parent directories on redraw.
     if roots[path] then return roots[path] end
-    roots[path] = vim.fs.root(path, require("config.project").python_markers)
+    local project = require("config.project")
+    roots[path] = project.safe_root(vim.fs.root(path, project.python_markers))
         or (vim.fn.isdirectory(path) == 1 and path or vim.fs.dirname(path))
     return roots[path]
 end

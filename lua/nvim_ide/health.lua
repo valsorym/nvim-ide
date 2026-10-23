@@ -42,7 +42,8 @@ function M.check()
     if #absent > 0 then vim.health.info("Uninstalled language servers: " .. table.concat(absent, ", ") .. "; :Mason / :LanguageToolsInstall") end
     vim.health.start("Parsers and compatibility")
     for _, lang in ipairs({ "markdown", "markdown_inline", "python", "lua", "cpp" }) do
-        if pcall(vim.treesitter.language.add, lang) then vim.health.ok(lang .. " parser available")
+        local ok, added = pcall(vim.treesitter.language.add, lang)
+        if ok and added then vim.health.ok(lang .. " parser available")
         else vim.health.info(lang .. " parser missing; :ParsersInstall") end
     end
     if vim.fn.has("nvim-0.12") == 1 then

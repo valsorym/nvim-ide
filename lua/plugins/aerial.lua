@@ -59,8 +59,9 @@ return {
                 ["zR"] = "actions.tree_open_all",
                 ["zm"] = "actions.tree_decrease_fold_level",
                 ["zM"] = "actions.tree_close_all",
-                ["zx"] = "actions.tree_sync_folds",
-                ["zX"] = "actions.tree_sync_folds",
+                -- Source folds are managed by nvim-ufo rather than Aerial.
+                ["zx"] = false,
+                ["zX"] = false,
             },
 
             lazy_load = true,

@@ -13,7 +13,7 @@ return {
                     diagnosticMode = "openFilesOnly", autoSearchPaths = true, useLibraryCodeForTypes = true,
                 } } },
                 before_init = function(_, config)
-                    local uri = config.root_dir or vim.api.nvim_buf_get_name(0)
+                    local uri = config.root_dir or config._python_file or vim.api.nvim_buf_get_name(0)
                     config.settings.python.pythonPath = python.python(uri)
                 end,
             },
@@ -58,13 +58,28 @@ return {
             local resolved = vim.lsp.config[name]
             local root_dir, markers, cmd = resolved.root_dir, resolved.root_markers, resolved.cmd
             -- Refuse expensive clients before they spawn for a large or unsupported buffer.
-            vim.lsp.config(name, { root_dir = function(buf, on_dir)
+            vim.lsp.config(name, { root_markers = {}, root_dir = function(buf, on_dir)
                 require("config.performance").check(buf)
                 if require("config.performance").is_large(buf) then return end
                 if type(cmd) == "table" and vim.fn.executable(cmd[1]) == 0 then return end
                 local function start(root)
                     -- A standalone file must not turn HOME or / into an indexed project.
-                    if root and not require("config.project").safe_root(root) then return end
+                    if root and not require("config.project").safe_root(root) then root = nil end
+                    if not root and name == "pyright" then
+                        -- Rootless clients need separate interpreter settings per directory.
+                        local config = vim.deepcopy(vim.lsp.config[name])
+                        config.root_dir = nil
+                        config._python_file = vim.api.nvim_buf_get_name(buf)
+                        config._python_root = python.root(config._python_file)
+                        vim.schedule(function()
+                            if not vim.api.nvim_buf_is_loaded(buf) then return end
+                            vim.lsp.start(config, { bufnr = buf, reuse_client = function(client, candidate)
+                                return client.name == candidate.name and not client.config.root_dir
+                                    and client.config._python_root == candidate._python_root
+                            end })
+                        end)
+                        return
+                    end
                     on_dir(root)
                 end
                 if root_dir then root_dir(buf, start)

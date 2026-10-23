@@ -12,7 +12,6 @@ vim.opt_local.commentstring = "{# %s #}"
 
 -- Enable auto-indent
 vim.opt_local.autoindent = true
-vim.opt_local.smartindent = true
 
 -- CRITICAL: Disable all auto-formatting
 vim.b.autoformat = false

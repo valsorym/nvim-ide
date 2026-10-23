@@ -169,7 +169,6 @@ return {
         { "H / zC", "n", "Collapse symbol subtree recursively", "Рекурсивно згорнути піддерево символу" },
         { "zr / zm", "n", "Increase / decrease outline expansion depth", "Збільшити / зменшити глибину розгортання структури" },
         { "zR / zM", "n", "Expand / collapse all outline symbols", "Розгорнути / згорнути всі символи структури" },
-        { "zx / zX", "n", "Synchronize folds with the source window", "Узгодити згортки з вікном коду" },
         { "q", "n", "Close the code outline", "Закрити структуру коду" },
     } },
     { id = "terminal", en = "Terminal buffers", uk = "Буфери термінала", entries = {

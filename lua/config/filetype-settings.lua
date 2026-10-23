@@ -11,7 +11,8 @@ function M.setup()
     vim.opt.tabstop = 4
     vim.opt.shiftwidth = 4
     vim.opt.softtabstop = 4
-    vim.opt.smartindent = true
+    -- C-style smartindent treats leading # as preprocessor directives in every language.
+    vim.opt.smartindent = false
     vim.opt.autoindent = true
 
     local views, applied = {}, {}

@@ -1,6 +1,7 @@
 -- Format in memory. External tools receive stdin and never overwrite the file.
 local M = {}
 local running = {}
+local warned_formatter = false
 
 local executable = require("config.tools").executable
 
@@ -32,11 +33,19 @@ local function commands(buf, only)
         local ruff_config = configured({ ["ruff.toml"] = true, [".ruff.toml"] = true,
             ["pyproject.toml"] = "%[%s*tool%.ruff[%].%s]" })
         local formatter = vim.g.nvim_ide_python_formatter or "ruff"
-        if formatter ~= "ruff" and formatter ~= "black" then error("Python formatter must be ruff or black") end
+        if formatter ~= "ruff" and formatter ~= "black" then
+            if not warned_formatter then
+                vim.notify("Python formatter must be ruff or black; using ruff", vim.log.levels.WARN)
+                warned_formatter = true
+            end
+            formatter = "ruff"
+        end
         local ruff = formatter == "ruff" and executable("ruff", buf)
         if ruff and only ~= "black" then
             if not only or only == "isort" then
-                result[#result + 1] = { ruff, "check", "--select", "I", "--fix", "--exit-zero", "--stdin-filename", path, "-" }
+                local args = { ruff, "check", "--select", "I", "--fix", "--exit-zero", "--stdin-filename", path, "-" }
+                if not ruff_config then vim.list_extend(args, { "--line-length", width }) end
+                result[#result + 1] = args
             end
             if not only then
                 local args = { ruff, "format", "--stdin-filename", path, "-" }

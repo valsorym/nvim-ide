@@ -40,6 +40,7 @@ local function render()
     if require("config.performance").is_large(0) then
         vim.notify("Rendering is disabled for large files", vim.log.levels.WARN)
     elseif vim.bo.filetype == "markdown" then
+        require("lazy").load({ plugins = { "render-markdown.nvim" } })
         require("render-markdown").buf_toggle()
     elseif vim.bo.filetype == "rst" then
         require("config.rst").toggle()

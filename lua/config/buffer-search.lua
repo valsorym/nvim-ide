@@ -136,22 +136,39 @@ function M.open(replace)
         if state.tick ~= tick or not state.lines then state.lines = vim.api.nvim_buf_get_lines(source, 0, -1, false) end
         state.query, state.tick, state.pending, state.message = query, tick, false, nil
         state.matches, state.index, state.truncated = {}, 0, false
+        local position = anchor or state.anchor
+        local row = math.max(1, math.min(position[1], #state.lines))
+        position = { row, math.max(0, math.min(position[2], #state.lines[row])) }
         if query ~= "" then
             state.pattern = pattern(query)
             local regex = vim.regex(state.pattern)
-            for row, line in ipairs(state.lines) do
-                local offset = 0
-                while offset < #line do
-                    local first, last = regex:match_str(line:sub(offset + 1))
-                    if not first then break end
-                    state.matches[#state.matches + 1] = { row = row, first = offset + first, last = offset + last }
-                    offset = offset + last
-                    if #state.matches >= limit then state.truncated = true; break end
+            local function collect(first_row, first_col, last_row, last_col)
+                for row = first_row, last_row do
+                    local offset = row == first_row and first_col or 0
+                    local stop = row == last_row and last_col or #state.lines[row]
+                    while offset < stop do
+                        -- Native offsets avoid copying a long suffix for every match.
+                        local first, last = regex:match_line(source, row - 1, offset, stop)
+                        if not first then break end
+                        if #state.matches == limit then state.truncated = true; return true end
+                        state.matches[#state.matches + 1] = { row = row, first = offset + first, last = offset + last }
+                        offset = offset + last
+                    end
                 end
-                if state.truncated then break end
+                return false
+            end
+            local last_row = #state.lines
+            collect(1, 0, last_row, #state.lines[last_row])
+            local last = state.matches[#state.matches]
+            if state.truncated and last and (position[1] > last.row
+                or (position[1] == last.row and position[2] > last.first)) then
+                -- Dense files still start near the cursor, outside the first preview page.
+                state.matches, state.truncated = {}, false
+                if not collect(position[1], position[2], last_row, #state.lines[last_row]) then
+                    collect(1, 0, position[1], position[2])
+                end
             end
         end
-        local position = anchor or state.anchor
         for i, match in ipairs(state.matches) do
             if match.row > position[1] or (match.row == position[1] and match.first >= position[2]) then state.index = i; break end
         end
@@ -319,7 +336,7 @@ function M.open(replace)
             vim.schedule(function() close(false, true) end)
         end })
     end
-    update(true)
+    if state.large then state.pending = true; render() else update(true) end
     focus(1)
 end
 
