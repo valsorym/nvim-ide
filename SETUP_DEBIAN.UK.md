@@ -146,7 +146,7 @@ DejaVu Sans Mono. Вибери цю точну назву в профілі те
 nvim
 ```
 
-Для фіксованої версії заміни `--branch master` на `--branch v2.4.0`; checkout тега
+Для фіксованої версії заміни `--branch master` на `--branch v2.5.0`; checkout тега
 має відокремлений HEAD та оновлюється вибором іншого тега, а не через pull.
 Перший запуск потребує інтернету для встановлення зафіксованих ревізій плагінів.
 Дочекайся завершення, вийди через `:qa` і відкрий Neovim заново.
@@ -197,6 +197,7 @@ npm --version
 | --- | --- | --- |
 | Go | `sudo apt install golang-go gopls` | Компілятор Go, gofmt і мовний сервер |
 | C/C++ | `sudo apt install clangd clang-format` | Мовний сервер і форматер |
+| Rust | `sudo apt install cargo rustfmt` | Визначення edition через Cargo й форматування поточного буфера |
 | Shell | `sudo apt install shfmt` | Форматер shell; bashls використовує Node.js |
 
 Необов'язкові web/Lua форматери встановлюються через `:MasonInstall prettier stylua`.

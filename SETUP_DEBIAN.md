@@ -145,7 +145,7 @@ or `~/.cache/nvim` as a routine installation step.
 nvim
 ```
 
-For a fixed version, replace `--branch master` with `--branch v2.4.0`; a tag
+For a fixed version, replace `--branch master` with `--branch v2.5.0`; a tag
 checkout is detached and is updated by selecting another tag rather than pulling.
 The first launch needs network access to install the locked plugin revisions.
 Wait for installation to finish, then quit with `:qa` and reopen Neovim.
@@ -196,6 +196,7 @@ Additional system tools, only for languages you use:
 | --- | --- | --- |
 | Go | `sudo apt install golang-go gopls` | Go toolchain, gofmt and language server |
 | C/C++ | `sudo apt install clangd clang-format` | Language server and formatter |
+| Rust | `sudo apt install cargo rustfmt` | Cargo edition lookup and current-buffer formatting |
 | Shell | `sudo apt install shfmt` | Shell formatter; bashls uses Node.js |
 
 Use `:MasonInstall prettier stylua` for optional web/Lua formatters. Prettier may

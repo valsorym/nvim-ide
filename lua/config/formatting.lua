@@ -85,6 +85,35 @@ local function commands(buf, only)
         add("prettier", args)
     elseif ft == "go" then
         add("gofmt", {})
+    elseif ft == "rust" and executable("rustfmt", buf) then
+        local args = { "--emit", "stdout" }
+        local root = vim.fs.root(path ~= "" and path or vim.fn.getcwd(), { "Cargo.toml" })
+        local config = configured({ ["rustfmt.toml"] = true, [".rustfmt.toml"] = true })
+        if root then
+            local cargo = executable("cargo", buf)
+            if not cargo then return {}, "Cargo is required to determine the Rust edition" end
+            -- Read package/workspace editions without fetching dependencies or writing a lockfile.
+            local ok, metadata = pcall(function()
+                local result = vim.system({ cargo, "metadata", "--no-deps", "--format-version", "1",
+                    "--offline", "--frozen", "--manifest-path", root .. "/Cargo.toml" }, { text = true }):wait(1000)
+                assert(result.code == 0, result.stderr)
+                return vim.json.decode(result.stdout)
+            end)
+            if not ok then return {}, "Could not determine the Rust edition: " .. tostring(metadata) end
+            local edition
+            for _, package in ipairs(metadata.packages or {}) do
+                if vim.fs.normalize(package.manifest_path) == vim.fs.normalize(root .. "/Cargo.toml") then
+                    edition = package.edition
+                    break
+                end
+            end
+            if not edition then return {}, "Cargo metadata does not include the current Rust package" end
+            vim.list_extend(args, { "--edition", edition })
+        elseif not config then
+            vim.list_extend(args, { "--edition", "2021" })
+        end
+        if not config then vim.list_extend(args, { "--config", "max_width=" .. width }) end
+        add("rustfmt", args)
     elseif ft == "sh" or ft == "bash" then
         add("shfmt", { "-i", tostring(vim.bo[buf].expandtab and vim.bo[buf].shiftwidth or 0) })
     elseif ft == "c" or ft == "cpp" then
@@ -120,7 +149,8 @@ function M.format(opts)
         running[buf] = nil
         vim.notify(message, vim.log.levels.ERROR)
     end
-    local pipeline = commands(buf, opts.only)
+    local pipeline, command_error = commands(buf, opts.only)
+    if command_error then failed(command_error); return end
     if #pipeline == 0 then
         if opts.only then failed("Formatter not found: " .. opts.only); return end
         local client = vim.lsp.get_clients({ bufnr = buf, method = "textDocument/formatting" })[1]

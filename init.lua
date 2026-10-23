@@ -10,7 +10,7 @@ for _, provider in ipairs({ "python3", "perl", "ruby", "node" }) do
 end
 vim.loader.enable()
 -- Tool discovery does not require loading Mason's registry on the first file.
-vim.env.PATH = vim.fn.stdpath("data") .. "/mason/bin:" .. (vim.env.PATH or "")
+require("config.tools").setup_path()
 vim.g.mapleader = " "
 vim.g.maplocalleader = ","
 vim.opt.termguicolors = true

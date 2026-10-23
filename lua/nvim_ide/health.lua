@@ -22,7 +22,7 @@ function M.check()
     vim.health.start("Language tools")
     local tools = require("config.tools")
     local missing = {}
-    for _, name in ipairs({ "ruff", "black", "isort", "prettier", "stylua", "gofmt", "shfmt", "clang-format" }) do
+    for _, name in ipairs({ "ruff", "black", "isort", "prettier", "stylua", "gofmt", "rustfmt", "shfmt", "clang-format" }) do
         local path = tools.executable(name, 0)
         if path then vim.health.ok(name .. ": " .. path) else missing[#missing + 1] = name end
     end

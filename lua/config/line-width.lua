@@ -1,7 +1,7 @@
 -- Preferred display widths, not mandatory limits or automatic paragraph reflow.
 local M = {}
 local widths = {
-    python = 79, c = 100, cpp = 100, go = 120,
+    python = 79, c = 100, cpp = 100, go = 120, rust = 100,
     javascript = 100, javascriptreact = 100, typescript = 100, typescriptreact = 100,
     vue = 100, html = 120, htmldjango = 120, xml = 120,
     css = 100, scss = 100, sass = 100, less = 100, lua = 100,

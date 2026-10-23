@@ -1,4 +1,4 @@
-# Neovim IDE 2.4.0
+# Neovim IDE 2.5.0
 
 [Українська](README.UK.md)
 
@@ -313,6 +313,7 @@ starts only when its executable exists and a supported, ordinary-sized file open
 | CSS, SCSS, Less | cssls; emmet_ls for CSS/SCSS | Prettier |
 | Sass | Native syntax/indentation | Native `=` |
 | Go | gopls | gofmt |
+| Rust | Native syntax/indentation | rustfmt |
 | C, C++ | clangd | clang-format |
 | JSON, JSONC | jsonls with SchemaStore | Prettier |
 | YAML | yamlls with SchemaStore | Prettier |
@@ -357,6 +358,7 @@ columns, including expanded tabs, rather than bytes.
 | C | 100 | 101 | Project default; Linux kernel style prefers 80 |
 | C++ | 100 | 101 | Project default; Google C++ style uses 80 |
 | Go | 120 | 121 | Soft guide; gofmt has no fixed line-length limit |
+| Rust | 100 | 101 | rustfmt default; project configuration takes precedence |
 | JavaScript, TypeScript, JSX, TSX, Vue | 100 | 101 | Keep expressions readable |
 | HTML, Django HTML, XML | 120 | 121 | Allow room for attributes |
 | CSS, SCSS, Sass, Less | 100 | 101 | Keep declarations readable |
@@ -437,6 +439,20 @@ asynchronously; it applies results only if the buffer has not changed in the
 meantime. Formatters receive stdin and never overwrite your file directly.
 Project Python tools and `node_modules/.bin` take precedence over PATH. If no
 external formatter is available, an attached LSP formatter is used when supported.
+
+Menu launches can inherit a shorter PATH than your shell. At startup the editor
+keeps Mason first, preserves the inherited PATH order, and appends existing
+`~/.local/bin`, `$GOPATH/bin` (default `~/go/bin`) and `$GOROOT/bin` (default
+`/usr/local/go/bin`) directories, plus `$CARGO_HOME/bin` (default `~/.cargo/bin`).
+This makes user-installed tools available in desktop windows too, without
+launching a shell or installing anything.
+
+Rust formatting uses `rustfmt` on stdin for the current buffer. In Cargo projects,
+`cargo metadata --no-deps --offline --frozen` resolves the package edition, including
+workspace inheritance, without network access or lockfile changes. A metadata error
+leaves the buffer unchanged. Standalone files use edition 2021 unless a
+`rustfmt.toml` / `.rustfmt.toml` supplies the edition. Project Rustfmt settings take
+precedence over the 100-column fallback; sibling modules are never rewritten.
 
 `Space ds` toggles formatting on save for this editor process. Saving then waits
 up to 1.5 seconds per formatter; a failure leaves the text unchanged. Set
