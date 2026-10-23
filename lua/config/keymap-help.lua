@@ -81,7 +81,7 @@ local function lower(text) return vim.fn.tolower(text) end
 local function render(state)
     if not vim.api.nvim_buf_is_valid(state.buf) then return end
     local text = labels[state.language]
-    local lines, highlights, headings = {}, {}, {}
+    local lines, highlights, headings = { "" }, {}, {}
     local function append(line, group)
         lines[#lines + 1] = line
         if group then highlights[#highlights + 1] = { #lines - 1, 0, #line, group } end
@@ -134,6 +134,10 @@ local function render(state)
     lines[count_line] = string.format("%s: %d / %d · %s: %s", text.matches, matched, total,
         text.filter, state.query ~= "" and state.query or "—")
     highlights[#highlights + 1] = { count_line - 1, 0, #lines[count_line], "Special" }
+    -- Keep a blank top row and one column between the border and the text.
+    for row, line in ipairs(lines) do
+        if line ~= "" then lines[row] = " " .. line end
+    end
     vim.bo[state.buf].readonly = false
     vim.bo[state.buf].modifiable = true
     vim.api.nvim_buf_set_lines(state.buf, 0, -1, false, lines)
@@ -142,11 +146,11 @@ local function render(state)
     vim.bo[state.buf].readonly = true
     vim.api.nvim_buf_clear_namespace(state.buf, namespace, 0, -1)
     for _, hl in ipairs(highlights) do
-        vim.api.nvim_buf_set_extmark(state.buf, namespace, hl[1], hl[2], { end_col = hl[3], hl_group = hl[4] })
+        vim.api.nvim_buf_set_extmark(state.buf, namespace, hl[1], hl[2] + 1, { end_col = hl[3] + 1, hl_group = hl[4] })
     end
     state.headings, state.matched, state.total = headings, matched, total
     if vim.api.nvim_win_is_valid(state.win) and vim.api.nvim_win_get_buf(state.win) == state.buf then
-        vim.api.nvim_win_set_cursor(state.win, { 1, 0 })
+        vim.api.nvim_win_set_cursor(state.win, { 2, 1 })
         vim.api.nvim_win_set_config(state.win, window_config(state))
     end
 end
@@ -233,7 +237,7 @@ function M.open(language)
                 if direction > 0 and heading > line then target = heading; break end
                 if direction < 0 and heading < line then target = heading end
             end
-            if target then vim.api.nvim_win_set_cursor(state.win, { target, 0 }) end
+            if target then vim.api.nvim_win_set_cursor(state.win, { target, 1 }) end
         end, "Jump reference section")
     end
     local group = vim.api.nvim_create_augroup("KeymapHelp" .. state.buf, { clear = true })

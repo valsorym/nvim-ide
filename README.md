@@ -1,4 +1,4 @@
-# Neovim IDE 2.3.1
+# Neovim IDE 2.3.2
 
 [Українська](README.UK.md)
 
