@@ -158,7 +158,7 @@ or `~/.cache/nvim` as a routine installation step.
 nvim
 ```
 
-For a fixed version, replace `--branch master` with `--branch v2.6.0`; a tag
+For a fixed version, replace `--branch master` with `--branch v2.6.1`; a tag
 checkout is detached and is updated by selecting another tag rather than pulling.
 The first launch needs network access to install the locked plugin revisions.
 Wait for installation to finish. Open the plugin window and restore the
@@ -425,9 +425,9 @@ default is **Catppuccin Mocha**. Neovim also offers its built-in schemes.
 - `Space us` selects and saves a theme for future starts.
 - `Space ui` shows the active theme.
 
-The theme active before opening the list is labelled **`(default)`** so it remains
-recognizable while previewing other entries. This marker refers to the starting
-selection, not necessarily the configuration's factory default. Dashboard previews
+**`(default)`** always labels the theme configured by `default_theme` in
+`lua/config/theme.lua`, currently **Catppuccin Mocha**. Changing themes for the
+session or saving a personal preference does not move this marker. Dashboard previews
 are centered inside the preview pane. The terminal needs true colour for the
 palette and a Nerd Font for icons; a Neovim theme does not install a terminal font.
 

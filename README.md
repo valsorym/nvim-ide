@@ -1,4 +1,4 @@
-# Neovim IDE 2.6.0
+# Neovim IDE 2.6.1
 
 [Українська](README.UK.md)
 
@@ -543,8 +543,9 @@ vim.g.nvim_ide_move_modified_tabs = false
 Six theme families are included: Catppuccin (Mocha by default), Tokyo Night,
 Gruvbox Material, Kanagawa, Nord and One Dark, plus Neovim's built-in schemes.
 `Space ut` previews/selects for this session; `Space us` saves the selection;
-`Space ui` reports the active theme. The theme active when the picker opens is
-marked `(default)` throughout previewing. Dashboard content is centered inside
+`Space ui` reports the active theme. `(default)` always marks the configured
+`default_theme` in `lua/config/theme.lua` (Catppuccin Mocha), independently of
+session changes or the theme saved with `Space us`. Dashboard content is centered inside
 the preview pane, with a compact header when the pane is narrow.
 
 File search, the explorer and definition navigation open/reuse file tabs; native
