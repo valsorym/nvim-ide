@@ -113,11 +113,11 @@ return {
         { "q / <Esc>", "n", "Close project history", "Закрити історію проєктів" },
     } },
     { id = "buffers", en = "Open files (Space bl / bb / F10)", uk = "Відкриті файли (Space bl / bb / F10)", entries = {
-        { "Text", "i", "Filter open file paths; + marks unsaved text, h marks hidden buffers", "Фільтрувати шляхи відкритих файлів; + — незбережений текст, h — прихований буфер" },
+        { "Text", "i", "Digits filter any part of buffer IDs; other text filters paths; % current, + unsaved, h hidden", "Цифри фільтрують ID за входженням; інший текст — шляхи; % — поточний, + — незбережений, h — прихований" },
         { "<C-n> / <C-j> / <Down>", "i", "Next file", "Наступний файл" },
         { "<C-p> / <C-k> / <Up>", "i", "Previous file", "Попередній файл" },
         { "j / k", "n", "Next / previous file", "Наступний / попередній файл" },
-        { "<CR>", "n/i", "Focus the existing file window or open its buffer in a tab", "Перейти до наявного вікна файла або відкрити його буфер у вкладці" },
+        { "<CR>", "n/i", "Open the selected match in its existing window or a tab", "Відкрити виділений збіг у наявному вікні чи вкладці" },
         { "<Esc>", "i", "Leave Insert mode; press again to close", "Вийти з режиму вставлення; натиснути ще раз для закриття" },
         { "q / <Esc>", "n", "Close without changing files or tabs", "Закрити без зміни файлів і вкладок" },
     } },

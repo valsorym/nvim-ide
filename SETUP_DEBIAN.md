@@ -158,7 +158,7 @@ or `~/.cache/nvim` as a routine installation step.
 nvim
 ```
 
-For a fixed version, replace `--branch master` with `--branch v2.6.1`; a tag
+For a fixed version, replace `--branch master` with `--branch v2.7.0`; a tag
 checkout is detached and is updated by selecting another tag rather than pulling.
 The first launch needs network access to install the locked plugin revisions.
 Wait for installation to finish. Open the plugin window and restore the

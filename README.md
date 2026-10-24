@@ -87,6 +87,7 @@ layout option does not intercept terminal or OS shortcuts.
 
 `Space Space` searches the command legend; `Space ?` selects a group.
 Keys are sequential, not held together. Uppercase letters require Shift.
+You have two seconds between keys in a mapping, including `Space b l`.
 The tables below list configured global mappings. `n` = Normal, `x` = Visual,
 `o` = operator-pending, `i` = Insert. Native Vim commands remain available.
 
@@ -547,10 +548,18 @@ vim.g.nvim_ide_move_modified_tabs = false
 ## Sessions, tabs and themes
 
 `Space bl` opens a modal list of all open file buffers, including hidden files and
-unnamed drafts. `Space bb` and `F10` open the same list. Type to filter paths;
+unnamed drafts. The window is about 100 columns wide with a fixed 20-row file
+list; longer lists scroll, and small terminals constrain the window to fit.
+Filtering keeps the same window height. `Space bb` and `F10` open the same list.
+IDs are buffer numbers padded to four digits, such as `0001` or `0035`.
+Digits filter any part of the displayed ID: `3` matches both `0031` and `0033`,
+while `33` narrows the list to IDs containing `33`. Leading zeros also work.
+`Enter` opens the selected match. IDs stay the same when filtering or reordering
+the list; if an ID exceeds four digits, the entire ID column expands together.
+Other text filters paths. The bottom border shows the controls and status legend;
 `Ctrl-n` / `Ctrl-p`, `Ctrl-j` / `Ctrl-k` or arrows move through results. `Enter`
 focuses the file's existing tab/split, or opens a hidden buffer in a new tab,
-keeping unsaved text. `+` marks unsaved changes, `h` means hidden, and `>` marks
+keeping unsaved text. `+` marks unsaved changes, `h` means hidden, and `%` marks
 the current file. `Esc` leaves Insert mode; a second `Esc` or `q` closes the list.
 The separate `Space tl` / `F8` list still navigates tabs.
 
