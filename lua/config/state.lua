@@ -2,6 +2,12 @@
 local M = {}
 local uv = vim.uv
 
+local function ensure_parent(path)
+    local ok, err = pcall(vim.fn.mkdir, vim.fs.dirname(path), "p")
+    if not ok then return nil, tostring(err) end
+    return true
+end
+
 local function write_all(fd, text)
     local offset = 0
     while offset < #text do
@@ -14,7 +20,8 @@ end
 
 function M.write(path, text)
     local parent = vim.fs.dirname(path)
-    vim.fn.mkdir(parent, "p")
+    local ready, parent_err = ensure_parent(path)
+    if not ready then return nil, parent_err end
     local temp = path .. "." .. vim.fn.getpid() .. "." .. uv.hrtime() .. ".tmp"
     local fd, err = uv.fs_open(temp, "wx", 384)
     if not fd then return nil, err end
@@ -34,8 +41,11 @@ function M.write(path, text)
 end
 
 function M.read_json(path, default)
-    local file = io.open(path, "rb")
-    if not file then return vim.deepcopy(default) end
+    local file, err, code = io.open(path, "rb")
+    if not file then
+        if code == 2 then return vim.deepcopy(default) end
+        return nil, "Cannot read state file, preserved unchanged: " .. path .. ": " .. tostring(err)
+    end
     local text = file:read("*a"); file:close()
     local ok, data = pcall(vim.json.decode, text)
     if not ok or type(data) ~= "table" or data == vim.NIL then
@@ -82,7 +92,8 @@ local function reap(lock)
 end
 
 function M.update_json(path, default, change)
-    vim.fn.mkdir(vim.fs.dirname(path), "p")
+    local ready_parent, parent_err = ensure_parent(path)
+    if not ready_parent then return nil, parent_err end
     local lock = path .. ".lock"
     local gate = lock .. ".d"
     local deadline = uv.hrtime() + 200000000

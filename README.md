@@ -138,6 +138,7 @@ available through `:help index`, and `g?` lists all active explorer mappings.
 | `<leader>h` | n | Keyboard reference |
 | `<leader>:` | n | Search Ex commands |
 | `<leader>bb` | n | Find buffer |
+| `<leader>bl` | n | Open file list |
 | `<leader>bn` | n | Next buffer |
 | `<leader>bp` | n | Previous buffer |
 | `<leader>bd` | n | Delete buffer |
@@ -444,6 +445,9 @@ asynchronously; it applies results only if the buffer has not changed in the
 meantime. Formatters receive stdin and never overwrite your file directly.
 Project Python tools and `node_modules/.bin` take precedence over PATH. If no
 external formatter is available, an attached LSP formatter is used when supported.
+An asynchronous LSP formatting request times out after 10 seconds; retry without
+reopening the file. Late responses are ignored, including after a buffer becomes
+read-only.
 
 Menu launches can inherit a shorter PATH than your shell. At startup the editor
 keeps Mason first, preserves the inherited PATH order, and appends existing
@@ -504,6 +508,8 @@ Review the confirmation before applying. Changes remain in undoable buffers;
 review them with `:ls` and save with `:wall`. Already modified/read-only buffers,
 large files and changed result lines are skipped. `Space fR` includes ignored
 files except `.git`. Native `:%s` remains available for regular expressions.
+An unreadable or removed result file is reported and skipped without aborting
+the other replacements. Any completed changes remain listed and undoable.
 Files with another editor's swap, a recovery swap or a matching damaged swap in
 the configured swap directories are skipped too; the message counts them separately.
 Open such a file normally to review the conflict or recover its contents first.
@@ -540,6 +546,14 @@ vim.g.nvim_ide_move_modified_tabs = false
 
 ## Sessions, tabs and themes
 
+`Space bl` opens a modal list of all open file buffers, including hidden files and
+unnamed drafts. `Space bb` and `F10` open the same list. Type to filter paths;
+`Ctrl-n` / `Ctrl-p`, `Ctrl-j` / `Ctrl-k` or arrows move through results. `Enter`
+focuses the file's existing tab/split, or opens a hidden buffer in a new tab,
+keeping unsaved text. `+` marks unsaved changes, `h` means hidden, and `>` marks
+the current file. `Esc` leaves Insert mode; a second `Esc` or `q` closes the list.
+The separate `Space tl` / `F8` list still navigates tabs.
+
 Six theme families are included: Catppuccin (Mocha by default), Tokyo Night,
 Gruvbox Material, Kanagawa, Nord and One Dark, plus Neovim's built-in schemes.
 `Space ut` previews/selects for this session; `Space us` saves the selection;
@@ -552,6 +566,9 @@ File search, the explorer and definition navigation open/reuse file tabs; native
 splits remain usable. `Space tq` asks before discarding unsaved work. `Space tc`
 closes only tabs whose windows contain no modified buffers. Hidden unrelated
 buffers are retained. `F2` saves the current file, asking for a name when needed.
+If a write hook changes text after saving, `F2` keeps it marked as unsaved and
+Save-and-close leaves the tab open. Changes made while closing a tab remain in
+a listed buffer instead of being discarded.
 
 Sessions use native `:mksession` under `stdpath("state")/sessions-v2`. They preserve
 files, directories, tabs, windows and folds, **not unsaved buffer text**. Automatic
@@ -561,6 +578,10 @@ saved project session. The previous session is retained as a `.vim.bak` file.
 Restore is explicit. `Space wD` deletes the current
 session and prevents automatic recreation until `Space ws` explicitly saves it.
 Restoring sessions or switching workspaces is refused while buffers are modified.
+Before restoring, the current layout is saved temporarily. On a restore error,
+the editor attempts to restore that layout and pauses automatic session saving
+until `SessionSave`. If rollback also fails, the error shows a retained recovery
+session path that can be opened with `:source`, after resolving the reported error.
 `Space wa` names the current directory; `Space ww` selects saved workspaces.
 
 For version 1 sessions, use `Space wL` (`:SessionLegacy`), then `Space ws` after

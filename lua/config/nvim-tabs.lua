@@ -80,6 +80,27 @@ function M.new()
     end
 end
 
+function M.focus_buffer(buf)
+    if not vim.api.nvim_buf_is_valid(buf) then
+        vim.notify("This buffer was closed; reopen the file list", vim.log.levels.WARN)
+        return false
+    end
+    -- Find the exact split/tab, including unnamed buffers and duplicate filenames.
+    for _, win in ipairs(vim.fn.win_findbuf(buf)) do
+        if vim.api.nvim_win_get_config(win).relative == "" then
+            local ok, err = pcall(vim.api.nvim_set_current_win, win)
+            if not ok then vim.notify(tostring(err), vim.log.levels.ERROR) end
+            return ok
+        end
+    end
+    if not vim.api.nvim_buf_is_loaded(buf) and vim.api.nvim_buf_get_name(buf) ~= "" then
+        return M.open(vim.api.nvim_buf_get_name(buf))
+    end
+    local ok, err = pcall(vim.cmd, "tab sbuffer " .. buf)
+    if not ok then vim.notify(tostring(err), vim.log.levels.ERROR) end
+    return ok
+end
+
 function M.close(force)
     local tab = vim.api.nvim_get_current_tabpage()
     local buffers = {}
@@ -91,25 +112,39 @@ function M.close(force)
                     "&Save\n&Discard\n&Cancel", 3)
                 if choice == 3 or choice == 0 then return end
                 if choice == 1 then
-                    local ok, err = pcall(vim.api.nvim_buf_call, buf, function() vim.cmd("write") end)
+                    local ok, err = require("config.safe-save").write_buffer(buf)
                     if not ok then vim.notify(err, vim.log.levels.ERROR); return end
                 end
             end
         end
-        buffers[buf] = true
+        buffers[buf] = vim.api.nvim_buf_get_changedtick(buf)
     end
-    if #vim.api.nvim_list_tabpages() > 1 then
-        vim.cmd("tabclose!")
-    else
-        vim.cmd("enew!")
-        vim.cmd("Dashboard")
+    if not vim.api.nvim_tabpage_is_valid(tab) then return false end
+    for _, win in ipairs(vim.api.nvim_tabpage_list_wins(tab)) do
+        local buf = vim.api.nvim_win_get_buf(win)
+        if vim.bo[buf].modified and buffers[buf] ~= vim.api.nvim_buf_get_changedtick(buf) then
+            vim.notify("Tab changed while confirming; close it again to review changes", vim.log.levels.WARN)
+            return false
+        end
     end
+    local ok, err = pcall(function()
+        vim.api.nvim_set_current_tabpage(tab)
+        if #vim.api.nvim_list_tabpages() > 1 then
+            vim.cmd(vim.api.nvim_tabpage_get_number(tab) .. "tabclose!")
+        else
+            vim.cmd("enew!")
+            vim.cmd("Dashboard")
+        end
+    end)
+    if not ok then vim.notify(tostring(err), vim.log.levels.ERROR); return false end
     -- Clean only buffers from this tab, never unrelated hidden unsaved work.
-    for buf in pairs(buffers) do
-        if vim.api.nvim_buf_is_valid(buf) and #vim.fn.win_findbuf(buf) == 0 then
+    for buf, tick in pairs(buffers) do
+        if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buftype == "" and #vim.fn.win_findbuf(buf) == 0
+            and (not vim.bo[buf].modified or vim.api.nvim_buf_get_changedtick(buf) == tick) then
             pcall(vim.api.nvim_buf_delete, buf, { force = true })
         end
     end
+    return true
 end
 
 function M.close_saved()

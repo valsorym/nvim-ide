@@ -8,6 +8,7 @@ M.current_win = nil
 
 -- Function to close any existing tabs window.
 function M.close_existing_window()
+    if M.close_window then M.close_window(); return end
     if M.current_win and vim.api.nvim_win_is_valid(M.current_win) then
         pcall(vim.api.nvim_win_close, M.current_win, true)
     end
@@ -108,6 +109,7 @@ function M.get_open_tabs()
 
         table.insert(tabs, {
             tab_nr = tab_nr,
+            tab = vim.api.nvim_list_tabpages()[tab_nr],
             file_name = file_name,
             display_name = display_name,
             file_path = file_path,
@@ -198,10 +200,10 @@ function M.show_tabs_window()
         end
 
         local results = {}
-        local lower_text = string.lower(text)
+        local lower_text = vim.fn.tolower(text)
 
         for _, tab in ipairs(all_tabs) do
-            local lower_display = string.lower(tab.display_name)
+            local lower_display = vim.fn.tolower(tab.display_name)
             if lower_display:find(lower_text, 1, true) then
                 table.insert(results, tab)
             end
@@ -237,7 +239,7 @@ function M.show_tabs_window()
                 table.insert(lines, line)
 
                 local line_nr = #lines
-                line_to_tab[line_nr] = tab.tab_nr
+                line_to_tab[line_nr] = tab.tab
 
                 if tab.is_current then
                     current_tab_line = line_nr
@@ -299,14 +301,32 @@ function M.show_tabs_window()
         end
     })
 
+    local group = vim.api.nvim_create_augroup("TabListWindow", { clear = true })
+    local closed = false
     local function close_window()
+        if closed then return end
+        closed = true
+        vim.api.nvim_del_augroup_by_id(group)
         if vim.api.nvim_win_is_valid(prompt_win) then
             pcall(vim.api.nvim_win_close, prompt_win, true)
         end
         if vim.api.nvim_win_is_valid(win) then
             pcall(vim.api.nvim_win_close, win, true)
         end
-        M.current_win = nil
+        M.current_win, M.close_window = nil, nil
+    end
+    M.close_window = close_window
+    vim.api.nvim_create_autocmd("WinClosed", {
+        group = group, pattern = { tostring(win), tostring(prompt_win) }, callback = close_window,
+    })
+    local function select_tab(tab)
+        if not vim.api.nvim_tabpage_is_valid(tab) then
+            vim.notify("This tab was closed; reopen the tab list", vim.log.levels.WARN)
+            return false
+        end
+        close_window()
+        vim.api.nvim_set_current_tabpage(tab)
+        return true
     end
 
     -- Keymaps for main window.
@@ -332,8 +352,7 @@ function M.show_tabs_window()
         local line_nr = vim.fn.line(".")
         local tab_nr = line_to_tab[line_nr]
         if tab_nr then
-            close_window()
-            vim.cmd(tab_nr .. "tabnext")
+            select_tab(tab_nr)
         end
     end, km)
 
@@ -342,8 +361,7 @@ function M.show_tabs_window()
         local tab_nr = line_to_tab[line_nr]
         if tab_nr then
             if vim.fn.tabpagenr("$") > 1 then
-                close_window()
-                vim.cmd(tab_nr .. "tabnext")
+                if not select_tab(tab_nr) then return end
                 require("config.nvim-tabs").close(false)
                 vim.defer_fn(M.show_tabs_window, 200)
             else
@@ -410,8 +428,7 @@ function M.show_tabs_window()
         local line_nr = vim.api.nvim_win_get_cursor(win)[1]
         local tab_nr = line_to_tab[line_nr]
         if tab_nr then
-            close_window()
-            vim.cmd(tab_nr .. "tabnext")
+            select_tab(tab_nr)
         end
     end, prompt_km)
 
@@ -473,19 +490,19 @@ function M.show_tabs_window()
         end
     end, prompt_km)
 
-    -- Auto-close when main window loses focus.
-    vim.api.nvim_create_autocmd({"WinLeave", "BufLeave"}, {
-        buffer = buf,
-        once = true,
-        callback = function()
-            vim.defer_fn(function()
-                local current = vim.api.nvim_get_current_win()
-                if current ~= win and current ~= prompt_win then
-                    close_window()
-                end
-            end, 100)
-        end
-    })
+    -- Moving between the list and its filter is internal; leaving either closes both.
+    for _, target in ipairs({ buf, prompt_buf }) do
+        vim.api.nvim_create_autocmd({ "WinLeave", "BufLeave" }, {
+            group = group, buffer = target,
+            callback = function()
+                vim.schedule(function()
+                    if closed then return end
+                    local current = vim.api.nvim_get_current_win()
+                    if current ~= win and current ~= prompt_win then close_window() end
+                end)
+            end,
+        })
+    end
 
 end
 

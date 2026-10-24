@@ -5,6 +5,18 @@ local store = require("config.state")
 local dir = vim.fn.stdpath("state") .. "/sessions-v2"
 local index_path = dir .. "/index.json"
 
+local function snapshot(path)
+    local previous, session = vim.o.sessionoptions, vim.v.this_session
+    local ok, err = pcall(function()
+        vim.fn.mkdir(vim.fs.dirname(path), "p")
+        vim.opt.sessionoptions = { "buffers", "curdir", "folds", "tabpages", "winsize", "blank" }
+        vim.cmd("mksession! " .. vim.fn.fnameescape(path))
+    end)
+    vim.o.sessionoptions, vim.v.this_session = previous, session
+    if not ok then vim.uv.fs_unlink(path) end
+    return ok, err
+end
+
 local function normalize(index)
     for _, key in ipairs({ "sessions", "workspaces" }) do
         if type(index[key]) ~= "table" or next(index[key]) == nil then index[key] = vim.empty_dict() end
@@ -44,25 +56,25 @@ function M.save(automatic)
     local path = dir .. "/" .. vim.fn.sha256(cwd) .. ".vim"
     local updated = update_index(function(index)
         local temp = path .. "." .. vim.fn.getpid() .. ".tmp"
-        local previous = vim.o.sessionoptions
-        vim.opt.sessionoptions = { "buffers", "curdir", "folds", "tabpages", "winsize" }
-        local ok, err = pcall(vim.cmd, "mksession! " .. vim.fn.fnameescape(temp))
-        vim.o.sessionoptions = previous
+        local ok, err = snapshot(temp)
         if not ok then vim.uv.fs_unlink(temp); error(err) end
-        local old = io.open(path, "rb")
+        local old, read_err, read_code = io.open(path, "rb")
+        if not old and read_code ~= 2 then vim.uv.fs_unlink(temp); error(read_err) end
         if old then
-            local text = old:read("*a"); old:close()
+            local text, text_err = old:read("*a"); old:close()
+            if not text then vim.uv.fs_unlink(temp); error(text_err) end
             local backed, backup_err = store.write(path .. ".bak", text)
             if not backed then vim.uv.fs_unlink(temp); error(backup_err) end
         end
         local renamed, rename_err = vim.uv.fs_rename(temp, path)
-        assert(renamed, rename_err)
+        if not renamed then vim.uv.fs_unlink(temp); error(rename_err) end
         index.sessions[cwd] = { path = path, cwd = cwd, time = os.time() }
         index.last = cwd
         return index
     end)
     if not updated then return end
     managed[cwd], disabled[cwd] = true, nil
+    vim.v.this_session = path
     if not automatic then vim.notify("Session saved: " .. cwd) end
     return true
 end
@@ -79,8 +91,30 @@ function M.restore(entry)
             return
         end
     end
+    local before_cwd, before_session = vim.fn.getcwd(), vim.v.this_session
+    local recovery = dir .. "/restore-" .. vim.fn.getpid() .. "-" .. vim.uv.hrtime() .. ".vim"
+    local captured, capture_err = snapshot(recovery)
+    if not captured then
+        vim.notify("Cannot preserve current tabs before restoring: " .. tostring(capture_err), vim.log.levels.ERROR)
+        return false
+    end
     local ok, err = pcall(vim.cmd, "source " .. vim.fn.fnameescape(entry.path))
-    if not ok then vim.notify(err, vim.log.levels.ERROR); return end
+    if not ok then
+        -- A partially sourced session must never become the next automatic save.
+        managed[before_cwd], managed[vim.fn.getcwd()], managed[entry.cwd or before_cwd] = nil, nil, nil
+        local restored, restore_err = pcall(vim.cmd, "source " .. vim.fn.fnameescape(recovery))
+        vim.v.this_session = before_session
+        if restored then
+            vim.uv.fs_unlink(recovery)
+            vim.notify("Session restore failed; previous tabs restored. Automatic saving paused until SessionSave.\n"
+                .. tostring(err), vim.log.levels.ERROR)
+        else
+            vim.notify("Session restore failed: " .. tostring(err) .. "\nCould not restore previous tabs: "
+                .. tostring(restore_err) .. "\nRecovery session kept at " .. recovery, vim.log.levels.ERROR)
+        end
+        return false
+    end
+    vim.uv.fs_unlink(recovery)
     managed[vim.fn.getcwd()], disabled[vim.fn.getcwd()] = true, nil
     return true
 end
@@ -122,10 +156,11 @@ function M.pick(legacy)
 end
 
 function M.add_workspace()
-    vim.ui.input({ prompt = "Workspace name: ", default = vim.fs.basename(vim.fn.getcwd()) }, function(name)
+    local cwd = vim.fn.getcwd()
+    vim.ui.input({ prompt = "Workspace name: ", default = vim.fs.basename(cwd) }, function(name)
         if not name or name == "" then return end
         update_index(function(index)
-            index.workspaces[vim.fn.getcwd()] = name
+            index.workspaces[cwd] = name
             return index
         end)
     end)
@@ -143,10 +178,17 @@ function M.workspaces()
                 return
             end
         end
-        M.save(true)
-        vim.cmd("cd " .. vim.fn.fnameescape(entry.path))
+        if vim.fn.isdirectory(entry.path) == 0 then
+            vim.notify("Workspace directory no longer exists: " .. entry.path, vim.log.levels.WARN)
+            return
+        end
+        if managed[vim.fn.getcwd()] and not M.save(true) then return end
         local saved = read_index().sessions[entry.path]
-        if saved then M.restore(saved) end
+        if saved then M.restore(saved)
+        else
+            local ok, err = pcall(vim.cmd, "cd " .. vim.fn.fnameescape(entry.path))
+            if not ok then vim.notify(tostring(err), vim.log.levels.ERROR) end
+        end
     end)
 end
 

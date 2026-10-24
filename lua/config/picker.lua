@@ -26,7 +26,8 @@ function M.select(items, opts, on_choice)
             end,
         }),
         sorter = conf.generic_sorter({}),
-        attach_mappings = function(buf)
+        attach_mappings = function(buf, map)
+            if opts.close_on_q then map("n", "q", actions.close) end
             actions.select_default:replace(function()
                 local entry = state.get_selected_entry()
                 if entry then finish(entry.value, entry.index) else finish(nil, nil) end

@@ -126,7 +126,8 @@ end
 
 function M.format(opts)
     opts = opts or {}
-    local buf = opts.buf or vim.api.nvim_get_current_buf()
+    local buf = opts.buf and opts.buf ~= 0 and opts.buf or vim.api.nvim_get_current_buf()
+    if not vim.api.nvim_buf_is_valid(buf) or not vim.api.nvim_buf_is_loaded(buf) then return end
     if vim.bo[buf].buftype ~= "" or not vim.bo[buf].modifiable or vim.bo[buf].readonly then return end
     if require("config.performance").is_large(buf) then
         if not opts.quiet then vim.notify("Formatting is disabled for large files", vim.log.levels.WARN) end
@@ -140,14 +141,16 @@ function M.format(opts)
     if running[buf] then return end
     local tick = vim.api.nvim_buf_get_changedtick(buf)
     local function unchanged()
-        return vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].modifiable
+        return vim.api.nvim_buf_is_valid(buf) and vim.api.nvim_buf_is_loaded(buf)
+            and vim.bo[buf].modifiable and not vim.bo[buf].readonly
             and vim.api.nvim_buf_get_changedtick(buf) == tick
     end
     local function failed(message)
         running[buf] = nil
         vim.notify(message, vim.log.levels.ERROR)
     end
-    local pipeline, command_error, formatter_cwd = commands(buf, opts.only)
+    local planned, pipeline, command_error, formatter_cwd = pcall(commands, buf, opts.only)
+    if not planned then failed(tostring(pipeline)); return end
     if command_error then failed(command_error); return end
     if #pipeline == 0 then
         if opts.only then failed("Formatter not found: " .. opts.only); return end
@@ -161,15 +164,37 @@ function M.format(opts)
         local function apply(err, edits)
             running[buf] = nil
             if err then failed(err.message or tostring(err)); return end
-            if unchanged() and edits then vim.lsp.util.apply_text_edits(edits, buf, client.offset_encoding) end
+            if unchanged() and edits then
+                local ok, failure = pcall(vim.lsp.util.apply_text_edits, edits, buf, client.offset_encoding)
+                if not ok then failed(tostring(failure)) end
+            end
         end
         if opts.async == false then
-            local response, err = client:request_sync("textDocument/formatting", params, opts.timeout_ms or 1500, buf)
-            if response then apply(response.err, response.result) else failed(tostring(err)) end
+            local ok, response, err = pcall(client.request_sync, client,
+                "textDocument/formatting", params, opts.timeout_ms or 1500, buf)
+            if not ok then failed(tostring(response))
+            elseif response then apply(response.err, response.result) else failed(tostring(err)) end
         else
+            -- A stopped or unresponsive server must not lock this buffer forever.
+            local pending, timer = true, nil
+            local function finish(err, edits)
+                if not pending then return end
+                pending = false
+                if timer then timer:stop(); timer:close() end
+                apply(err, edits)
+            end
             running[buf] = true
-            local ok = client:request("textDocument/formatting", params, apply, buf)
-            if not ok then failed("Could not request formatting") end
+            local called, ok, id = pcall(client.request, client, "textDocument/formatting", params, finish, buf)
+            if not called or not ok then
+                finish({ message = called and "Could not request formatting" or tostring(ok) })
+            elseif pending then
+                timer = vim.defer_fn(function()
+                    if not pending then return end
+                    pending = false
+                    failed("Formatting timed out; you can retry")
+                    if id then pcall(client.cancel_request, client, id) end
+                end, opts.timeout_ms or 10000)
+            end
         end
         return
     end
